@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>量化套利专题 · Leon Blog</title>
+<style>
+  :root{
+    --bg:#f6f8fb; --card:#ffffff; --ink:#1a1d24; --muted:#5b6472;
+    --line:#e3e7ee; --accent:#2f6bff; --accent-soft:#eaf0ff; --chip:#eef1f6;
+    --ok:#1f7a4d; --ok-soft:#e6f5ec; --warn:#b4531a; --warn-soft:#fdeee2;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#0f1218; --card:#171b23; --ink:#e8ebf0; --muted:#9aa4b2;
+    --line:#262c37; --accent:#6f9bff; --accent-soft:#1a2540; --chip:#212734;
+    --ok:#6fce9c; --ok-soft:#12261b; --warn:#e59b6a; --warn-soft:#2c2016;
+  }}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,"PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    display:flex;flex-direction:column;height:100vh;overflow:hidden}
+  header{background:var(--card);border-bottom:1px solid var(--line);padding:14px 22px;flex:none}
+  header .t{font-size:18px;font-weight:700}
+  header .s{font-size:12.5px;color:var(--muted);margin-top:2px}
+  header .brand{display:inline-block;color:var(--accent);text-decoration:none;font-size:12px;font-weight:700;margin-bottom:4px}
+  .layout{flex:1;display:flex;min-height:0}
+  aside{width:270px;flex:none;background:var(--card);border-right:1px solid var(--line);
+    overflow-y:auto;padding:14px}
+  .navcard{display:block;text-align:left;width:100%;background:var(--bg);border:1px solid var(--line);
+    border-radius:11px;padding:12px 13px;margin-bottom:9px;cursor:pointer;transition:.15s;color:inherit;font:inherit}
+  .navcard:hover{border-color:var(--accent)}
+  .navcard.active{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent) inset}
+  .navcard .h{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:600}
+  .navcard .num{display:inline-flex;width:22px;height:22px;align-items:center;justify-content:center;
+    background:var(--accent);color:#fff;border-radius:6px;font-size:12px;flex:none}
+  .navcard .d{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5}
+  .navcard .mini{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:12px;background:var(--chip);color:var(--muted);margin-top:7px}
+  .navcard .mini.low{background:var(--ok-soft);color:var(--ok)}
+  .navcard .mini.mid{background:var(--accent-soft);color:var(--accent)}
+  .navcard .mini.high{background:var(--warn-soft);color:var(--warn)}
+  .seclabel{font-size:11px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;margin:6px 4px 10px;font-weight:700}
+  main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .frametop{padding:8px 16px;border-bottom:1px solid var(--line);background:var(--card);
+    display:flex;align-items:center;justify-content:space-between;flex:none;font-size:12.5px}
+  .frametop .cur{color:var(--muted)} .frametop .cur b{color:var(--ink)}
+  .frametop a{color:var(--accent);text-decoration:none;font-weight:600}
+  .frametop a:hover{text-decoration:underline}
+  iframe{flex:1;width:100%;border:none;background:var(--bg)}
+  .menubtn{display:none}
+  @media(max-width:760px){
+    body{overflow:auto;height:auto}
+    .layout{flex-direction:column}
+    aside{width:100%;border-right:none;border-bottom:1px solid var(--line);max-height:40vh;overflow-y:auto}
+    iframe{height:78vh}
+    .menubtn{display:inline-block;background:none;border:1px solid var(--line);border-radius:8px;
+      padding:4px 10px;color:var(--ink);font-size:12.5px;cursor:pointer}
+  }
+</style>
+</head>
+<body>
+<header>
+  <a class="brand" href="../">← Leon Blog</a>
+  <div class="t">数字货币量化套利 · 图解 + 计算器</div>
+  <div class="s">选择策略查看原理图、公式与交互计算器 · 整理于 2026-09 · 模型为简化情景估算，非投资建议</div>
+</header>
+
+<div class="layout">
+  <aside id="nav">
+    <div class="seclabel">总览</div>
+    <button class="navcard" data-src="数字货币量化理财-基础分析清单.html" data-name="基础分析清单">
+      <div class="h"><span class="num">◎</span>基础分析清单</div>
+      <div class="d">10 种策略 + 平台网站全景表,先看这个建立框架。</div>
+    </button>
+
+    <div class="seclabel" style="margin-top:14px">九种套利(含计算器)</div>
+    <button class="navcard active" data-src="01-资金费率套利.html" data-name="资金费率套利">
+      <div class="h"><span class="num">1</span>资金费率套利</div>
+      <div class="d">现货+永续对冲,收永续多空互付的资金费。</div>
+      <span class="mini low">难度 低</span>
+    </button>
+    <button class="navcard" data-src="02-期现套利.html" data-name="期现套利">
+      <div class="h"><span class="num">2</span>期现套利</div>
+      <div class="d">买现货+空交割合约,吃到期收敛的基差。</div>
+      <span class="mini low">难度 低</span>
+    </button>
+    <button class="navcard" data-src="03-日历价差套利.html" data-name="日历价差套利">
+      <div class="h"><span class="num">3</span>日历价差(跨期)</div>
+      <div class="d">近/远月两腿对冲,赌价差收窄。</div>
+      <span class="mini mid">难度 中</span>
+    </button>
+    <button class="navcard" data-src="04-跨交易所套利.html" data-name="跨交易所套利">
+      <div class="h"><span class="num">4</span>跨交易所搬砖</div>
+      <div class="d">A 所买、B 所卖,赚瞬时价差,拼速度。</div>
+      <span class="mini mid">难度 中</span>
+    </button>
+    <button class="navcard" data-src="05-三角套利.html" data-name="三角套利">
+      <div class="h"><span class="num">5</span>三角套利</div>
+      <div class="d">同所内三币绕圈,吃汇率定价偏差。</div>
+      <span class="mini high">难度 高</span>
+    </button>
+    <button class="navcard" data-src="06-跨所资金费率套利.html" data-name="跨所资金费率套利">
+      <div class="h"><span class="num">6</span>跨所资金费率套利</div>
+      <div class="d">高费率所做空、低费率所做多,吃费率差。</div>
+      <span class="mini low">难度 低–中</span>
+    </button>
+    <button class="navcard" data-src="07-统计套利.html" data-name="统计套利 / 配对交易">
+      <div class="h"><span class="num">7</span>统计套利 / 配对交易</div>
+      <div class="d">相关币价差异常时押均值回归。</div>
+      <span class="mini high">难度 高</span>
+    </button>
+    <button class="navcard" data-src="08-闪电贷套利.html" data-name="闪电贷套利">
+      <div class="h"><span class="num">8</span>闪电贷套利</div>
+      <div class="d">链上无抵押借款,原子完成 DEX 价差套利。</div>
+      <span class="mini high">难度 高</span>
+    </button>
+    <button class="navcard" data-src="09-稳定币脱锚套利.html" data-name="稳定币脱锚套利">
+      <div class="h"><span class="num">9</span>稳定币脱锚套利</div>
+      <div class="d">稳定币跌破锚定时低买,赌回锚。高风险。</div>
+      <span class="mini high">难度 中 · 风险高</span>
+    </button>
+  </aside>
+
+  <main>
+    <div class="frametop">
+      <span class="cur">目前查看:<b id="curName">资金费率套利</b></span>
+      <a id="openNew" href="01-资金费率套利.html" target="_blank">在新分页开启 ↗</a>
+    </div>
+    <iframe id="viewer" src="01-资金费率套利.html" title="策略内容"></iframe>
+  </main>
+</div>
+
+<script>
+  const nav=document.getElementById('nav');
+  const viewer=document.getElementById('viewer');
+  const curName=document.getElementById('curName');
+  const openNew=document.getElementById('openNew');
+  nav.addEventListener('click',e=>{
+    const card=e.target.closest('.navcard'); if(!card)return;
+    document.querySelectorAll('.navcard').forEach(c=>c.classList.remove('active'));
+    card.classList.add('active');
+    const src=card.dataset.src;
+    viewer.src=src; openNew.href=src;
+    curName.textContent=card.dataset.name;
+    if(window.innerWidth<=760){viewer.scrollIntoView({behavior:'smooth'});}
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>统计套利 / 配对交易 · 原理与计算器</title>
+<link rel="stylesheet" href="assets/common.css">
+</head>
+<body>
+<div class="wrap">
+<a class="backlink" href="index.html" target="_top">← 返回总览</a>
+
+<div class="hero">
+  <div class="kicker">均值回归 · 统计型</div>
+  <h1>统计套利 / 配对交易</h1>
+  <p>找两个走势高度相关的币(如 ETH 与 SOL)。当它们的价差异常拉大时,做多落后的、做空领先的,赌价差回归历史均值。</p>
+  <div class="chips">
+    <span class="chip high">难度 高</span>
+    <span class="chip mid">非无风险(赌回归)</span>
+    <span class="chip">收益来源:价差均值回归</span>
+  </div>
+</div>
+
+<section>
+  <h2><span class="n">1</span>一句话原理</h2>
+  <div class="card">
+    <p>两个相关的币,平时价差(比值)在一个区间里上下波动。<a class="term" href="https://www.investopedia.com/terms/s/statisticalarbitrage.asp" target="_blank" data-tip="利用相关资产价差偏离历史均值、押注其回归的量化策略">统计套利</a>(又叫<a class="term" href="https://www.investopedia.com/terms/p/pairstrade.asp" target="_blank" data-tip="同时做多一只、做空另一只相关资产,赌两者价差收敛">配对交易</a>)就是:当价差<strong>异常拉大</strong>时押它回来。</p>
+    <p>做法:<span class="hl">做多相对便宜(落后)的币 + 做空相对贵(领先)的币</span>。两腿等额、方向相反,大盘涨跌互相抵消,只赚价差从“偏离”回到“均值”的那一段——这叫<a class="term" href="https://www.investopedia.com/terms/m/meanreversion.asp" target="_blank" data-tip="价格/价差偏离均值后倾向回归的统计规律">均值回归</a>。</p>
+    <p><strong>与前面套利的本质差别:</strong>资金费率、期现套利有“机制”保证收敛;统计套利只有“历史统计规律”,<strong>相关性可能突然失效</strong>(价差不回归反而继续扩大)。所以它是“统计套利”不是无风险套利,难度最高,通常同时跑几十上百个配对来分散风险。</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">2</span>运作原理图(价差回归)</h2>
+  <div class="card">
+    <svg class="diagram" viewBox="0 0 700 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="价差围绕均值波动">
+      <rect x="1" y="1" width="698" height="238" rx="12" class="dg-bg dg-line" stroke-width="1"/>
+      <line x1="60" y1="120" x2="650" y2="120" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <text x="655" y="124" font-size="11" class="dg-muted" text-anchor="end" dx="-2">均值</text>
+      <line x1="60" y1="70" x2="650" y2="70" stroke="var(--warn)" stroke-width="1" stroke-dasharray="3 3" opacity=".6"/>
+      <text x="66" y="64" font-size="10" fill="var(--warn)">+2σ 开仓线</text>
+      <line x1="60" y1="170" x2="650" y2="170" stroke="var(--ok)" stroke-width="1" stroke-dasharray="3 3" opacity=".6"/>
+      <text x="66" y="186" font-size="10" fill="var(--ok)">−2σ 开仓线</text>
+      <path d="M60 120 Q120 90 160 75 Q185 66 210 90 Q260 140 320 120 Q370 105 400 130 Q430 155 470 168 Q500 178 520 150 Q560 110 620 120" stroke="var(--accent)" stroke-width="2.5" fill="none"/>
+      <circle cx="205" cy="80" r="6" fill="var(--warn)"/>
+      <text x="205" y="52" text-anchor="middle" font-size="11" font-weight="700" fill="var(--warn)">价差过高→做空价差</text>
+      <circle cx="475" cy="168" r="6" fill="var(--ok)"/>
+      <text x="475" y="210" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ok)">价差过低→做多价差</text>
+    </svg>
+    <p class="lead" style="margin-top:6px">价差碰到 ±2 倍标准差(σ)时开仓,回到均值附近平仓获利。</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">3</span>本金怎么算</h2>
+  <div class="card">
+    <p>本金 <code>C</code> 分给两腿等额合约(一多一空)。设每腿名义 <code>N</code>、杠杆 <code>L</code>:</p>
+    <div class="formula">
+两腿名义相等 = N　　每腿保证金 = N / L
+本金 C = 2N/L　→　<b>N = C × L / 2</b>
+毛利 ≈ (进场偏离% − 平仓偏离%) × N　<span class="c">// 价差收窄的百分点 × 名义</span>
+    </div>
+    <dl class="kv">
+      <dt>偏离度</dt><dd>用<a class="term" href="https://www.investopedia.com/terms/z/zscore.asp" target="_blank" data-tip="衡量当前值偏离均值多少个标准差的统计量">Z 分数</a>衡量价差偏离几个标准差。一般 ±2σ 开仓、回到 0 附近平仓。</dd>
+      <dt>分散是命脉</dt><dd>单个配对可能不回归。机构同时跑 50–200 个配对摊平方差,单腿失效不致命。</dd>
+      <dt>成本敏感</dt><dd>持有期通常几天到几周,手续费与<a class="term" href="https://academy.binance.com/en/glossary/funding-rate" target="_blank" data-tip="持有永续合约期间需支付/收取的费用">资金费</a>会侵蚀收益,回归幅度必须盖过成本。</dd>
+    </dl>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">4</span>收益计算器</h2>
+  <p class="lead">用“价差偏离百分点”近似。进场偏离越大、回归越充分,收益越高;若价差反向扩大则亏损。</p>
+  <div class="calc">
+    <div class="grid">
+      <div class="inputs">
+        <p class="calc-title">输入参数</p>
+        <div class="field"><label>本金 <span class="u">USDT</span></label><input id="cap" type="number" value="10000"></div>
+        <div class="field"><label>进场价差偏离 <span class="u">%</span></label><input id="entry" type="number" step="0.1" value="5"></div>
+        <div class="field"><label>平仓价差偏离 <span class="u">%</span></label><input id="exit" type="number" step="0.1" value="1"></div>
+        <div class="field"><label>每腿杠杆 <span class="u">L 倍</span></label><input id="lev" type="number" step="0.5" value="2"></div>
+        <div class="field"><label>来回总手续费率 <span class="u">% 占名义</span></label><input id="fee" type="number" step="0.01" value="0.1"></div>
+        <div class="field"><label>预计持有 <span class="u">天</span></label><input id="days" type="number" value="15"></div>
+        <button class="btn ghost" id="ex">填入示例数据</button>
+      </div>
+      <div class="outputs">
+        <p class="calc-title">计算结果</p>
+        <div class="metric"><div class="lbl">单次净盈亏</div><div class="val big pos" id="oNet">—</div><div class="sub" id="oNetSub"></div></div>
+        <div class="metric"><div class="lbl">单次净收益率</div><div class="val" id="oPct">—</div></div>
+        <div class="rowmini"><span>回归幅度</span><span class="v" id="oConv">—</span></div>
+        <div class="rowmini"><span>每腿名义 N</span><span class="v" id="oN">—</span></div>
+        <div class="rowmini"><span>毛利 / 手续费</span><span class="v" id="oGF">—</span></div>
+        <div class="rowmini"><span>预期年化(若持续复制)</span><span class="v" id="oApr">—</span></div>
+        <div class="note warn" style="margin-top:12px;font-size:12.5px" id="oTip"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">5</span>示例走一遍</h2>
+  <div class="card">
+    <p>本金 <strong>10,000 U</strong>,进场时价差偏离均值 <strong>5%</strong>,回归到 <strong>1%</strong> 平仓,杠杆 <strong>2×</strong>,手续费 <strong>0.1%</strong>,持有 <strong>15 天</strong>:</p>
+    <div class="tbl-scroll">
+    <table>
+      <thead><tr><th>步骤</th><th class="num">数值</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>每腿名义 N</td><td class="num">10,000 U</td><td>= 10000 × 2 / 2</td></tr>
+        <tr><td>回归幅度</td><td class="num">4 个百分点</td><td>= 5% − 1%</td></tr>
+        <tr><td>毛利</td><td class="num">400 U</td><td>= 4% × 10000</td></tr>
+        <tr><td>手续费</td><td class="num">−20 U</td><td>两腿名义 × 0.1%</td></tr>
+        <tr><td><strong>净盈亏</strong></td><td class="num"><strong>≈ 380 U</strong></td><td>价差如期回归</td></tr>
+        <tr><td>单次收益率</td><td class="num">3.8%</td><td>= 380 / 10000</td></tr>
+        <tr><td><strong>预期年化</strong></td><td class="num"><strong>≈ 92%</strong></td><td>= 3.8% / 15 × 365(假设持续)</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="note warn" style="margin-top:12px"><b>注意:</b>92% 是“假设每次都回归、持续复制”的理论值,极度乐观。真实中会有失败配对(价差不回归反而扩大 → 亏损)。把平仓偏离改成大于进场偏离,计算器立刻显示<strong>亏损</strong>。所以要靠<strong>大量配对分散</strong>和严格止损。</div>
+  </div>
+</section>
+
+<footer>
+  <h3>名词解释</h3>
+  <ul>
+    <li>统计套利 Statistical Arbitrage — <a href="https://www.investopedia.com/terms/s/statisticalarbitrage.asp" target="_blank">Investopedia</a></li>
+    <li>配对交易 Pairs Trade — <a href="https://www.investopedia.com/terms/p/pairstrade.asp" target="_blank">Investopedia</a></li>
+    <li>均值回归 Mean Reversion — <a href="https://www.investopedia.com/terms/m/meanreversion.asp" target="_blank">Investopedia</a></li>
+    <li>Z 分数 Z-Score — <a href="https://www.investopedia.com/terms/z/zscore.asp" target="_blank">Investopedia</a></li>
+  </ul>
+  <h3 style="margin-top:12px">方法论来源</h3>
+  <ul>
+    <li>Sharpe — Statistical Arbitrage / Pairs Trading: <a href="https://www.sharpe.ai/arbitrage/guide/statistical" target="_blank">链接</a></li>
+    <li>CoinAPI — 3 statistical arbitrage strategies: <a href="https://www.coinapi.io/blog/3-statistical-arbitrage-strategies-in-crypto" target="_blank">链接</a></li>
+  </ul>
+</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=(n,d=2)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+function calc(){
+  const C=+$('cap').value||0,entry=+$('entry').value||0,exit=+$('exit').value||0,
+        L=+$('lev').value||1,fee=(+$('fee').value||0)/100,days=+$('days').value||0;
+  const N=C*L/2,conv=entry-exit,gross=conv/100*N,feeCost=2*N*fee,net=gross-feeCost;
+  const pct=C>0?net/C*100:0,apr=days>0?pct/days*365:0;
+  $('oConv').textContent=(conv>=0?'收窄 ':'扩大 ')+fmt(Math.abs(conv),1)+' 个百分点';
+  $('oN').textContent=fmt(N,0)+' U';
+  $('oGF').textContent=(gross>=0?'+':'−')+fmt(Math.abs(gross))+' / −'+fmt(feeCost)+' U';
+  const netEl=$('oNet');netEl.textContent=(net>=0?'+':'−')+fmt(Math.abs(net))+' U';
+  netEl.className='val big '+(net>=0?'pos':'neg');
+  $('oNetSub').textContent=`持有约 ${days} 天`;
+  $('oPct').textContent=(pct>=0?'+':'−')+fmt(Math.abs(pct))+' %';
+  $('oPct').className='val '+(pct>=0?'pos':'neg');
+  $('oApr').textContent=(apr>=0?'+':'−')+fmt(Math.abs(apr))+' %';
+  $('oTip').innerHTML=conv>=0
+    ?`✓ 价差如期回归 ${fmt(conv,1)} 个百分点 → 获利。但这是“赌统计规律”,单配对可能失效。`
+    :`⚠ 你设定的平仓偏离大于进场(价差扩大)→ <b>亏损</b>,正是统计套利的主要风险,须靠分散+止损。`;
+}
+['cap','entry','exit','lev','fee','days'].forEach(id=>$(id).addEventListener('input',calc));
+$('ex').addEventListener('click',()=>{$('cap').value=10000;$('entry').value=5;$('exit').value=1;$('lev').value=2;$('fee').value=0.1;$('days').value=15;calc();});
+calc();
+</script>
+</body>
+</html>

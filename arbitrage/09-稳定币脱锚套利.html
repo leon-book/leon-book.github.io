@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>稳定币脱锚套利 · 原理与计算器</title>
+<link rel="stylesheet" href="assets/common.css">
+</head>
+<body>
+<div class="wrap">
+<a class="backlink" href="index.html" target="_top">← 返回总览</a>
+
+<div class="hero">
+  <div class="kicker">事件驱动 · 高赔率高风险</div>
+  <h1>稳定币脱锚套利</h1>
+  <p>稳定币本该锚定 1 美元。当它因恐慌跌到 0.97 时,低价买入,等它回锚到 1 美元赚差价。赔率高,但也可能永远回不来。</p>
+  <div class="chips">
+    <span class="chip high">难度 中 · 风险高</span>
+    <span class="chip mid">单次可 2%–8%</span>
+    <span class="chip">收益来源:脱锚价差回归</span>
+  </div>
+</div>
+
+<section>
+  <h2><span class="n">1</span>一句话原理</h2>
+  <div class="card">
+    <p><a class="term" href="https://academy.binance.com/en/articles/what-are-stablecoins" target="_blank" data-tip="锚定法币(通常 1 美元)的加密货币,如 USDT/USDC/DAI">稳定币</a>设计上应该始终值 1 美元。但市场恐慌、发行方出事、或流动性枯竭时,它会短暂<a class="term" href="https://www.investopedia.com/terms/d/depeg.asp" target="_blank" data-tip="稳定币偏离其锚定价格(如跌破 1 美元)的现象">脱锚(Depeg)</a>,比如跌到 0.95、0.90。</p>
+    <p>套利做法:<span class="hl">在低于 1 美元时买入,等它回锚到 1 美元卖出/赎回</span>,吃回归的价差。若能向发行方 <strong>1:1 赎回</strong>(如 USDC 兑美元),更是接近确定性收益。</p>
+    <p><strong>但这不是无风险套利:</strong>脱锚可能是“暂时恐慌”也可能是“基本面崩塌”。2022 年 <a class="term" href="https://www.investopedia.com/terms/t/terrausd-ust.asp" target="_blank" data-tip="算法稳定币 UST 于 2022 年 5 月脱锚后彻底崩盘归零">Terra UST</a> 脱锚后<strong>直接归零</strong>;而 2023 年 3 月 USDC 因硅谷银行事件跌到约 0.87,几天后<strong>成功回锚</strong>——同样是脱锚,结局天差地别。</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">2</span>运作原理图</h2>
+  <div class="card">
+    <svg class="diagram" viewBox="0 0 700 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="稳定币脱锚回锚">
+      <rect x="1" y="1" width="698" height="228" rx="12" class="dg-bg dg-line" stroke-width="1"/>
+      <line x1="60" y1="70" x2="650" y2="70" stroke="var(--ok)" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <text x="655" y="66" text-anchor="end" font-size="11" fill="var(--ok)">$1.00 锚定</text>
+      <path d="M60 72 L180 74 L250 150 L300 165 L360 150 L440 100 L560 74 L650 73" stroke="var(--accent)" stroke-width="2.5" fill="none"/>
+      <circle cx="290" cy="163" r="6" fill="var(--ok)"/>
+      <text x="290" y="192" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ok)">① 低价买入 $0.95</text>
+      <circle cx="570" cy="74" r="6" fill="var(--accent)"/>
+      <text x="560" y="60" text-anchor="end" font-size="12" font-weight="700" fill="var(--accent)">② 回锚卖出 $1.00</text>
+      <text x="150" y="120" font-size="12" class="dg-muted">脱锚下跌</text>
+      <text x="470" y="130" font-size="12" class="dg-muted">回归锚定</text>
+    </svg>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">3</span>本金怎么算</h2>
+  <div class="card">
+    <p>本金 <code>C</code> 全额买入脱锚的稳定币(现货,无杠杆)。买得越低、回锚越足,赚得越多:</p>
+    <div class="formula">
+买入数量 q = C / P　<span class="c">// P = 脱锚买入价,如 0.95</span>
+回锚市值 = q × 目标价　<span class="c">// 目标价通常 = 1.00</span>
+毛利 = q × (目标价 − P) = C × (目标价 / P − 1)
+    </div>
+    <dl class="kv">
+      <dt>无需杠杆</dt><dd>纯现货低买高卖,本金一次性投入。不用管保证金、强平。</dd>
+      <dt>赔率不对称</dt><dd>最多赚回锚的价差(如 5%),但若崩盘可能<strong>亏掉全部本金</strong>。典型“捡钢镚”形态——赢面小、输面大。</dd>
+      <dt>仓位控制</dt><dd>务必只用<strong>小仓位</strong>试,并研究脱锚原因(技术性恐慌 vs 基本面崩塌)。能 1:1 赎回的、有真实储备的稳定币,回锚概率高得多。</dd>
+    </dl>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">4</span>收益计算器</h2>
+  <p class="lead">输入脱锚买入价与预期回锚价。注意:回锚不保证,这里算的是“若回锚”的收益。</p>
+  <div class="calc">
+    <div class="grid">
+      <div class="inputs">
+        <p class="calc-title">输入参数</p>
+        <div class="field"><label>本金 <span class="u">USDT</span></label><input id="cap" type="number" value="10000"></div>
+        <div class="field"><label>脱锚买入价 <span class="u">USD</span></label><input id="p" type="number" step="0.001" value="0.95"></div>
+        <div class="field"><label>预期回锚价 <span class="u">USD</span></label><input id="tgt" type="number" step="0.001" value="1.00"></div>
+        <div class="field"><label>来回总手续费率 <span class="u">%</span></label><input id="fee" type="number" step="0.01" value="0.1"></div>
+        <div class="field"><label>预计回锚天数 <span class="u">天</span></label><input id="days" type="number" value="7"></div>
+        <button class="btn ghost" id="ex">填入示例数据</button>
+      </div>
+      <div class="outputs">
+        <p class="calc-title">计算结果</p>
+        <div class="metric"><div class="lbl">回锚净利润</div><div class="val big pos" id="oNet">—</div><div class="sub" id="oNetSub"></div></div>
+        <div class="metric"><div class="lbl">单次净收益率</div><div class="val" id="oPct">—</div></div>
+        <div class="rowmini"><span>买入数量 q</span><span class="v" id="oQty">—</span></div>
+        <div class="rowmini"><span>回锚市值</span><span class="v" id="oVal">—</span></div>
+        <div class="rowmini"><span>毛利 / 手续费</span><span class="v" id="oGF">—</span></div>
+        <div class="rowmini"><span>年化(若持续,仅参考)</span><span class="v" id="oApr">—</span></div>
+        <div class="rowmini"><span>最坏情况(归零)</span><span class="v neg" id="oWorst">—</span></div>
+        <div class="note warn" style="margin-top:12px;font-size:12.5px" id="oTip"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">5</span>示例走一遍</h2>
+  <div class="card">
+    <p>本金 <strong>10,000 U</strong>,在 <strong>0.95</strong> 买入,预期回锚到 <strong>1.00</strong>,手续费 <strong>0.1%</strong>,<strong>7 天</strong>回锚:</p>
+    <div class="tbl-scroll">
+    <table>
+      <thead><tr><th>步骤</th><th class="num">数值</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>买入数量</td><td class="num">10,526 枚</td><td>= 10000 / 0.95</td></tr>
+        <tr><td>回锚市值</td><td class="num">10,526 U</td><td>= 10526 × 1.00</td></tr>
+        <tr><td>毛利</td><td class="num">+526 U</td><td>= 10000 × (1/0.95 − 1)</td></tr>
+        <tr><td>手续费</td><td class="num">−10 U</td><td>≈ 本金 × 0.1%</td></tr>
+        <tr><td><strong>净利润</strong></td><td class="num"><strong>≈ 516 U</strong></td><td>约 5.2% / 次</td></tr>
+        <tr><td>年化(参考)</td><td class="num">≈ 269%</td><td>= 5.2% / 7 × 365</td></tr>
+        <tr><td><strong>最坏情况</strong></td><td class="num"><strong>−10,000 U</strong></td><td>若崩盘归零,本金全损</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="note warn" style="margin-top:12px"><b>血的教训:</b>年化数字很诱人,但那是“赌对回锚”的结果。UST 就是在 0.9x 时无数人抄底、最终归零。<strong>脱锚套利的核心不是算收益,而是判断“这次会不会回来”</strong>——只用小仓位、只碰有真实储备/可赎回的稳定币。</div>
+  </div>
+</section>
+
+<footer>
+  <h3>名词解释</h3>
+  <ul>
+    <li>稳定币 Stablecoin — <a href="https://academy.binance.com/en/articles/what-are-stablecoins" target="_blank">Binance Academy</a></li>
+    <li>脱锚 Depeg — <a href="https://www.investopedia.com/terms/d/depeg.asp" target="_blank">Investopedia</a></li>
+    <li>Terra UST 崩盘 — <a href="https://www.investopedia.com/terms/t/terrausd-ust.asp" target="_blank">Investopedia</a></li>
+  </ul>
+  <h3 style="margin-top:12px">方法论来源</h3>
+  <ul>
+    <li>tastycrypto — DeFi Arbitrage(含稳定币价差): <a href="https://www.tastycrypto.com/blog/defi-arbitrage/" target="_blank">链接</a></li>
+    <li>Techopedia — 稳定币脱锚事件背景: <a href="https://www.techopedia.com/flash-loan-arbitrage-explained" target="_blank">链接</a></li>
+  </ul>
+</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=(n,d=2)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+function calc(){
+  const C=+$('cap').value||0,P=+$('p').value||0,tgt=+$('tgt').value||0,fee=(+$('fee').value||0)/100,days=+$('days').value||0;
+  const q=P>0?C/P:0,val=q*tgt,gross=val-C,feeCost=C*fee*2>0?C*fee:0;
+  const fc=C*fee, net=gross-fc, pct=C>0?net/C*100:0, apr=days>0?pct/days*365:0;
+  $('oQty').textContent=fmt(q,0)+' 枚';
+  $('oVal').textContent=fmt(val)+' U';
+  $('oGF').textContent=(gross>=0?'+':'−')+fmt(Math.abs(gross))+' / −'+fmt(fc)+' U';
+  const netEl=$('oNet');netEl.textContent=(net>=0?'+':'−')+fmt(Math.abs(net))+' U';
+  netEl.className='val big '+(net>=0?'pos':'neg');
+  $('oNetSub').textContent=`${days} 天回锚(假设)`;
+  $('oPct').textContent=(pct>=0?'+':'−')+fmt(Math.abs(pct))+' %';
+  $('oPct').className='val '+(pct>=0?'pos':'neg');
+  $('oApr').textContent=(apr>=0?'+':'−')+fmt(Math.abs(apr))+' %';
+  $('oWorst').textContent='−'+fmt(C)+' U（本金全损）';
+  $('oTip').innerHTML=P>=tgt
+    ?`⚠ 买入价已≥回锚价,无价差可赚。脱锚套利要在明显低于锚定价时买入。`
+    :`✓ 若回锚可赚 ${fmt(pct)}%。但务必记住最坏情况是 −100%(见 UST)。只用小仓位、只碰可赎回的稳定币。`;
+}
+['cap','p','tgt','fee','days'].forEach(id=>$(id).addEventListener('input',calc));
+$('ex').addEventListener('click',()=>{$('cap').value=10000;$('p').value=0.95;$('tgt').value=1.00;$('fee').value=0.1;$('days').value=7;calc();});
+calc();
+</script>
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>跨交易所搬砖套利 · 原理与计算器</title>
+<link rel="stylesheet" href="assets/common.css">
+</head>
+<body>
+<div class="wrap">
+<a class="backlink" href="index.html" target="_top">← 返回总览</a>
+
+<div class="hero">
+  <div class="kicker">价差套利 · 拼速度</div>
+  <h1>跨交易所搬砖套利</h1>
+  <p>同一个币,在 A 交易所比 B 交易所便宜时 → 在 A 买、在 B 卖,赚中间差价。价差以秒计消失,必须靠程序自动化。</p>
+  <div class="chips">
+    <span class="chip mid">难度 中</span>
+    <span class="chip mid">单次利润薄、靠频次</span>
+    <span class="chip">收益来源:交易所间瞬时价差</span>
+  </div>
+</div>
+
+<section>
+  <h2><span class="n">1</span>一句话原理</h2>
+  <div class="card">
+    <p>同一种币在不同交易所的价格,因买卖力量不同会有<strong>微小差异</strong>。这就是最朴素的<a class="term" href="https://www.investopedia.com/terms/a/arbitrage.asp" target="_blank" data-tip="利用同一资产在不同市场的价差,低买高卖赚无风险差价">套利</a>:哪里便宜哪里买、哪里贵哪里卖。</p>
+    <p>难点不在原理,在<strong>执行</strong>:价差通常只有 0.1%~0.5%,且<span class="hl">几秒内就被别人抹平</span>。手续费、提币费、<a class="term" href="https://www.investopedia.com/terms/s/slippage.asp" target="_blank" data-tip="下单价与实际成交价的偏差,大单尤甚">滑点</a>任何一项没算好,利润就没了甚至倒亏。</p>
+    <p><strong>实务关键:</strong>老手会在两个交易所<em>各预存</em>币和 U(两边库存),看到价差时同时在 A 买、B 卖,<strong>不等真的转账</strong>——因为链上提币要几分钟到几十分钟,价差早没了。转账只用来事后平衡库存。</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">2</span>运作原理图</h2>
+  <div class="card">
+    <svg class="diagram" viewBox="0 0 700 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="跨所搬砖">
+      <rect x="1" y="1" width="698" height="218" rx="12" class="dg-bg dg-line" stroke-width="1"/>
+      <rect x="45" y="70" width="150" height="80" rx="10" fill="var(--ok-soft)" stroke="var(--ok)"/>
+      <text x="120" y="100" text-anchor="middle" font-size="14" font-weight="700" class="dg-ink">A 交易所</text>
+      <text x="120" y="122" text-anchor="middle" font-size="13" fill="var(--ok)">买入 @ 60,000</text>
+      <text x="120" y="140" text-anchor="middle" font-size="11" class="dg-muted">便宜</text>
+      <rect x="505" y="70" width="150" height="80" rx="10" fill="var(--warn-soft)" stroke="var(--warn)"/>
+      <text x="580" y="100" text-anchor="middle" font-size="14" font-weight="700" class="dg-ink">B 交易所</text>
+      <text x="580" y="122" text-anchor="middle" font-size="13" fill="var(--warn)">卖出 @ 60,300</text>
+      <text x="580" y="140" text-anchor="middle" font-size="11" class="dg-muted">贵</text>
+      <path d="M200 110 L500 110" stroke="var(--accent)" stroke-width="2.5" fill="none" marker-end="url(#ar)"/>
+      <text x="350" y="98" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent)">毛价差 +0.5%</text>
+      <text x="350" y="128" text-anchor="middle" font-size="11" class="dg-muted">扣手续费 + 提币费 + 滑点 = 净利</text>
+      <defs><marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="var(--accent)"/></marker></defs>
+    </svg>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">3</span>本金怎么算</h2>
+  <div class="card">
+    <p>本金 <code>C</code> 全部用来在 A 所买入(现货,不加杠杆),换成币后在 B 所卖出:</p>
+    <div class="formula">
+买入数量 q = C / [ Pa × (1 + 手续费A) ]
+卖出所得 = q × Pb × (1 − 手续费B)
+净利 = 卖出所得 − C − 提币费 − 滑点成本
+　　　滑点成本 ≈ q × Pa × 滑点率
+    </div>
+    <dl class="kv">
+      <dt>资金占用</dt><dd>两边都要备库存 → 实际占用约 <strong>2×</strong> 单次交易额(A 所备 U、B 所备币)。这是隐形成本。</dd>
+      <dt>利润来源</dt><dd>毛价差 − (两边手续费 + 提币费 + 滑点)。四项成本任一偏大都可能吃光利润。</dd>
+      <dt>靠频次</dt><dd>单次仅 0.1%~0.3%,靠一天多次、自动化累积。速度=生命线。</dd>
+    </dl>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">4</span>收益计算器</h2>
+  <p class="lead">看看毛价差扣掉四项成本后,到底还剩多少。</p>
+  <div class="calc">
+    <div class="grid">
+      <div class="inputs">
+        <p class="calc-title">输入参数</p>
+        <div class="field"><label>本金 <span class="u">USDT</span></label><input id="cap" type="number" value="10000"></div>
+        <div class="field"><label>A 所买入价 <span class="u">USDT</span></label><input id="pa" type="number" value="60000"></div>
+        <div class="field"><label>B 所卖出价 <span class="u">USDT</span></label><input id="pb" type="number" value="60300"></div>
+        <div class="field"><label>A 所手续费 <span class="u">%</span></label><input id="fa" type="number" step="0.01" value="0.1"></div>
+        <div class="field"><label>B 所手续费 <span class="u">%</span></label><input id="fb" type="number" step="0.01" value="0.1"></div>
+        <div class="field"><label>提币/转账费 <span class="u">USDT</span></label><input id="wd" type="number" step="0.5" value="5"></div>
+        <div class="field"><label>滑点率 <span class="u">%</span></label><input id="slip" type="number" step="0.01" value="0.05"></div>
+        <button class="btn ghost" id="ex">填入示例数据</button>
+      </div>
+      <div class="outputs">
+        <p class="calc-title">计算结果</p>
+        <div class="metric"><div class="lbl">单次净利润</div><div class="val big pos" id="oNet">—</div><div class="sub" id="oNetSub"></div></div>
+        <div class="metric"><div class="lbl">单次净收益率</div><div class="val" id="oPct">—</div></div>
+        <div class="rowmini"><span>毛价差率</span><span class="v" id="oGap">—</span></div>
+        <div class="rowmini"><span>买入数量 q</span><span class="v" id="oQty">—</span></div>
+        <div class="rowmini"><span>卖出所得</span><span class="v" id="oRev">—</span></div>
+        <div class="rowmini"><span>手续费合计</span><span class="v" id="oFee">—</span></div>
+        <div class="rowmini"><span>提币费 + 滑点</span><span class="v" id="oOther">—</span></div>
+        <div class="note warn" style="margin-top:12px;font-size:12.5px" id="oTip"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">5</span>示例走一遍</h2>
+  <div class="card">
+    <p>本金 <strong>10,000 U</strong>,A 所 <strong>60,000</strong> 买、B 所 <strong>60,300</strong> 卖(毛价差 0.5%),两边手续费各 <strong>0.1%</strong>,提币费 <strong>5 U</strong>,滑点 <strong>0.05%</strong>:</p>
+    <div class="tbl-scroll">
+    <table>
+      <thead><tr><th>项目</th><th class="num">数值</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>毛价差</td><td class="num">+50 U</td><td>= 10000 × 0.5%(理论最大)</td></tr>
+        <tr><td>买入数量</td><td class="num">0.16650 BTC</td><td>= 10000 / (60000×1.001)</td></tr>
+        <tr><td>卖出所得</td><td class="num">10,029.9 U</td><td>= q × 60300 × 0.999</td></tr>
+        <tr><td>手续费合计</td><td class="num">−20 U</td><td>A 买 10 + B 卖 10</td></tr>
+        <tr><td>提币费</td><td class="num">−5 U</td><td>固定</td></tr>
+        <tr><td>滑点</td><td class="num">−5 U</td><td>= 名义 × 0.05%</td></tr>
+        <tr><td><strong>净利润</strong></td><td class="num"><strong>≈ 20 U</strong></td><td>约 0.2% / 次</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="note warn" style="margin-top:12px"><b>残酷现实:</b>0.5% 的毛价差,扣完成本只剩约 0.2%。若价差缩到 0.3% 就基本白做,0.2% 直接亏。所以搬砖拼的是<strong>扫描速度</strong>与<strong>低费率账户</strong>,散户手动几乎做不了。</div>
+  </div>
+</section>
+
+<footer>
+  <h3>名词解释</h3>
+  <ul>
+    <li>套利 Arbitrage — <a href="https://www.investopedia.com/terms/a/arbitrage.asp" target="_blank">Investopedia</a></li>
+    <li>滑点 Slippage — <a href="https://www.investopedia.com/terms/s/slippage.asp" target="_blank">Investopedia</a></li>
+  </ul>
+  <h3 style="margin-top:12px">方法论来源</h3>
+  <ul>
+    <li>ArbitrageScanner — 跨所套利扫描与科普: <a href="https://arbitragescanner.io/blog/trading-bot-strategies-how-to-automate-profitable-cryptocurrency-trading" target="_blank">链接</a></li>
+    <li>CCXT Blog — Crypto arbitrage strategies: <a href="https://docs.ccxt.com/blog/crypto-arbitrage-strategies" target="_blank">链接</a></li>
+  </ul>
+</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=(n,d=2)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+function calc(){
+  const C=+$('cap').value||0,Pa=+$('pa').value||0,Pb=+$('pb').value||0,
+        fa=(+$('fa').value||0)/100,fb=(+$('fb').value||0)/100,wd=+$('wd').value||0,slip=(+$('slip').value||0)/100;
+  const gap=Pa>0?(Pb-Pa)/Pa*100:0;
+  const q=Pa>0?C/(Pa*(1+fa)):0;
+  const rev=q*Pb*(1-fb);
+  const feeTotal=C*fa+q*Pb*fb;
+  const slipCost=q*Pa*slip;
+  const other=wd+slipCost;
+  const net=rev-C-wd-slipCost;
+  const pct=C>0?net/C*100:0;
+  $('oGap').textContent=fmt(gap)+' %';
+  $('oQty').textContent=fmt(q,5)+' 币';
+  $('oRev').textContent=fmt(rev)+' U';
+  $('oFee').textContent='−'+fmt(feeTotal)+' U';
+  $('oOther').textContent='−'+fmt(other)+' U';
+  const netEl=$('oNet');netEl.textContent=(net>=0?'+':'−')+fmt(Math.abs(net))+' U';
+  netEl.className='val big '+(net>=0?'pos':'neg');
+  $('oNetSub').textContent='单次循环';
+  $('oPct').textContent=(pct>=0?'+':'−')+fmt(Math.abs(pct))+' %';
+  $('oPct').className='val '+(pct>=0?'pos':'neg');
+  $('oTip').innerHTML=net<=0
+    ?`⚠ 成本已吃光价差 → <b>不划算</b>。需要更大毛价差或更低手续费账户。`
+    :`✓ 净赚 ${fmt(net)}U(${fmt(pct)}%/次)。价差每缩小一点,利润急速下降——把 B 所价格往下调试试。`;
+}
+['cap','pa','pb','fa','fb','wd','slip'].forEach(id=>$(id).addEventListener('input',calc));
+$('ex').addEventListener('click',()=>{$('cap').value=10000;$('pa').value=60000;$('pb').value=60300;$('fa').value=0.1;$('fb').value=0.1;$('wd').value=5;$('slip').value=0.05;calc();});
+calc();
+</script>
+</body>
+</html>

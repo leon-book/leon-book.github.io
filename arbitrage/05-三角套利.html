@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>三角套利 · 原理与计算器</title>
+<link rel="stylesheet" href="assets/common.css">
+</head>
+<body>
+<div class="wrap">
+<a class="backlink" href="index.html" target="_top">← 返回总览</a>
+
+<div class="hero">
+  <div class="kicker">同所内 · 汇率闭环</div>
+  <h1>三角套利</h1>
+  <p>在同一个交易所内,用三种币绕一圈(USDT→BTC→ETH→USDT)。如果三个交易对的汇率不一致,绕完一圈回来的钱会比出发时多。</p>
+  <div class="chips">
+    <span class="chip high">难度 高</span>
+    <span class="chip mid">机会窗口极短</span>
+    <span class="chip">收益来源:三对汇率定价偏差</span>
+  </div>
+</div>
+
+<section>
+  <h2><span class="n">1</span>一句话原理</h2>
+  <div class="card">
+    <p>理论上,ETH 的美元价 = ETH 的 BTC 价 × BTC 的美元价。即 <code>ETH/USDT</code> 应该等于 <code>ETH/BTC × BTC/USDT</code>。</p>
+    <p>但市场报价瞬息万变,偶尔这个等式会<strong>短暂失衡</strong>。<a class="term" href="https://www.investopedia.com/terms/t/triangulararbitrage.asp" target="_blank" data-tip="在同一市场用三种货币绕一圈,利用交叉汇率的暂时不一致获利">三角套利</a>就是抓住这个瞬间,沿著闭环换三次:<span class="hl">USDT → BTC → ETH → USDT</span>,绕完手里的 USDT 变多。</p>
+    <p>因为全程在<strong>同一交易所内</strong>完成,没有跨所转账延迟,几乎是即时的。但也因此机会极少、窗口极短(毫秒级),几乎<strong>只有程序化高频</strong>才吃得到,是本篇五种里技术门槛最高的。</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">2</span>运作原理图(三角闭环)</h2>
+  <div class="card">
+    <svg class="diagram" viewBox="0 0 700 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="三角套利闭环">
+      <rect x="1" y="1" width="698" height="248" rx="12" class="dg-bg dg-line" stroke-width="1"/>
+      <!-- nodes -->
+      <circle cx="350" cy="55" r="34" fill="var(--accent-soft)" stroke="var(--accent)"/>
+      <text x="350" y="60" text-anchor="middle" font-size="14" font-weight="700" fill="var(--accent)">USDT</text>
+      <circle cx="150" cy="185" r="34" fill="var(--ok-soft)" stroke="var(--ok)"/>
+      <text x="150" y="190" text-anchor="middle" font-size="14" font-weight="700" class="dg-ink">BTC</text>
+      <circle cx="550" cy="185" r="34" fill="var(--warn-soft)" stroke="var(--warn)"/>
+      <text x="550" y="190" text-anchor="middle" font-size="14" font-weight="700" class="dg-ink">ETH</text>
+      <!-- arrows -->
+      <path d="M322 76 L178 164" stroke="var(--muted)" stroke-width="2" fill="none" marker-end="url(#t)"/>
+      <text x="220" y="110" font-size="12" font-weight="600" class="dg-ink">① 买 BTC</text>
+      <path d="M186 195 L514 195" stroke="var(--muted)" stroke-width="2" fill="none" marker-end="url(#t)"/>
+      <text x="350" y="215" text-anchor="middle" font-size="12" font-weight="600" class="dg-ink">② BTC 换 ETH</text>
+      <path d="M522 164 L378 76" stroke="var(--muted)" stroke-width="2" fill="none" marker-end="url(#t)"/>
+      <text x="480" y="110" font-size="12" font-weight="600" class="dg-ink">③ 卖 ETH 回 USDT</text>
+      <text x="350" y="135" text-anchor="middle" font-size="12" class="dg-muted">绕一圈 &gt; 出发金额 → 套利成功</text>
+      <defs><marker id="t" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="var(--muted)"/></marker></defs>
+    </svg>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">3</span>本金怎么算</h2>
+  <div class="card">
+    <p>本金全程是<strong>同一笔 USDT</strong> 在三个交易对之间流转,不需要拆分、不需要杠杆。每换一次扣一次手续费:</p>
+    <div class="formula">
+起始 = C (USDT)
+① 得 BTC = C / “BTC/USDT” × (1 − 费率)
+② 得 ETH = BTC / “ETH/BTC” × (1 − 费率)
+③ 得 USDT = ETH × “ETH/USDT” × (1 − 费率)
+净利 = 最终 USDT − C　<span class="c">// 三次手续费全扣完</span>
+    </div>
+    <dl class="kv">
+      <dt>本金特点</dt><dd>不占双倍、不加杠杆,单笔 USDT 走完全程。理论上<strong>无方向风险</strong>(不持仓过夜)。</dd>
+      <dt>成本核心</dt><dd>三次交易 = 三次手续费(约 3×0.1%=0.3%)。<strong>汇率偏差必须大于总手续费</strong>才有利可图。</dd>
+      <dt>真正难点</dt><dd>偏差通常 &lt;0.5% 且只存在毫秒;还有滑点与“三腿没同时成交”的执行风险。</dd>
+    </dl>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">4</span>收益计算器</h2>
+  <p class="lead">输入三个交易对报价,看绕一圈后是赚是赔。灰字提示理论无套利价。</p>
+  <div class="calc">
+    <div class="grid">
+      <div class="inputs">
+        <p class="calc-title">输入参数</p>
+        <div class="field"><label>起始本金 <span class="u">USDT</span></label><input id="cap" type="number" value="10000"></div>
+        <div class="field"><label>BTC / USDT 价</label><input id="btc" type="number" value="60000"></div>
+        <div class="field"><label>ETH / BTC 价</label><input id="ethbtc" type="number" step="0.0001" value="0.05"></div>
+        <div class="field"><label>ETH / USDT 价</label><input id="eth" type="number" value="3015"></div>
+        <div class="field"><label>每笔手续费 <span class="u">%</span></label><input id="fee" type="number" step="0.01" value="0.1"></div>
+        <button class="btn ghost" id="ex">填入示例数据</button>
+      </div>
+      <div class="outputs">
+        <p class="calc-title">计算结果</p>
+        <div class="metric"><div class="lbl">绕一圈净利润</div><div class="val big pos" id="oNet">—</div><div class="sub" id="oNetSub"></div></div>
+        <div class="metric"><div class="lbl">单次收益率</div><div class="val" id="oPct">—</div></div>
+        <div class="rowmini"><span>① 换得 BTC</span><span class="v" id="oBtc">—</span></div>
+        <div class="rowmini"><span>② 换得 ETH</span><span class="v" id="oEth">—</span></div>
+        <div class="rowmini"><span>③ 换回 USDT</span><span class="v" id="oFinal">—</span></div>
+        <div class="rowmini"><span>ETH/USDT 无套利价</span><span class="v" id="oFair">—</span></div>
+        <div class="rowmini"><span>定价偏差</span><span class="v" id="oDev">—</span></div>
+        <div class="note warn" style="margin-top:12px;font-size:12.5px" id="oTip"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">5</span>示例走一遍</h2>
+  <div class="card">
+    <p>本金 <strong>10,000 U</strong>,BTC/USDT=<strong>60,000</strong>,ETH/BTC=<strong>0.05</strong>,ETH/USDT=<strong>3,015</strong>(无套利价应为 3,000,偏高 0.5%),每笔手续费 <strong>0.1%</strong>:</p>
+    <div class="tbl-scroll">
+    <table>
+      <thead><tr><th>步骤</th><th class="num">数值</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>① 换 BTC</td><td class="num">0.16650 BTC</td><td>= 10000/60000 ×0.999</td></tr>
+        <tr><td>② 换 ETH</td><td class="num">3.3267 ETH</td><td>= 0.16650/0.05 ×0.999</td></tr>
+        <tr><td>③ 换回 USDT</td><td class="num">10,020 U</td><td>= 3.3267×3015 ×0.999</td></tr>
+        <tr><td>无套利价</td><td class="num">3,000</td><td>= 0.05 × 60000</td></tr>
+        <tr><td>定价偏差</td><td class="num">+0.5%</td><td>ETH/USDT 高于理论价</td></tr>
+        <tr><td><strong>净利润</strong></td><td class="num"><strong>≈ +20 U</strong></td><td>偏差 0.5% − 手续费 0.3%</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="note warn" style="margin-top:12px"><b>关键:</b>把 ETH/USDT 改回 <strong>3,000</strong>(无偏差),结果立刻变成<strong>亏损 −30 U</strong>——因为三次手续费 0.3% 没有偏差来覆盖。这说明:<strong>没有足够定价偏差,三角套利必亏</strong>,而这种偏差稍纵即逝。</div>
+  </div>
+</section>
+
+<footer>
+  <h3>名词解释</h3>
+  <ul>
+    <li>三角套利 Triangular Arbitrage — <a href="https://www.investopedia.com/terms/t/triangulararbitrage.asp" target="_blank">Investopedia</a></li>
+    <li>套利 Arbitrage — <a href="https://www.investopedia.com/terms/a/arbitrage.asp" target="_blank">Investopedia</a></li>
+    <li>滑点 Slippage — <a href="https://www.investopedia.com/terms/s/slippage.asp" target="_blank">Investopedia</a></li>
+  </ul>
+  <h3 style="margin-top:12px">方法论来源</h3>
+  <ul>
+    <li>CoinsQueens — Triangular Arbitrage Bot: <a href="https://www.coinsqueens.com/blog/insights-of-triangular-arbitrage-bot" target="_blank">链接</a></li>
+    <li>Token Metrics — Arbitrage strategies explained: <a href="https://www.tokenmetrics.com/blog/mastering-crypto-trading-bots-dca-grid-arbitrage-strategies" target="_blank">链接</a></li>
+  </ul>
+</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=(n,d=2)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+function calc(){
+  const C=+$('cap').value||0,PB=+$('btc').value||0,EB=+$('ethbtc').value||0,PE=+$('eth').value||0,f=(+$('fee').value||0)/100;
+  const btc=PB>0?C/PB*(1-f):0;
+  const eth=EB>0?btc/EB*(1-f):0;
+  const finalU=eth*PE*(1-f);
+  const net=finalU-C, pct=C>0?net/C*100:0;
+  const fair=EB*PB, dev=fair>0?(PE-fair)/fair*100:0;
+  $('oBtc').textContent=fmt(btc,5);
+  $('oEth').textContent=fmt(eth,4);
+  $('oFinal').textContent=fmt(finalU)+' U';
+  $('oFair').textContent=fmt(fair)+' U';
+  $('oDev').textContent=(dev>=0?'+':'−')+fmt(Math.abs(dev))+' %';
+  const netEl=$('oNet');netEl.textContent=(net>=0?'+':'−')+fmt(Math.abs(net))+' U';
+  netEl.className='val big '+(net>=0?'pos':'neg');
+  $('oNetSub').textContent='同所内三次换币';
+  $('oPct').textContent=(pct>=0?'+':'−')+fmt(Math.abs(pct))+' %';
+  $('oPct').className='val '+(pct>=0?'pos':'neg');
+  $('oTip').innerHTML=net>0
+    ?`✓ 偏差 ${fmt(Math.abs(dev))}% 大于总手续费 → 净赚 ${fmt(net)}U。实盘中这种偏差仅存在毫秒。`
+    :`⚠ 定价偏差不足以覆盖三次手续费 → <b>亏损</b>。这是三角套利的常态,故需高频扫描等待罕见窗口。`;
+}
+['cap','btc','ethbtc','eth','fee'].forEach(id=>$(id).addEventListener('input',calc));
+$('ex').addEventListener('click',()=>{$('cap').value=10000;$('btc').value=60000;$('ethbtc').value=0.05;$('eth').value=3015;$('fee').value=0.1;calc();});
+calc();
+</script>
+</body>
+</html>

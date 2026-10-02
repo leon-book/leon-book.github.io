@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>期现套利(Cash &amp; Carry) · 原理与计算器</title>
+<link rel="stylesheet" href="assets/common.css">
+</head>
+<body>
+<div class="wrap">
+<a class="backlink" href="index.html" target="_top">← 返回总览</a>
+
+<div class="hero">
+  <div class="kicker">Delta 中性 · 到期收敛</div>
+  <h1>期现套利(Cash &amp; Carry)</h1>
+  <p>买入现货、同时做空等量<strong>交割合约</strong>,持有到期。期货到期价格必然收敛到现货,稳稳赚走中间的价差(基差)。</p>
+  <div class="chips">
+    <span class="chip low">难度 低</span>
+    <span class="chip mid">典型年化 5%–15%</span>
+    <span class="chip">收益来源:正向基差</span>
+  </div>
+</div>
+
+<section>
+  <h2><span class="n">1</span>一句话原理</h2>
+  <div class="card">
+    <p><a class="term" href="https://academy.binance.com/en/articles/what-are-futures-contracts" target="_blank" data-tip="有固定到期日的期货,到期时按现货价结算">交割合约</a>(如季度合约)有到期日。市场看涨时,期货价往往比现货<strong>贵一点</strong>,这个差价叫<a class="term" href="https://www.investopedia.com/terms/b/basis.asp" target="_blank" data-tip="期货价 − 现货价;到期时必然收敛为零">基差</a>。</p>
+    <p>关键事实:<span class="hl">到期时,期货结算价 = 现货价</span>。所以只要现在期货比现货贵,我们就:现货<strong>买入</strong>锁成本 + 交割合约<strong>做空</strong>锁卖价,持有到期,基差就是到手利润。这套手法叫<a class="term" href="https://www.investopedia.com/terms/c/cashandcarry.asp" target="_blank" data-tip="买现货并持有(carry)、同时卖出期货,赚取期现价差的经典套利">Cash &amp; Carry</a>,源自传统商品市场。</p>
+    <p>和资金费率套利的区别:这里收益来自<strong>到期收敛的一次性基差</strong>,有明确到期日;资金费率套利则是每 8 小时滚动收费、无到期日。</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">2</span>运作原理图(基差收敛)</h2>
+  <div class="card">
+    <svg class="diagram" viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="基差随时间收敛">
+      <rect x="1" y="1" width="698" height="258" rx="12" class="dg-bg dg-line" stroke-width="1"/>
+      <line x1="70" y1="40" x2="70" y2="210" stroke="var(--line)" stroke-width="1.5"/>
+      <line x1="70" y1="210" x2="650" y2="210" stroke="var(--line)" stroke-width="1.5"/>
+      <text x="60" y="46" text-anchor="end" font-size="11" class="dg-muted">价格</text>
+      <text x="645" y="228" text-anchor="end" font-size="11" class="dg-muted">时间 →</text>
+      <text x="90" y="228" font-size="11" class="dg-muted">进场</text>
+      <text x="600" y="228" font-size="11" class="dg-muted">到期</text>
+      <!-- 期货线(从高处下降) -->
+      <path d="M90 70 L610 150" stroke="var(--warn)" stroke-width="2.5" fill="none"/>
+      <text x="120" y="62" font-size="12" font-weight="700" fill="var(--warn)">期货(做空)</text>
+      <!-- 现货线(平缓上升) -->
+      <path d="M90 150 L610 150" stroke="var(--ok)" stroke-width="2.5" fill="none" stroke-dasharray="1"/>
+      <text x="120" y="168" font-size="12" font-weight="700" fill="var(--ok)">现货(买入)</text>
+      <!-- 基差区 -->
+      <path d="M90 70 L90 150" stroke="var(--accent)" stroke-width="2"/>
+      <text x="100" y="112" font-size="12" font-weight="700" fill="var(--accent)">← 基差(利润)</text>
+      <circle cx="610" cy="150" r="6" fill="var(--accent)"/>
+      <text x="600" y="140" text-anchor="end" font-size="12" font-weight="700" class="dg-ink">收敛 → 基差归零</text>
+    </svg>
+    <p style="margin-top:6px" class="lead" >期货价从溢价一路收敛到现货价;做空期货的一方,吃下整段基差。</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">3</span>本金怎么分配</h2>
+  <div class="card">
+    <p>本金 <code>C</code> 同样要覆盖两条腿:<strong>现货全额买入</strong> + <strong>合约保证金</strong>。设买入 <code>q</code> 个币:</p>
+    <div class="formula">
+现货成本 = q × S　　合约保证金 = q × F / L　<span class="c">// S=现货价, F=期货价, L=杠杆</span>
+本金 C = q×S + q×F/L　→　<b>q = C / (S + F/L)</b>
+到期毛利 = q × (F − S)　<span class="c">// 赚到整段基差</span>
+    </div>
+    <dl class="kv">
+      <dt>现货腿</dt><dd>必须<strong>全额</strong>买入(现货没有杠杆),这是资金占用大头。</dd>
+      <dt>合约腿</dt><dd>只需保证金 = 名义/杠杆。杠杆越高,占用越少、同本金买更多 <code>q</code>、年化越高——但反向波动时要补仓。</dd>
+      <dt>资金占用</dt><dd>要一直持有到到期,期间资金锁死。年化 = 基差% ÷ 剩余天数 × 365,<strong>越接近到期、基差越大,年化越高</strong>。</dd>
+    </dl>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">4</span>收益计算器</h2>
+  <p class="lead">输入现货/期货报价与到期天数,算出到期利润与年化。</p>
+  <div class="calc">
+    <div class="grid">
+      <div class="inputs">
+        <p class="calc-title">输入参数</p>
+        <div class="field"><label>本金 <span class="u">USDT</span></label><input id="cap" type="number" value="10000"></div>
+        <div class="field"><label>现货价 S <span class="u">USDT</span></label><input id="spot" type="number" value="60000"></div>
+        <div class="field"><label>期货价 F <span class="u">USDT</span></label><input id="fut" type="number" value="61200"></div>
+        <div class="field"><label>合约腿杠杆 <span class="u">L 倍</span></label><input id="lev" type="number" step="0.5" value="2"></div>
+        <div class="field"><label>距到期 <span class="u">天</span></label><input id="days" type="number" value="90"></div>
+        <div class="field"><label>来回总手续费率 <span class="u">% 占名义</span></label><input id="fee" type="number" step="0.01" value="0.1"></div>
+        <button class="btn ghost" id="ex">填入示例数据</button>
+      </div>
+      <div class="outputs">
+        <p class="calc-title">计算结果</p>
+        <div class="metric"><div class="lbl">到期净利润</div><div class="val big pos" id="oNet">—</div><div class="sub" id="oNetSub"></div></div>
+        <div class="metric"><div class="lbl">净年化(APR)</div><div class="val" id="oApr">—</div></div>
+        <div class="rowmini"><span>基差(绝对)</span><span class="v" id="oBasis">—</span></div>
+        <div class="rowmini"><span>基差率</span><span class="v" id="oBasisPct">—</span></div>
+        <div class="rowmini"><span>买入数量 q</span><span class="v" id="oQty">—</span></div>
+        <div class="rowmini"><span>现货成本 / 合约保证金</span><span class="v" id="oSplit">—</span></div>
+        <div class="rowmini"><span>毛利</span><span class="v" id="oGross">—</span></div>
+        <div class="rowmini"><span>手续费</span><span class="v" id="oFee">—</span></div>
+        <div class="note warn" style="margin-top:12px;font-size:12.5px" id="oTip"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">5</span>示例走一遍</h2>
+  <div class="card">
+    <p>本金 <strong>10,000 U</strong>,BTC 现货 <strong>60,000</strong>、季度期货 <strong>61,200</strong>(基差 2%),杠杆 <strong>2×</strong>,距到期 <strong>90 天</strong>,手续费 <strong>0.1%</strong>:</p>
+    <div class="tbl-scroll">
+    <table>
+      <thead><tr><th>步骤</th><th class="num">数值</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>基差率</td><td class="num">2.0%</td><td>= (61200−60000)/60000</td></tr>
+        <tr><td>买入数量 q</td><td class="num">0.1105 BTC</td><td>= 10000 / (60000 + 61200/2)</td></tr>
+        <tr><td>现货成本</td><td class="num">6,630 U</td><td>= q × 60000</td></tr>
+        <tr><td>合约保证金</td><td class="num">3,370 U</td><td>= q × 61200 / 2</td></tr>
+        <tr><td>到期毛利</td><td class="num">132.6 U</td><td>= q × (61200−60000)</td></tr>
+        <tr><td>手续费</td><td class="num">−13.5 U</td><td>≈ 名义 × 0.1%</td></tr>
+        <tr><td><strong>净利润</strong></td><td class="num"><strong>≈ 119 U</strong></td><td>90 天锁定</td></tr>
+        <tr><td><strong>净年化</strong></td><td class="num"><strong>≈ 4.8%</strong></td><td>= 119 / 10000 / 90 × 365</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="note ok" style="margin-top:12px"><b>结论:</b>基差是“已知的到期收益”,确定性高。牛市季度基差常年化 10%+;熊市可能倒挂(期货比现货便宜),此时方向要反过来(买期货、空现货,即反向套利)。</div>
+  </div>
+</section>
+
+<footer>
+  <h3>名词解释</h3>
+  <ul>
+    <li>基差 Basis — <a href="https://www.investopedia.com/terms/b/basis.asp" target="_blank">Investopedia</a></li>
+    <li>Cash &amp; Carry 套利 — <a href="https://www.investopedia.com/terms/c/cashandcarry.asp" target="_blank">Investopedia</a></li>
+    <li>交割/期货合约 Futures — <a href="https://academy.binance.com/en/articles/what-are-futures-contracts" target="_blank">Binance Academy</a></li>
+  </ul>
+  <h3 style="margin-top:12px">方法论来源</h3>
+  <ul>
+    <li>Mudrex — Basis Trading / Cash-and-Carry: <a href="https://mudrex.com/learn/basis-trading-crypto-cash-and-carry/" target="_blank">链接</a></li>
+    <li>KuCoin — What is Cash-and-Carry: <a href="https://www.kucoin.com/blog/en-what-is-cash-and-carry-and-how-to-use-it-for-arbitrage" target="_blank">链接</a></li>
+    <li>BitMEX — Arbitrage in Crypto: <a href="https://www.bitmex.com/blog/arbitrage-in-crypto" target="_blank">链接</a></li>
+  </ul>
+</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=(n,d=2)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+function calc(){
+  const C=+$('cap').value||0,S=+$('spot').value||0,F=+$('fut').value||0,
+        L=+$('lev').value||1,days=+$('days').value||0,fee=(+$('fee').value||0)/100;
+  const basis=F-S, basisPct=S>0?basis/S*100:0;
+  const q=(S+F/L)>0?C/(S+F/L):0;
+  const spotCost=q*S, margin=q*F/L, gross=q*basis;
+  const feeCost=q*(S+F)*fee, net=gross-feeCost;
+  const apr=days>0?net/C/days*365*100:0;
+  $('oBasis').textContent=fmt(basis)+' U';
+  $('oBasisPct').textContent=fmt(basisPct)+' %';
+  $('oQty').textContent=fmt(q,4);
+  $('oSplit').textContent=fmt(spotCost,0)+' / '+fmt(margin,0)+' U';
+  $('oGross').textContent=fmt(gross)+' U';
+  $('oFee').textContent='−'+fmt(feeCost)+' U';
+  const netEl=$('oNet');netEl.textContent=(net>=0?'+':'−')+fmt(Math.abs(net))+' U';
+  netEl.className='val big '+(net>=0?'pos':'neg');
+  $('oNetSub').textContent=`锁定 ${days} 天`;
+  $('oApr').textContent=fmt(apr)+' %';
+  $('oTip').innerHTML=basis<0
+    ?`⚠ 目前期货低于现货(基差为负/倒挂)。正向 Cash&Carry 不成立,应考虑反向套利(买期货、空现货)。`
+    :`✓ 正向基差 ${fmt(basisPct)}%。距到期越近、基差越大,年化越高;资金会锁到到期。`;
+}
+['cap','spot','fut','lev','days','fee'].forEach(id=>$(id).addEventListener('input',calc));
+$('ex').addEventListener('click',()=>{$('cap').value=10000;$('spot').value=60000;$('fut').value=61200;$('lev').value=2;$('days').value=90;$('fee').value=0.1;calc();});
+calc();
+</script>
+</body>
+</html>

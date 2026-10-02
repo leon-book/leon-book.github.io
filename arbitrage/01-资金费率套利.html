@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>资金费率套利 · 原理与计算器</title>
+<link rel="stylesheet" href="assets/common.css">
+</head>
+<body>
+<div class="wrap">
+<a class="backlink" href="index.html" target="_top">← 返回总览</a>
+
+<div class="hero">
+  <div class="kicker">Delta 中性 · 吃息型</div>
+  <h1>资金费率套利</h1>
+  <p>买入现货、同时做空等额永续合约,锁死涨跌方向,只赚永续合约多空之间互付的“资金费率”。</p>
+  <div class="chips">
+    <span class="chip low">难度 低</span>
+    <span class="chip mid">收益随费率变化</span>
+    <span class="chip">收益来源:资金费率</span>
+  </div>
+</div>
+
+<section>
+  <h2><span class="n">1</span>一句话原理</h2>
+  <p class="lead">用大白话讲清楚它到底在赚什么。</p>
+  <div class="card">
+    <p><a class="term" href="https://academy.binance.com/en/articles/what-are-perpetual-futures-contracts" target="_blank" data-tip="没有到期日的期货,可长期持有;靠资金费率把价格拉回现货附近">永续合约</a>没有到期日,为了让它的价格贴近现货,交易所设计了<a class="term" href="https://academy.binance.com/en/glossary/funding-rate" target="_blank" data-tip="永续合约多空双方每隔数小时(通常8h)互付的一笔费用">资金费率</a>:每 8 小时,多空双方互相付一笔钱。</p>
+    <p>市场情绪偏多时,资金费率为<strong>正</strong> → 做多的人要付钱给做空的人。于是我们:<span class="hl">现货买 1 个币(不会被强平)</span> + <span class="hl">永续空 1 个币(收资金费)</span>。</p>
+    <p>两腿金额相等、方向相反,构成<a class="term" href="https://www.investopedia.com/terms/d/deltaneutral.asp" target="_blank" data-tip="组合对涨跌方向不敏感,涨跌盈亏互相抵消,只留下结构性收益">Delta 中性</a>:币价涨,现货赚、空单亏,两者理论上可部分抵消;币价跌,反之抵消。<strong>资金费率可能变化或转负，结算间隔因交易所和合约而异；收益并不固定。</strong></p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">2</span>运作原理图</h2>
+  <div class="card">
+    <svg class="diagram" viewBox="0 0 700 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="资金费率套利两腿结构">
+      <rect x="1" y="1" width="698" height="248" rx="12" class="dg-bg dg-line" stroke-width="1"/>
+      <!-- 本金 -->
+      <rect x="30" y="100" width="120" height="50" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/>
+      <text x="90" y="122" text-anchor="middle" font-size="14" font-weight="700" fill="var(--accent)">本金</text>
+      <text x="90" y="140" text-anchor="middle" font-size="12" class="dg-muted">USDT</text>
+      <!-- arrows -->
+      <path d="M150 115 L240 60" stroke="var(--ok)" stroke-width="2" fill="none" marker-end="url(#a1)"/>
+      <path d="M150 135 L240 190" stroke="var(--warn)" stroke-width="2" fill="none" marker-end="url(#a2)"/>
+      <!-- 现货腿 -->
+      <rect x="245" y="35" width="180" height="60" rx="9" fill="var(--ok-soft)" stroke="var(--ok)"/>
+      <text x="335" y="60" text-anchor="middle" font-size="14" font-weight="700" class="dg-ink">现货腿:买入 1 BTC</text>
+      <text x="335" y="80" text-anchor="middle" font-size="12" class="dg-muted">价涨赚 / 价跌亏</text>
+      <!-- 合约腿 -->
+      <rect x="245" y="160" width="180" height="60" rx="9" fill="var(--warn-soft)" stroke="var(--warn)"/>
+      <text x="335" y="185" text-anchor="middle" font-size="14" font-weight="700" class="dg-ink">合约腿:做空 1 BTC</text>
+      <text x="335" y="205" text-anchor="middle" font-size="12" class="dg-muted">价跌赚 / 价涨亏 + 收费率</text>
+      <!-- 抵消 -->
+      <path d="M425 65 C500 65 500 190 425 190" stroke="var(--muted)" stroke-width="1.5" fill="none" stroke-dasharray="4 4"/>
+      <text x="512" y="123" font-size="12" class="dg-muted">方向盈亏</text>
+      <text x="512" y="139" font-size="12" font-weight="700" class="dg-ink">互相抵消 = 0</text>
+      <!-- 收益 -->
+      <rect x="560" y="95" width="115" height="60" rx="9" fill="var(--accent)" />
+      <text x="617" y="120" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">净收益 =</text>
+      <text x="617" y="138" text-anchor="middle" font-size="12" fill="#fff">累计资金费</text>
+      <path d="M480 130 L558 125" stroke="var(--accent)" stroke-width="2" fill="none" marker-end="url(#a3)"/>
+      <defs>
+        <marker id="a1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="var(--ok)"/></marker>
+        <marker id="a2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="var(--warn)"/></marker>
+        <marker id="a3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="var(--accent)"/></marker>
+      </defs>
+    </svg>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">3</span>本金怎么分配(关键)</h2>
+  <p class="lead">很多人以为 1 万 U 就能开 1 万 U 的套利,其实本金要拆成两份。</p>
+  <div class="card">
+    <p>要做到 Delta 中性,<strong>现货腿的金额必须等于合约腿的<a class="term" href="https://www.investopedia.com/terms/n/notionalvalue.asp" target="_blank" data-tip="合约所代表的标的总价值 = 保证金 × 杠杆">名义价值</a></strong>。本金 <code>C</code> 拆成:现货买入金额 <code>S</code> + 合约保证金 <code>M</code>。</p>
+    <div class="formula">
+名义 N = 保证金 M × <a class="term" href="https://academy.binance.com/en/glossary/leverage" target="_blank" data-tip="用保证金放大交易规模的倍数,越高资金效率越高、爆仓风险越大">杠杆</a> L　<span class="c">// 合约腿</span>
+要 Delta 中性 → 现货 S = 名义 N
+本金 C = S + M = (M×L) + M = M × (L+1)
+──────────────────────────────
+∴ 保证金 M = C / (L+1)　　名义 N = 现货 S = C × L / (L+1)
+    </div>
+    <dl class="kv">
+      <dt>不加杠杆(L=1)</dt><dd>本金一人一半:现货 50%、保证金 50%。名义 N = C/2。最稳,爆仓风险极低。</dd>
+      <dt>加杠杆(如 L=3)</dt><dd>名义提到 C×3/4,同样本金收更多费率,但合约腿保证金变薄,价格反向波动时需及时补保证金,否则<a class="term" href="https://academy.binance.com/en/glossary/liquidation" target="_blank" data-tip="保证金不足时仓位被交易所强制平仓,对冲失效">强平</a>。</dd>
+    </dl>
+    <div class="note warn" style="margin-top:12px"><b>本金提醒:</b>加杠杆只提高“资金效率”,不改变费率本身。杠杆越高,补仓/强平风险越大——理财场景通常 L=1~2 为宜。</div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">4</span>收益与风险脑图</h2>
+  <div class="card">
+    <svg class="diagram" viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="收益与风险脑图">
+      <rect x="1" y="1" width="698" height="258" rx="12" class="dg-bg dg-line" stroke-width="1"/>
+      <rect x="290" y="110" width="120" height="42" rx="21" fill="var(--accent)"/>
+      <text x="350" y="136" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">资金费率套利</text>
+      <!-- 收益分支 -->
+      <path d="M290 125 C220 100 200 60 160 55" stroke="var(--ok)" stroke-width="1.8" fill="none"/>
+      <text x="150" y="48" text-anchor="end" font-size="13" font-weight="700" class="dg-ink">✓ 收益</text>
+      <text x="150" y="70" text-anchor="end" font-size="12" class="dg-muted">正费率:多付空 → 我收</text>
+      <text x="150" y="90" text-anchor="end" font-size="12" class="dg-muted">牛市情绪高时费率更高</text>
+      <path d="M290 140 C220 165 200 205 160 210" stroke="var(--ok)" stroke-width="1.8" fill="none"/>
+      <text x="150" y="205" text-anchor="end" font-size="12" class="dg-muted">复利:收益再投入放大</text>
+      <text x="150" y="225" text-anchor="end" font-size="12" class="dg-muted">方向中性,睡觉也在收</text>
+      <!-- 风险分支 -->
+      <path d="M410 125 C480 100 500 60 540 55" stroke="var(--warn)" stroke-width="1.8" fill="none"/>
+      <text x="550" y="48" font-size="13" font-weight="700" class="dg-ink">✕ 风险</text>
+      <text x="550" y="70" font-size="12" class="dg-muted">费率转负/归零 → 反付钱</text>
+      <text x="550" y="90" font-size="12" class="dg-muted">两腿滑点吃掉利润</text>
+      <path d="M410 140 C480 165 500 205 540 210" stroke="var(--warn)" stroke-width="1.8" fill="none"/>
+      <text x="550" y="205" font-size="12" class="dg-muted">合约腿保证金不足 → 强平</text>
+      <text x="550" y="225" font-size="12" class="dg-muted">交易所暴雷/提现受限</text>
+    </svg>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">5</span>收益计算器</h2>
+  <p class="lead">改任一输入,右侧即时更新。数字仅供理解结构,非收益承诺。</p>
+  <div class="calc">
+    <div class="grid">
+      <div class="inputs">
+        <p class="calc-title">输入参数</p>
+        <div class="field"><label>本金 <span class="u">USDT</span></label><input id="cap" type="number" value="10000"></div>
+        <div class="field"><label>资金费率 <span class="u">% / 每期(每8h)</span></label><input id="rate" type="number" step="0.001" value="0.01"></div>
+        <div class="field"><label>结算周期 <span class="u">小时 / 期</span></label><input id="settle" type="number" value="8"></div>
+        <div class="field"><label>合约腿杠杆 <span class="u">L 倍</span></label><input id="lev" type="number" step="0.5" value="1"></div>
+        <div class="field"><label>来回总手续费率 <span class="u">% 占名义</span></label><input id="fee" type="number" step="0.01" value="0.2"></div>
+        <div class="field"><label>持有天数 <span class="u">天</span></label><input id="days" type="number" value="30"></div>
+        <button class="btn ghost" id="ex">填入示例数据</button>
+      </div>
+      <div class="outputs">
+        <p class="calc-title">计算结果</p>
+        <div class="metric"><div class="lbl">净收益(持有期)</div><div class="val big pos" id="oNet">—</div><div class="sub" id="oNetSub"></div></div>
+        <div class="metric"><div class="lbl">净年化(APR，以本金计)</div><div class="val" id="oApr">—</div></div>
+        <div class="rowmini"><span>合约名义 / 现货腿金额</span><span class="v" id="oNotional">—</span></div>
+        <div class="rowmini"><span>合约保证金</span><span class="v" id="oMargin">—</span></div>
+        <div class="rowmini"><span>每期资金费收入</span><span class="v" id="oPer">—</span></div>
+        <div class="rowmini"><span>总期数</span><span class="v" id="oPeriods">—</span></div>
+        <div class="rowmini"><span>毛收入</span><span class="v" id="oGross">—</span></div>
+        <div class="rowmini"><span>手续费成本</span><span class="v" id="oFee">—</span></div>
+        <div class="note warn" style="margin-top:12px;font-size:12.5px" id="oLiq"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">6</span>示例走一遍</h2>
+  <div class="card">
+    <p>本金 <strong>10,000 U</strong>、不加杠杆(L=1)、费率 <strong>0.01%/8h</strong>、来回手续费 <strong>0.2%</strong>、持有 <strong>30 天</strong>:</p>
+    <div class="tbl-scroll">
+    <table>
+      <thead><tr><th>步骤</th><th class="num">数值</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>本金拆分</td><td class="num">现货 5,000 / 保证金 5,000</td><td>L=1,各一半</td></tr>
+        <tr><td>合约名义</td><td class="num">5,000 U</td><td>= 保证金 × 杠杆 = 现货金额(Delta 中性)</td></tr>
+        <tr><td>每期收入</td><td class="num">0.5 U</td><td>= 5,000 × 0.01%</td></tr>
+        <tr><td>总期数</td><td class="num">90 期</td><td>= 30 天 × 3 期/天</td></tr>
+        <tr><td>毛收入</td><td class="num">45 U</td><td>= 0.5 × 90</td></tr>
+        <tr><td>手续费</td><td class="num">−10 U</td><td>= 5,000 × 0.2%</td></tr>
+        <tr><td><strong>净收益</strong></td><td class="num"><strong>35 U</strong></td><td>毛收入 − 手续费</td></tr>
+        <tr><td><strong>净年化</strong></td><td class="num"><strong>≈ 4.26%</strong></td><td>= 35 / 10,000 / 30 × 365</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="note ok" style="margin-top:12px"><b>模型说明:</b>示例将输入费率视为持有期间恒定，因此年化只是情景估算。实际费率、结算间隔、手续费和保证金风险都可能变化，需要持续监控。</div>
+  </div>
+</section>
+
+<footer>
+  <h3>名词解释(点击术语可开外部词条)</h3>
+  <ul>
+    <li>资金费率 Funding Rate — <a href="https://academy.binance.com/en/glossary/funding-rate" target="_blank">Binance Academy</a></li>
+    <li>永续合约 Perpetual Futures — <a href="https://academy.binance.com/en/articles/what-are-perpetual-futures-contracts" target="_blank">Binance Academy</a></li>
+    <li>Delta 中性 Delta Neutral — <a href="https://www.investopedia.com/terms/d/deltaneutral.asp" target="_blank">Investopedia</a></li>
+    <li>名义价值 Notional Value — <a href="https://www.investopedia.com/terms/n/notionalvalue.asp" target="_blank">Investopedia</a></li>
+    <li>强平 Liquidation — <a href="https://academy.binance.com/en/glossary/liquidation" target="_blank">Binance Academy</a></li>
+  </ul>
+  <h3 style="margin-top:12px">方法论来源</h3>
+  <ul>
+    <li>Kraken Learn — Funding rate arbitrage: <a href="https://www.kraken.com/learn/futures-trading-funding-rate-arbitrage" target="_blank">链接</a></li>
+    <li>CoinGlass — 资金费率数据/套利榜: <a href="https://www.coinglass.com/FundingRate" target="_blank">链接</a></li>
+  </ul>
+</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=(n,d=2)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+function calc(){
+  const C=+$('cap').value||0, rate=(+$('rate').value||0)/100, settle=+$('settle').value||8,
+        L=+$('lev').value||1, fee=(+$('fee').value||0)/100, days=+$('days').value||0;
+  const M=C/(L+1), N=C*L/(L+1);
+  const perDay=24/settle, periods=days*perDay;
+  const per=N*rate, gross=per*periods, feeCost=N*fee, net=gross-feeCost;
+  const apr=days>0?net/C/days*365*100:0;
+  $('oNotional').textContent=fmt(N)+' U';
+  $('oMargin').textContent=fmt(M)+' U';
+  $('oPer').textContent=fmt(per,3)+' U';
+  $('oPeriods').textContent=fmt(periods,0)+' 期';
+  $('oGross').textContent=fmt(gross)+' U';
+  $('oFee').textContent='−'+fmt(feeCost)+' U';
+  const netEl=$('oNet'); netEl.textContent=(net>=0?'+':'−')+fmt(Math.abs(net))+' U';
+  netEl.className='val big '+(net>=0?'pos':'neg');
+  $('oNetSub').textContent=`持有 ${days} 天 · 名义 ${fmt(N,0)} U`;
+  $('oApr').textContent=fmt(apr)+' %';
+  const liq=L>1?(100/L):null;
+  $('oLiq').innerHTML=L>1
+    ?`⚠ 杠杆 ${L}×:币价反向约 <b>${fmt(100/L,1)}%</b> 即逼近合约腿强平线。现货盈利虽能对冲,但仍需及时补保证金。`
+    :`⚠ L=1 时合约腿仍有保证金与强平风险；需持续检查仓位和交易所规则。`;
+}
+['cap','rate','settle','lev','fee','days'].forEach(id=>$(id).addEventListener('input',calc));
+$('ex').addEventListener('click',()=>{$('cap').value=10000;$('rate').value=0.01;$('settle').value=8;$('lev').value=1;$('fee').value=0.2;$('days').value=30;calc();});
+calc();
+</script>
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>闪电贷套利 · 原理与计算器</title>
+<link rel="stylesheet" href="assets/common.css">
+</head>
+<body>
+<div class="wrap">
+<a class="backlink" href="index.html" target="_top">← 返回总览</a>
+
+<div class="hero">
+  <div class="kicker">链上 · 原子套利 · 近零本金</div>
+  <h1>闪电贷套利</h1>
+  <p>在一笔交易内:无抵押借出一大笔钱 → 在 DEX 间低买高卖 → 还款 → 留下利润。全程一个区块内完成,不成功则整笔回滚。</p>
+  <div class="chips">
+    <span class="chip high">难度 高(需写合约)</span>
+    <span class="chip low">本金 ≈ 0(只付 Gas)</span>
+    <span class="chip">收益来源:DEX 间价差</span>
+  </div>
+</div>
+
+<section>
+  <h2><span class="n">1</span>一句话原理</h2>
+  <div class="card">
+    <p><a class="term" href="https://academy.binance.com/en/articles/what-are-flash-loans-in-defi" target="_blank" data-tip="DeFi 中无需抵押的贷款,必须在同一笔交易(同一区块)内借款并还清">闪电贷(Flash Loan)</a>是 DeFi 独有的魔法:你可以<strong>无抵押借出几百万美元</strong>,唯一条件是<span class="hl">必须在同一笔交易里还清</span>。如果还不上,整笔交易自动<a class="term" href="https://www.investopedia.com/terms/a/atomic-swaps.asp" target="_blank" data-tip="要么全部成功、要么全部回滚的原子性操作,不会出现半成品状态">回滚</a>,像什么都没发生。</p>
+    <p>套利做法:借一大笔 USDC → 在 <a class="term" href="https://academy.binance.com/en/articles/what-is-an-automated-market-maker-amm" target="_blank" data-tip="用资金池和算法自动定价的去中心化交易所,如 Uniswap/Curve">AMM/DEX</a> A 便宜买入某币 → 在 DEX B 贵卖出 → 还掉借款和手续费 → 差价归你。因为整个过程在一个区块内原子完成,<strong>不需要自有本金</strong>,只需支付链上 <a class="term" href="https://academy.binance.com/en/glossary/gas" target="_blank" data-tip="以太坊等链上执行交易需支付的手续费">Gas 费</a>。</p>
+    <p><strong>最大特点:</strong>借款额可放大价差的绝对金额，但 Gas、滑点和竞争也会影响结果。借款无法在同笔交易归还时会回滚；若希望净利不足时也回滚，合约必须另设最低收益检查。失败交易仍可能消耗 Gas，智能合约也有实现风险。</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">2</span>运作原理图(原子闭环)</h2>
+  <div class="card">
+    <svg class="diagram" viewBox="0 0 700 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="闪电贷原子套利流程">
+      <rect x="1" y="1" width="698" height="228" rx="12" class="dg-bg dg-line" stroke-width="1"/>
+      <rect x="30" y="95" width="110" height="46" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/>
+      <text x="85" y="115" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent)">① 闪电贷</text>
+      <text x="85" y="132" text-anchor="middle" font-size="11" class="dg-muted">借 100k U</text>
+      <rect x="185" y="95" width="110" height="46" rx="9" fill="var(--ok-soft)" stroke="var(--ok)"/>
+      <text x="240" y="115" text-anchor="middle" font-size="12" font-weight="700" class="dg-ink">② DEX A</text>
+      <text x="240" y="132" text-anchor="middle" font-size="11" fill="var(--ok)">便宜买入</text>
+      <rect x="340" y="95" width="110" height="46" rx="9" fill="var(--warn-soft)" stroke="var(--warn)"/>
+      <text x="395" y="115" text-anchor="middle" font-size="12" font-weight="700" class="dg-ink">③ DEX B</text>
+      <text x="395" y="132" text-anchor="middle" font-size="11" fill="var(--warn)">高价卖出</text>
+      <rect x="495" y="95" width="110" height="46" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/>
+      <text x="550" y="115" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent)">④ 还款+费</text>
+      <text x="550" y="132" text-anchor="middle" font-size="11" class="dg-muted">100k+费</text>
+      <path d="M140 118 L183 118" stroke="var(--muted)" stroke-width="2" marker-end="url(#f)"/>
+      <path d="M295 118 L338 118" stroke="var(--muted)" stroke-width="2" marker-end="url(#f)"/>
+      <path d="M450 118 L493 118" stroke="var(--muted)" stroke-width="2" marker-end="url(#f)"/>
+      <rect x="620" y="95" width="55" height="46" rx="9" fill="var(--ok)"/>
+      <text x="647" y="122" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">利润</text>
+      <path d="M605 118 L618 118" stroke="var(--ok)" stroke-width="2" marker-end="url(#f2)"/>
+      <text x="350" y="55" text-anchor="middle" font-size="13" font-weight="700" class="dg-ink">全部在同一个区块内完成(原子)</text>
+      <text x="350" y="185" text-anchor="middle" font-size="12" class="dg-muted">若第 ④ 步还不上 → 整笔回滚,只亏 Gas</text>
+      <defs>
+        <marker id="f" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="var(--muted)"/></marker>
+        <marker id="f2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="var(--ok)"/></marker>
+      </defs>
+    </svg>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">3</span>本金怎么算</h2>
+  <div class="card">
+    <p>这是本篇唯一<strong>几乎不需要本金</strong>的套利。你的“本金”只有 Gas 费,借款由闪电贷提供:</p>
+    <div class="formula">
+毛利 = 借款额 × DEX 价差%
+成本 = 闪电贷费(借款额 × 费率) + 两次 DEX 手续费 + 滑点 + Gas
+净利 = 毛利 − 成本　<span class="c">// 负值表示该情景不值得执行；是否回滚取决于合约检查</span>
+    </div>
+    <dl class="kv">
+      <dt>借款额越大越好</dt><dd>利润 = 价差% × 借款额。同样价差,借得越多赚得越多(受资金池深度与滑点限制)。</dd>
+      <dt>本金 ≈ Gas</dt><dd>无需自有资金抵押。以太坊主网 Gas 可能几美元到几十美元,拥堵时更高。</dd>
+      <dt>风险边界</dt><dd>借款归还失败会回滚；净利不足则需要合约设置最低收益检查才能回滚。失败尝试仍会消耗 Gas，还需防范<a class="term" href="https://academy.binance.com/en/glossary/maximal-extractable-value-mev" target="_blank" data-tip="矿工/验证者通过排序交易攫取的价值,如抢跑你的套利">MEV 抢跑</a>和合约漏洞。</dd>
+    </dl>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">4</span>收益计算器</h2>
+  <p class="lead">看看借款额与价差扣掉各项成本后是否为正。负值代表模型提示不应执行，不保证链上自动回滚。</p>
+  <div class="calc">
+    <div class="grid">
+      <div class="inputs">
+        <p class="calc-title">输入参数</p>
+        <div class="field"><label>闪电贷借款额 <span class="u">USDT</span></label><input id="loan" type="number" value="100000"></div>
+        <div class="field"><label>DEX 间价差 <span class="u">%</span></label><input id="gap" type="number" step="0.01" value="1"></div>
+        <div class="field"><label>闪电贷费率 <span class="u">%</span></label><input id="ff" type="number" step="0.01" value="0.09"></div>
+        <div class="field"><label>DEX 单边手续费 <span class="u">%</span></label><input id="dex" type="number" step="0.01" value="0.3"></div>
+        <div class="field"><label>滑点率 <span class="u">%</span></label><input id="slip" type="number" step="0.01" value="0.1"></div>
+        <div class="field"><label>Gas 成本 <span class="u">USDT</span></label><input id="gas" type="number" step="1" value="15"></div>
+        <button class="btn ghost" id="ex">填入示例数据</button>
+      </div>
+      <div class="outputs">
+        <p class="calc-title">计算结果</p>
+        <div class="metric"><div class="lbl">单次净利润</div><div class="val big pos" id="oNet">—</div><div class="sub" id="oNetSub"></div></div>
+        <div class="metric"><div class="lbl">相对 Gas 的回报倍数</div><div class="val" id="oRoi">—</div></div>
+        <div class="rowmini"><span>毛利(价差)</span><span class="v" id="oGross">—</span></div>
+        <div class="rowmini"><span>闪电贷费</span><span class="v" id="oFf">—</span></div>
+        <div class="rowmini"><span>DEX 手续费(×2)</span><span class="v" id="oDex">—</span></div>
+        <div class="rowmini"><span>滑点</span><span class="v" id="oSlip">—</span></div>
+        <div class="rowmini"><span>Gas</span><span class="v" id="oGas">—</span></div>
+        <div class="note warn" style="margin-top:12px;font-size:12.5px" id="oTip"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">5</span>示例走一遍</h2>
+  <div class="card">
+    <p>借 <strong>100,000 U</strong>,DEX 价差 <strong>1%</strong>,闪电贷费 <strong>0.09%</strong>(Aave),DEX 单边手续费 <strong>0.3%</strong>,滑点 <strong>0.1%</strong>,Gas <strong>15 U</strong>:</p>
+    <div class="tbl-scroll">
+    <table>
+      <thead><tr><th>项目</th><th class="num">数值</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>毛利</td><td class="num">+1,000 U</td><td>= 100000 × 1%</td></tr>
+        <tr><td>闪电贷费</td><td class="num">−90 U</td><td>= 100000 × 0.09%</td></tr>
+        <tr><td>DEX 手续费</td><td class="num">−600 U</td><td>= 100000 × 0.3% × 2 次</td></tr>
+        <tr><td>滑点</td><td class="num">−100 U</td><td>= 100000 × 0.1%</td></tr>
+        <tr><td>Gas</td><td class="num">−15 U</td><td>固定</td></tr>
+        <tr><td><strong>净利润</strong></td><td class="num"><strong>≈ 195 U</strong></td><td>本金仅 15 U 的 Gas</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="note warn" style="margin-top:12px"><b>关键洞察:</b>把价差改成 <strong>0.5%</strong>,模型净利会变负。只有合约设置最低收益检查时，净利不足才会触发回滚；失败交易仍可能消耗 Gas。DEX 手续费、滑点、流动性和 MEV 竞争都可能改变实际结果。</div>
+  </div>
+</section>
+
+<footer>
+  <h3>名词解释</h3>
+  <ul>
+    <li>闪电贷 Flash Loan — <a href="https://academy.binance.com/en/articles/what-are-flash-loans-in-defi" target="_blank">Binance Academy</a></li>
+    <li>AMM 自动做市商 — <a href="https://academy.binance.com/en/articles/what-is-an-automated-market-maker-amm" target="_blank">Binance Academy</a></li>
+    <li>Gas 费 — <a href="https://academy.binance.com/en/glossary/gas" target="_blank">Binance Academy</a></li>
+    <li>MEV 最大可提取价值 — <a href="https://academy.binance.com/en/glossary/maximal-extractable-value-mev" target="_blank">Binance Academy</a></li>
+  </ul>
+  <h3 style="margin-top:12px">方法论来源</h3>
+  <ul>
+    <li>Techopedia — Flash Loan Arbitrage Explained: <a href="https://www.techopedia.com/flash-loan-arbitrage-explained" target="_blank">链接</a></li>
+    <li>tastycrypto — 5 DeFi Arbitrage Strategies: <a href="https://www.tastycrypto.com/blog/defi-arbitrage/" target="_blank">链接</a></li>
+  </ul>
+</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=(n,d=2)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+function calc(){
+  const loan=+$('loan').value||0,gap=(+$('gap').value||0)/100,ff=(+$('ff').value||0)/100,
+        dex=(+$('dex').value||0)/100,slip=(+$('slip').value||0)/100,gas=+$('gas').value||0;
+  const gross=loan*gap,ffee=loan*ff,dexfee=loan*dex*2,slipc=loan*slip;
+  const net=gross-ffee-dexfee-slipc-gas;
+  $('oGross').textContent='+'+fmt(gross)+' U';
+  $('oFf').textContent='−'+fmt(ffee)+' U';
+  $('oDex').textContent='−'+fmt(dexfee)+' U';
+  $('oSlip').textContent='−'+fmt(slipc)+' U';
+  $('oGas').textContent='−'+fmt(gas)+' U';
+  const netEl=$('oNet');netEl.textContent=(net>=0?'+':'−')+fmt(Math.abs(net))+' U';
+  netEl.className='val big '+(net>=0?'pos':'neg');
+  $('oNetSub').textContent=net>=0?'仍需考虑 Gas 与执行风险':'模型提示不应执行';
+  const roi=gas>0?net/gas:0;
+  $('oRoi').textContent=(net>=0?fmt(roi,1)+' ×':'净利为负');
+  $('oRoi').className='val '+(net>=0?'pos':'neg');
+  $('oTip').innerHTML=net<=0
+    ?`⚠ 净利为负 → 模型提示不要执行。若仍提交交易，须由合约明确检查最低收益；即便回滚，也可能损失 Gas ${fmt(gas)}U。`
+    :`✓ 净赚 ${fmt(net)}U,几乎零本金。但窗口极短且被 MEV 机器人竞争,DEX 手续费是最大成本。`;
+}
+['loan','gap','ff','dex','slip','gas'].forEach(id=>$(id).addEventListener('input',calc));
+$('ex').addEventListener('click',()=>{$('loan').value=100000;$('gap').value=1;$('ff').value=0.09;$('dex').value=0.3;$('slip').value=0.1;$('gas').value=15;calc();});
+calc();
+</script>
+</body>
+</html>

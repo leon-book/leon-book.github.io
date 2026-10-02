@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数字货币量化理财 · 基础分析清单</title>
+<style>
+  :root{
+    --bg:#f7f8fa; --card:#ffffff; --ink:#1a1d24; --muted:#5b6472;
+    --line:#e3e7ee; --accent:#2f6bff; --accent-soft:#eaf0ff;
+    --warn:#b4531a; --warn-soft:#fdeee2; --ok:#1f7a4d; --ok-soft:#e6f5ec;
+    --chip:#eef1f6;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0f1218; --card:#171b23; --ink:#e8ebf0; --muted:#9aa4b2;
+      --line:#262c37; --accent:#6f9bff; --accent-soft:#1a2540;
+      --warn:#e59b6a; --warn-soft:#2c2016; --ok:#6fce9c; --ok-soft:#12261b;
+      --chip:#212734;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,"PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    line-height:1.65;font-size:15px}
+  .wrap{max-width:1000px;margin:0 auto;padding-block:40px;padding-inline:20px}
+  header h1{font-size:26px;margin:0 0 6px}
+  header p.sub{color:var(--muted);margin:0 0 4px}
+  .meta{font-size:12.5px;color:var(--muted);margin-top:14px}
+  h2{font-size:19px;margin:38px 0 4px;padding-top:14px;border-top:1px solid var(--line)}
+  h2 .num{color:var(--accent);font-variant-numeric:tabular-nums}
+  h2+.lead{color:var(--muted);margin:2px 0 16px;font-size:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:16px 18px;margin:12px 0}
+  .glo{display:grid;grid-template-columns:150px 1fr;gap:6px 16px}
+  .glo dt{font-weight:600}
+  .glo dd{margin:0;color:var(--muted)}
+  @media(max-width:560px){.glo{grid-template-columns:1fr}.glo dd{margin-bottom:10px}}
+  .tbl-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+  table{border-collapse:collapse;width:100%;min-width:640px;background:var(--card);font-size:13.5px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--chip);font-weight:600;white-space:nowrap}
+  tr:last-child td{border-bottom:none}
+  .name{font-weight:600;white-space:nowrap}
+  .chip{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:20px;
+    background:var(--chip);color:var(--muted);white-space:nowrap}
+  .chip.low{background:var(--ok-soft);color:var(--ok)}
+  .chip.mid{background:var(--accent-soft);color:var(--accent)}
+  .chip.high{background:var(--warn-soft);color:var(--warn)}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .cat{font-weight:700;margin:18px 0 8px;font-size:14.5px;color:var(--accent)}
+  ul.links{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+  ul.links li{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+  ul.links b{display:inline-block;min-width:120px}
+  ul.links .d{color:var(--muted);font-size:13px}
+  .warn-box{background:var(--warn-soft);border:1px solid transparent;border-radius:12px;
+    padding:14px 18px;color:var(--ink)}
+  .warn-box b{color:var(--warn)}
+  footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--muted)}
+  footer ol{padding-left:20px;margin:8px 0}
+  footer li{margin-bottom:3px;word-break:break-all}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>数字货币量化理财 · 基础分析清单</h1>
+  <p class="sub">面向产品/研究,梳理市面上主流的“量化理财”技术方案与可核验的平台/数据网站</p>
+  <div class="meta">整理日期:2026-09-15 &nbsp;·&nbsp; 定位:入门级全景清单(非投资建议)&nbsp;·&nbsp; 所有平台与数据来源均可在线打开核对</div>
+</header>
+
+<h2><span class="num">0.</span> 名词速查(先统一术语)</h2>
+<p class="lead">后面的方案都会用到这几个词,先解释清楚再往下看。</p>
+<div class="card">
+  <dl class="glo">
+    <dt>量化理财</dt><dd>用固定规则(而非主观盘感)自动化执行交易来获取收益;“理财”偏向低波动、可持续的收益,而非高风险投机。</dd>
+    <dt>永续合约</dt><dd>没有到期日的期货合约,可长期持有,靠“资金费率”把价格拉回现货附近。</dd>
+    <dt>交割合约</dt><dd>有固定到期日(如季度)的期货,到期时价格会收敛到现货价并结算。</dd>
+    <dt>资金费率<br>(Funding Rate)</dt><dd>永续合约多空双方之间每隔数小时互付的一笔费用。为正时多头付给空头,为负时反之。</dd>
+    <dt>基差(Basis)</dt><dd>期货价格与现货价格之间的差额。到期时必然收敛为零,这是套利收益的来源。</dd>
+    <dt>Delta 中性</dt><dd>同时持有方向相反、金额相等的两腿仓位,使组合对“涨跌方向”不敏感,只赚取费率/基差等结构性收益。</dd>
+    <dt>APR / APY</dt><dd>年化报酬率。APR 为单利,APY 为含复利。宣传数字常为历史值,会随市场波动。</dd>
+  </dl>
+</div>
+
+<h2><span class="num">1.</span> 常用技术方案清单</h2>
+<p class="lead">按“原理 / 收益来源 / 主要风险 / 难度”四栏对比。难度标签:<span class="chip low">低</span> <span class="chip mid">中</span> <span class="chip high">高</span>。</p>
+<div class="tbl-scroll">
+<table>
+  <thead><tr><th>方案</th><th>一句话原理</th><th>收益来源</th><th>主要风险</th><th>难度</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="name">资金费率套利<br>(现货+永续对冲)</td>
+      <td>买入现货,同时做空等额永续合约,锁死方向、只收资金费率。是最经典的 Delta 中性“吃息”策略。</td>
+      <td>资金费率(多头付给空头)</td>
+      <td>费率突然转负或归零、两腿滑点、交易所风险</td>
+      <td><span class="chip low">低</span></td>
+    </tr>
+    <tr>
+      <td class="name">期现套利<br>(Cash &amp; Carry)</td>
+      <td>买现货 + 做空同标的交割合约,持有到期,赚取期货较现货的溢价(基差),到期自动收敛。</td>
+      <td>正向基差(期货溢价)</td>
+      <td>资金占用时间长、基差可能收窄、保证金管理</td>
+      <td><span class="chip low">低</span></td>
+    </tr>
+    <tr>
+      <td class="name">日历价差<br>(跨期套利)</td>
+      <td>同时操作近月与远月两张交割合约,赌两者价差回归,不押单边涨跌。</td>
+      <td>近/远月合约价差错位</td>
+      <td>价差扩大而非收敛、两腿保证金、流动性</td>
+      <td><span class="chip mid">中</span></td>
+    </tr>
+    <tr>
+      <td class="name">跨交易所<br>搬砖套利</td>
+      <td>同一币种在 A 所比 B 所便宜时,A 买 B 卖赚差价。价差以秒计消失,必须靠程序自动化。</td>
+      <td>交易所之间的瞬时价差</td>
+      <td>提币/转账延迟、手续费吃掉利润、行情反转</td>
+      <td><span class="chip mid">中</span></td>
+    </tr>
+    <tr>
+      <td class="name">三角套利</td>
+      <td>在同一所内用三种币(如 BTC→ETH→USDT→BTC)绕一圈,利用汇率不一致赚回差额。</td>
+      <td>三种交易对之间的定价偏差</td>
+      <td>机会窗口极短、手续费累积、需高频执行</td>
+      <td><span class="chip high">高</span></td>
+    </tr>
+    <tr>
+      <td class="name">网格交易<br>(Grid)</td>
+      <td>在设定价格区间内等距挂买/卖单,低买高卖反复吃震荡利润。适合横盘震荡行情。</td>
+      <td>区间内的价格来回波动</td>
+      <td>单边突破区间会被套或踏空</td>
+      <td><span class="chip low">低</span></td>
+    </tr>
+    <tr>
+      <td class="name">定投(DCA)</td>
+      <td>不择时,按固定间隔分批买入,摊平成本、降低一次性入场的择时风险。</td>
+      <td>长期趋势 + 成本摊平</td>
+      <td>熊市长期浮亏、需长线持有</td>
+      <td><span class="chip low">低</span></td>
+    </tr>
+    <tr>
+      <td class="name">DeFi 收益<br>(质押/挖矿/借贷)</td>
+      <td>把资产质押、投入流动性池或借出,赚取利息、手续费分成与治理代币奖励。</td>
+      <td>协议利息 / 手续费 / 代币奖励</td>
+      <td>智能合约漏洞、无常损失、代币奖励贬值</td>
+      <td><span class="chip mid">中</span></td>
+    </tr>
+    <tr>
+      <td class="name">稳定币理财</td>
+      <td>把 USDT/USDC 放进交易所理财或 DeFi 稳定币池,赚相对确定的利息;可叠加 Delta 中性挖矿降波动。</td>
+      <td>存款利息 / 稳定币池收益</td>
+      <td>平台信用风险、稳定币脱锚、收益率浮动</td>
+      <td><span class="chip low">低</span></td>
+    </tr>
+    <tr>
+      <td class="name">跟单<br>(社交交易)</td>
+      <td>自动复制优秀交易员的仓位与操作,把“选策略”变成“选人”。</td>
+      <td>被跟交易员的策略收益</td>
+      <td>交易员回撤/风格漂移、跟单延迟、分润成本</td>
+      <td><span class="chip low">低</span></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2><span class="num">2.</span> 平台 / 数据网站清单(可在线核验)</h2>
+<p class="lead">按用途分类。标注主要能力,方便后续逐个深入调研。</p>
+
+<div class="cat">A. 数据 / 监控(做套利前先看数据)</div>
+<ul class="links">
+  <li><b><a href="https://www.coinglass.com/FundingRate" target="_blank" rel="noopener">CoinGlass</a></b><span class="d">聚合 15+ 交易所的资金费率、基差、未平仓、爆仓热力图;有专门的资金费率套利榜(ArbitrageList)。做费率套利的必看数据源。</span></li>
+  <li><b><a href="https://defillama.com" target="_blank" rel="noopener">DeFiLlama</a></b><span class="d">DeFi 全景数据站,查各协议 TVL、质押/挖矿收益率(Yields 页);做 DeFi 理财的收益率比价入口。</span></li>
+</ul>
+
+<div class="cat">B. 交易所内建策略 / 理财(门槛最低)</div>
+<ul class="links">
+  <li><b><a href="https://www.pionex.com" target="_blank" rel="noopener">Pionex 派网</a></b><span class="d">交易所自带免费机器人(网格、DCA 等),免 API、直接在平台内交易,新手上手最快;现货费率约 0.05%。</span></li>
+  <li><b><a href="https://www.binance.com/en/earn" target="_blank" rel="noopener">Binance Earn</a></b><span class="d">币安理财:活期/定期存款、质押、双币、自动定投等产品线,稳定币理财的主流入口之一。</span></li>
+  <li><b><a href="https://www.okx.com" target="_blank" rel="noopener">OKX</a></b><span class="d">内建策略广场(网格/马丁/套利)+ 赚币理财;衍生品与交割合约深度好,适合期现套利。</span></li>
+  <li><b><a href="https://www.kucoin.com" target="_blank" rel="noopener">KuCoin</a></b><span class="d">内建交易机器人与理财产品,并有官方套利科普(Cash-and-Carry)。</span></li>
+  <li><b><a href="https://www.bitget.com" target="_blank" rel="noopener">Bitget</a></b><span class="d">以跟单(Copy Trading)著称,兼有策略机器人与理财。</span></li>
+</ul>
+
+<div class="cat">C. 第三方量化机器人(可跨所、可回测)</div>
+<ul class="links">
+  <li><b><a href="https://3commas.io" target="_blank" rel="noopener">3Commas</a></b><span class="d">面向想要回测、策略市场、多交易所执行的用户;订阅制(约 US$29/月起),自定义程度高。</span></li>
+  <li><b><a href="https://bitsgap.com" target="_blank" rel="noopener">Bitsgap</a></b><span class="d">专攻网格交易,跨所路由强,适合区间震荡策略。</span></li>
+  <li><b><a href="https://www.cryptohopper.com" target="_blank" rel="noopener">Cryptohopper</a></b><span class="d">老牌云端机器人,策略市场 + 社交/跟单功能齐全。</span></li>
+  <li><b><a href="https://wundertrading.com" target="_blank" rel="noopener">WunderTrading</a></b><span class="d">支援 TradingView 信号接单、DCA/网格与跟单,有资金费率套利专题文章。</span></li>
+  <li><b><a href="https://mudrex.com" target="_blank" rel="noopener">Mudrex</a></b><span class="d">打包好的量化策略“Coin Sets / 策略”与基差套利教学,面向不想写代码的用户。</span></li>
+</ul>
+
+<div class="cat">D. 套利扫描 / 跟单</div>
+<ul class="links">
+  <li><b><a href="https://arbitragescanner.io" target="_blank" rel="noopener">ArbitrageScanner</a></b><span class="d">跨交易所/链上套利机会扫描器,附资金费率套利与策略科普文。</span></li>
+  <li><b><a href="https://www.etoro.com/copytrader/" target="_blank" rel="noopener">eToro CopyTrader</a></b><span class="d">老牌社交交易,自动复制交易员(股/ETF/加密),最低约 US$200 起跟,无额外跟单费(注意地区可用性)。</span></li>
+</ul>
+
+<h2><span class="num">3.</span> 风险提示</h2>
+<div class="warn-box">
+  <p style="margin:0 0 8px"><b>“低风险”不等于“无风险”。</b>即使是 Delta 中性套利,仍存在:</p>
+  <ul style="margin:0;padding-left:20px">
+    <li><b>平台/交易对手风险</b> — 交易所暴雷、提现受限、稳定币脱锚,可能一次抹掉数月收益。</li>
+    <li><b>执行风险</b> — 两腿建仓滑点、资金费率突变、机器人断线,实盘收益常低于宣传年化。</li>
+    <li><b>合约 / 保证金风险</b> — 对冲腿若保证金不足被强平,对冲失效即暴露单边风险。</li>
+    <li><b>收益率浮动</b> — 宣传的 APY/APR 多为历史峰值,会随市场情绪大幅回落。</li>
+  </ul>
+  <p style="margin:8px 0 0">本清单仅为技术方案与平台的全景梳理,<b>不构成投资建议</b>;实际落地前需对每个平台单独做合规、风控与费用尽调。</p>
+</div>
+
+<footer>
+  <div><b>资料来源(可在线核对)</b></div>
+  <ol>
+    <li>Kraken Learn — Funding rate arbitrage in crypto: https://www.kraken.com/learn/futures-trading-funding-rate-arbitrage</li>
+    <li>Mudrex Learn — Basis Trading / Cash-and-Carry: https://mudrex.com/learn/basis-trading-crypto-cash-and-carry/</li>
+    <li>KuCoin Blog — What Is Cash-and-Carry: https://www.kucoin.com/blog/en-what-is-cash-and-carry-and-how-to-use-it-for-arbitrage</li>
+    <li>BitMEX Blog — Arbitrage in Crypto(含基差交易范例): https://www.bitmex.com/blog/arbitrage-in-crypto</li>
+    <li>CCXT Blog — Crypto arbitrage strategies 2026: https://docs.ccxt.com/blog/crypto-arbitrage-strategies</li>
+    <li>CoinGlass — Funding Rate / Arbitrage List: https://www.coinglass.com/FundingRate</li>
+    <li>Token Metrics — DCA, Grid &amp; Arbitrage bots explained: https://www.tokenmetrics.com/blog/mastering-crypto-trading-bots-dca-grid-arbitrage-strategies</li>
+    <li>Gemini Cryptopedia — Yield Farming / Liquidity Mining: https://www.gemini.com/cryptopedia/what-is-yield-farming-crypto-defi-liquidity-mining</li>
+    <li>3Commas Blog — Best Crypto Trading Bot / Pionex review: https://3commas.io/blog/best-crypto-trading-bot</li>
+    <li>CoinCodeCap — Bitsgap vs Pionex: https://coincodecap.com/bitsgap-vs-pionex</li>
+    <li>eToro — CopyTrader 官方说明: https://www.etoro.com/copytrader/</li>
+  </ol>
+</footer>
+
+</div>
+</body>
+</html>
