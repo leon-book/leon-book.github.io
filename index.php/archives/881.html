@@ -1,0 +1,708 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="产品经理这几年都在补一门课:怎么让原型和需求文档不再是两张皮。以前的路径是写 PRD、找设计师画图、再找前端搭个 demo,三份产出互相追不上。Open Design 想解决的正是这个环节的摩擦——它自己不做设计引擎,而是把你电脑上已经装好的 coding agent 拉过来干这活[1]。这篇文章讲清楚它是怎么调用 Hermes Agent 和 Claude Code 的,以及产品经理和交易所">
+<meta property="og:type" content="article">
+<meta property="og:title" content="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/881.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="产品经理这几年都在补一门课:怎么让原型和需求文档不再是两张皮。以前的路径是写 PRD、找设计师画图、再找前端搭个 demo,三份产出互相追不上。Open Design 想解决的正是这个环节的摩擦——它自己不做设计引擎,而是把你电脑上已经装好的 coding agent 拉过来干这活[1]。这篇文章讲清楚它是怎么调用 Hermes Agent 和 Claude Code 的,以及产品经理和交易所">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/migrated/5f3743e18c836306883d.png">
+<meta property="article:published_time" content="2026-09-01T02:11:00.000Z">
+<meta property="article:modified_time" content="2026-09-01T02:11:00.000Z">
+<meta property="article:author" content="leon">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/migrated/5f3743e18c836306883d.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流",
+  "url": "https://leon-book.github.io/blog/index.php/archives/881.html",
+  "image": "https://leon-book.github.io/blog/assets/migrated/5f3743e18c836306883d.png",
+  "datePublished": "2026-09-01T02:11:00.000Z",
+  "dateModified": "2026-09-01T02:11:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/881.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/migrated/5f3743e18c836306883d.png);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-09-01T02:11:00.000Z" title="更新于 2026-09-01 11:11:00">2026-09-01</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E4%BA%A7%E5%93%81/">产品</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/Ai/">Ai</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/881.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<p>产品经理这几年都在补一门课:怎么让原型和需求文档不再是两张皮。以前的路径是写 PRD、找设计师画图、再找前端搭个 demo,三份产出互相追不上。Open Design 想解决的正是这个环节的摩擦——它自己不做设计引擎,而是把你电脑上已经装好的 coding agent 拉过来干这活[1]。这篇文章讲清楚它是怎么调用 Hermes Agent 和 Claude Code 的,以及产品经理和交易所业务团队能拿它做什么、不能拿它做什么。</p>
+<h2 id="Open-Design-的定位-本地优先-agent-是借来的"><a href="#Open-Design-的定位-本地优先-agent-是借来的" class="headerlink" title="Open Design 的定位:本地优先,agent 是借来的"></a>Open Design 的定位:本地优先,agent 是借来的</h2><p>Open Design 的项目自述把自己定义为”开源的 Claude Design 替代品”,核心主张是本地优先——桌面应用跑在 macOS 和 Windows 上,数据默认留在本机,云端集成是可选项,不是必须[1]。这个定位决定了它的技术路线:它不训练也不内置一个专属的设计模型,而是做成一个”agent 无关”的壳,声明支持二十多种本地已安装的 coding agent CLI,包括 Claude Code、Cursor、GitHub Copilot、OpenCode、Hermes Agent、Kimi CLI 等,用户可以在这些引擎之间一键切换[1]。</p>
+<p>这意味着主要的生成工作由外部 agent 完成，Open Design 负责编排：接收需求、组合 prompt、启动选定的本地 agent，再把产出的项目文件渲染成可预览的原型。对于只能返回文本产物的 runtime，daemon 也会解析并落盘 <code>&lt;artifact&gt;</code> 代码块。2 所以它不是单纯的聊天壳，但内容质量仍主要取决于所选 agent、设计系统和输入需求。</p>
+<h2 id="真实调用链-从点击到项目目录里的文件"><a href="#真实调用链-从点击到项目目录里的文件" class="headerlink" title="真实调用链:从点击到项目目录里的文件"></a>真实调用链:从点击到项目目录里的文件</h2><p>拆开看这条链路,官方架构文档描述的分层是 Web → Daemon → Runtime[2]。具体展开:</p>
+<ol>
+<li><strong>Web UI</strong>:Next.js 前端,用户在这里写需求、选 agent、看预览。</li>
+<li><strong>Open Design daemon</strong>:一个 Express 服务,默认监听回环地址,默认端口是 7456,开发模式下用 <code>--daemon-port</code> 可以自定义。Web 前端和 <code>od</code> 命令行工具走的是同一套 daemon HTTP API[2]。daemon 用 SQLite 管理项目状态和文件元信息。</li>
+<li><strong>选定的本地 runtime</strong>:daemon 根据你选的 agent,从运行时注册表(<code>apps/daemon/src/runtimes/registry.ts</code>)里取出对应的 <code>RuntimeAgentDef</code>,拼好命令行参数,把它当子进程拉起来[3]。这一步是关键的解耦设计——每个 agent 的适配器只是一份声明式的数据对象,描述怎么检测、怎么启动、怎么解析这个 CLI 的输出流,daemon 的通用引擎不需要为每个 agent 单独写一套调度逻辑[3]。</li>
+<li><strong>项目目录文件</strong>:agent 进程按自己的方式在项目目录里读写文件——有的直接写 HTML&#x2F;CSS&#x2F;JS,有的先输出结构化事件再落盘。</li>
+<li><strong>沙箱预览</strong>:daemon 把生成的文件交给前端渲染,预览用的是 iframe 沙箱,支持 URL 模式和 srcDoc 模式两种,切换渲染模式时两个 frame 都保持挂载以避免闪烁,消息通信会校验来源 frame 和当前激活窗口[2]。</li>
+</ol>
+<p>这条链路里最容易被忽略的是第 3 步——不同 agent 之间的输出格式差异很大,有的走 JSON-RPC,有的走 JSONL 流,daemon 用一套统一的 stream 解析层把它们收敛成前端能理解的事件[3]。理解这一层,才能理解 Hermes 和 Claude Code 两条路径为什么在实现细节上完全不同,但对用户暴露的体验是一致的。</p>
+<p><img src="/blog/assets/migrated/5f3743e18c836306883d.png" alt="Open Design 产品首页展示的整体视觉与定位" title="Open Design 产品首页展示的整体视觉与定位"></p>
+<p><em>上图是 Open Design 官方仓库展示的产品首页视觉,传达的是”本地优先的设计工作台”这个定位——重点不在于它自己有多强的生成能力,而在于它把已经装在你电脑上的 agent 变成可复用的设计引擎。</em></p>
+<h2 id="Hermes-这条路-ACP-JSON-RPC-over-stdio"><a href="#Hermes-这条路-ACP-JSON-RPC-over-stdio" class="headerlink" title="Hermes 这条路:ACP JSON-RPC over stdio"></a>Hermes 这条路:ACP JSON-RPC over stdio</h2><p>Hermes Agent 在 Open Design 的适配器目录里被归到 <code>acp-json-rpc</code> 传输格式一类,和 Devin、Kimi、Kiro、Trae CLI 等共享同一套 Agent Client Protocol 传输实现,代码落在 <code>apps/daemon/src/agent-protocol/acp/</code>[3]。ACP 是一种为编辑器&#x2F;宿主应用和 agent 进程之间设计的标准化通信协议,daemon 作为 ACP 客户端,把 Hermes 进程当 ACP 服务端来对话。</p>
+<p>Hermes 官方文档证实了这条路径：<code>hermes acp</code> 会把 Hermes 启动成 ACP stdio server，供兼容 ACP 的宿主调用。[5] 如果安装包尚未包含 ACP 依赖，需要在 Hermes 的安装目录补装 <code>.[acp]</code>；启动后 stdout 专门承载 ACP JSON-RPC，普通日志写到 stderr，避免污染协议流。[5]</p>
+<p>Hermes 的 ACP 适配层支持把危险命令的授权请求交给宿主处理，宿主可以展示确认界面，也可以按自己的策略自动回答。[5] Open Design 当前的 Hermes runtime 定义明确使用 <code>hermes acp --accept-hooks</code>，并把传输格式声明为 <code>acp-json-rpc</code>。[6] <code>--accept-hooks</code> 只处理无 TTY 场景下未见过的 shell hook；它不应被理解为对所有危险操作永久放行。真正的权限边界仍由 Hermes、ACP 宿主和项目运行环境共同决定。</p>
+<p>Hermes 能写项目文件,也能通过 ACP 通道回传结构化事件,这一点符合 Open Design 架构文档里”文件系统执行画像”(filesystem profile)的描述:这类 runtime 直接写规范化的项目文件,同时把结构化事件传回 daemon,daemon 再转发给前端展示进度[2]。</p>
+<h2 id="Claude-Code-这条路-非交互-stream-json"><a href="#Claude-Code-这条路-非交互-stream-json" class="headerlink" title="Claude Code 这条路:非交互 stream-json"></a>Claude Code 这条路:非交互 stream-json</h2><p>Claude Code 走的是完全不同的传输格式——<code>claude-stream-json</code>,daemon 把它当参考实现来对待[3]。具体的启动方式是:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">claude -p --input-format stream-json --output-format stream-json --verbose</span><br></pre></td></tr></table></figure>
+
+<p>prompt 不是当命令行参数传进去的,而是拼成一条 JSONL 格式的 user message 写给它;进程直接在项目工作目录下拉起,不额外传 <code>--cwd &lt;artifact-dir&gt;</code>[3]。非交互模式下 daemon 会用 <code>--permission-mode bypassPermissions</code> 之类的参数,让 Claude Code 不弹交互式的权限确认对话框,直接按预设的策略执行文件读写[3]。这是所有非交互 CLI adapter 的共性——Cursor 用 <code>--force</code>,Copilot 用 <code>--allow-all-tools</code>,DeepSeek 用 <code>--auto</code>,本质上都是把”要不要允许这次操作”的决定权从人交给了启动参数[3]。</p>
+<p>Claude Code 通过 stdin 接收 JSONL 消息，并在 stdout 持续输出结构化 JSONL 事件；daemon 再把这些事件转换成前端统一的进度、工具调用和文件变化。3 它不是 ACP 的 JSON-RPC 会话，但也不是“只能发一次 prompt”的单向管道：Open Design 会保持 stdin 打开，允许同一轮中继续传入用户消息，并可通过 Claude Code 的 session id 在后续轮次恢复上下文。[7]</p>
+<p><img src="/blog/assets/migrated/320e84b51a5b0cf0650b.png" alt="Open Design 支持的本地 coding agent 图谱,涵盖 Claude Code、Hermes 等多种引擎" title="Open Design 支持的本地 coding agent 图谱,涵盖 Claude Code、Hermes 等多种引擎"></p>
+<p><em>这张图展示的是 Open Design 声明支持的 coding agent 集合。图里能看到 Claude Code、Hermes 这类主流 agent 和其他一些工具并列——但要注意,”支持”两个字背后是完全不同的适配层实现,不是一套统一接口套上不同皮肤,选择哪个 agent 会直接影响生成质量、响应速度和权限模型。</em></p>
+<h2 id="容易搞混的一件事-od-mcp-install-hermes-不是”用-Hermes-当引擎”"><a href="#容易搞混的一件事-od-mcp-install-hermes-不是”用-Hermes-当引擎”" class="headerlink" title="容易搞混的一件事:od mcp install hermes 不是”用 Hermes 当引擎”"></a>容易搞混的一件事:<code>od mcp install hermes</code> 不是”用 Hermes 当引擎”</h2><p>这里有个方向性问题值得单独说清楚。Open Design 的 README 确实提供 <code>od mcp install hermes</code>，用途是把 Open Design 的 MCP 服务配置到 Hermes，让 Hermes 读取本地 Open Design 项目里的文件与产物。[1] 这跟前两节讲的“Open Design 把 Hermes 当 runtime 拉起来”是两件事：</p>
+<ul>
+<li><strong>Open Design 调用 Hermes 当 runtime</strong>:方向是 Open Design → Hermes,Hermes 在 Open Design daemon 的掌控下,以 ACP 子进程的身份被启动、被喂 prompt、被要求写项目文件。</li>
+<li><strong>Hermes 通过 MCP 反向操作 Open Design</strong>:方向是 Hermes → Open Design,Hermes 作为独立跑着的 agent,通过 MCP 协议把 Open Design 项目当成一个可读写的外部资源来访问。</li>
+</ul>
+<p>前一种方式由 Open Design 选择 runtime、设置工作目录并管理本轮执行；后一种方式由 Hermes 主动调用 Open Design 暴露的项目能力。两者都可能修改文件，但谁发起进程、谁持有会话、权限在哪里配置并不相同。部署前应先画清调用方向，而不是只看命令里同时出现了 <code>od</code> 和 <code>hermes</code>。</p>
+<h2 id="产品经理的工作流-从-brief-到可点的原型"><a href="#产品经理的工作流-从-brief-到可点的原型" class="headerlink" title="产品经理的工作流:从 brief 到可点的原型"></a>产品经理的工作流:从 brief 到可点的原型</h2><p>把调用链搞清楚之后,回到产品经理真正关心的问题——这套东西怎么嵌进日常工作。一个可行的流程大致是这样:</p>
+<p><strong>立项 brief</strong>。先把这次要做的东西讲清楚:目标用户、要解决的问题、大致范围。这一步不用 Open Design,用你平时写文档的地方就行,目的是逼自己想清楚”为什么做”而不是直接跳到”长什么样”。</p>
+<p><strong>PRD</strong>。把 brief 展开成需求文档,重点是把状态机、边界条件、异常路径写全。这一步的产出决定了后面原型的信息密度——PRD 越模糊,agent 生成的原型就越容易把模糊的地方脑补成好看但站不住的细节。</p>
+<p><strong>信息架构</strong>。把 PRD 里的功能点归类成页面和模块,想清楚导航层级和跳转关系。这一步可以直接喂给 Open Design,让它帮你把文字结构转成一份页面清单或者站点地图草稿,agent 在这类结构化整理上通常比空手画线框图快。</p>
+<p><strong>关键页面原型</strong>。这是 Open Design 真正发挥作用的地方——把 PRD 和信息架构一起喂给选定的 agent,让它按你的描述在项目目录里生成 HTML 原型,daemon 实时渲染出可点击的预览。这一步的价值不是”agent 画得多好看”,而是”评审的人不用再脑补交互,直接点得到”。</p>
+<p><strong>评审</strong>。拿着可点的原型去对齐业务方、风控、合规、开发,评审意见能直接落到具体页面和具体状态,而不是停留在文字层面的”这里应该再想想”。</p>
+<p><strong>迭代</strong>。评审后的修改意见,回到 Open Design 里让 agent 按新的描述改文件,同一个项目目录持续演进,不需要每次都从零生成。</p>
+<p><strong>交付</strong>。最终原型连同 PRD 一起交给开发,原型作为交互规格的补充,不是替代 PRD——原型说明”长什么样、点了之后发生什么”,PRD 说明”为什么这么设计、边界在哪、异常怎么处理”。</p>
+<p>这套流程里最容易踩的坑是跳过 PRD 直接让 agent 画原型。agent 擅长把清楚的描述变成看得见的东西,但不擅长替你做产品判断——你没写清楚的边界条件,它会用一种”看起来合理”的方式帮你补全,评审的时候你会发现原型里有一堆你没想过、也不认可的隐藏假设。</p>
+<h2 id="结合永续合约举例-为什么先写异常路径再画页面"><a href="#结合永续合约举例-为什么先写异常路径再画页面" class="headerlink" title="结合永续合约举例:为什么先写异常路径再画页面"></a>结合永续合约举例:为什么先写异常路径再画页面</h2><p>拿数字货币永续合约产品说一个具体场景,不是要在这里展开一份完整合约 PRD,而是想说明为什么这类产品必须先把状态和异常路径写清楚,再谈原型。</p>
+<p>永续合约本身的复杂度不在于下单这个动作,而在于持仓之后会发生什么。一个下单页面能画得很漂亮,但真正决定产品能不能上线的是这些问题:强平价格怎么算、保证金率跌破维持保证金线之后系统怎么处理、部分成交和撤单冲突时状态怎么收敛、极端行情下限价单和市价单的排队逻辑、资金费率结算跟用户仓位变动撞在一起时先后顺序是什么、爆仓之后的穿仓亏损谁来承担。这些问题没有一个是靠画原型能想清楚的,它们是状态机和异常路径的设计问题,答案错了,原型画得再精致也是在给一个会出事故的系统做包装。</p>
+<p>反过来说,如果这些状态和异常路径已经在 PRD 里写清楚了——每个状态对应哪些可见的 UI 反馈、每条异常路径对应用户看到什么提示、系统做了什么兜底——这时候把 PRD 喂给 Open Design 生成原型,产出的东西才是真的能拿去评审风控和合规意见的,而不是一张只覆盖了正常路径的漂亮截图。换句话说,对高风险金融产品,原型生成工具的价值上限,取决于你在写 PRD 阶段有没有先把”出错了怎么办”想清楚。这不是 Open Design 或者任何 agent 能替你做的事。</p>
+<h2 id="Hermes-与-Claude-Code-适用场景对比"><a href="#Hermes-与-Claude-Code-适用场景对比" class="headerlink" title="Hermes 与 Claude Code:适用场景对比"></a>Hermes 与 Claude Code:适用场景对比</h2><p>两条路径没有绝对的谁更好,取决于你要的东西。</p>
+<p><strong>Claude Code</strong> 走非交互的 stream-json 模式，适合“给我一份清楚的描述，直接产出并持续修改项目文件”这类任务。Open Design 还能保存 Claude Code 的 session id，在后续轮次恢复同一会话。[7] 对目标明确、需要频繁读代码和改文件的原型迭代，它通常很顺手。</p>
+<p><strong>Hermes</strong> 走 ACP 双向通信，并沿用 Hermes 自己的 provider、memory、skills 和工具体系。[5] 如果团队已经把命名、研究、审查或工具操作沉淀成 Hermes skills，这条路径更容易复用既有工作方式。ACP 会话由运行中的 Hermes ACP server 管理；跨进程、跨宿主能保留多少会话状态，应以实际宿主实现和当次测试为准，不要把“有持久记忆”误解成“任何 Open Design 项目都会自动继承全部历史”。</p>
+<p>实际选择上,更实际的判断标准是:任务是不是一次性讲得清楚的(选 Claude Code 这类批处理式的),还是需要多轮确认、精细权限控制的(ACP 双向协议在理论上更适合,但要看具体 agent 的实现成熟度)。对大多数产品经理日常的原型生成需求,两者差异不会大到影响决策,更值得花时间对比的是不同 agent 在你熟悉的领域(比如金融交易类界面)生成质量的实际差异,这个只能自己跑几次对比出来,没有捷径。</p>
+<h2 id="权限与安全边界"><a href="#权限与安全边界" class="headerlink" title="权限与安全边界"></a>权限与安全边界</h2><p>本地 agent 拥有真实的文件系统权限和命令执行权限,这不是一句免责声明,而是操作上的硬约束。几条不能碰的红线:</p>
+<ul>
+<li><strong>API Key、密钥、私钥、助记词绝不能出现在 prompt 里</strong>,也不能出现在项目目录的任何文件里。agent 的输出文件、日志、甚至临时生成的示例代码都可能被意外提交到版本库或者被下一轮对话原样复述出来。</li>
+<li><strong>生产数据不能作为示例数据喂给 agent</strong>。永续合约这类产品的用户持仓、保证金余额、交易记录属于强敏感数据,原型里需要展示数据的地方用明显标注过的假数据,不要图省事直接复制生产库的一条真实记录脱敏后用。</li>
+<li><strong>用户 PII 不能进 prompt</strong>。姓名、身份证号、手机号、邮箱这些字段,哪怕只是为了让原型”看起来真实”,也应该用生成的假数据代替。</li>
+<li>架构文档里也明确了这个边界的另一半——<strong>凭证和令牌是 daemon 侧管理的数据,不会被复制进项目文件</strong>,必须遵守数据根目录隔离和脱敏规则[2]。这说明 Open Design 自身在设计上是把敏感凭证和项目产出物做了隔离的,但这只覆盖 daemon 自己管理的凭证,不覆盖你在 prompt 里手动敲进去的任何内容——你打进对话框的东西,边界要靠自己守住。</li>
+<li><strong>输出必须人工 review</strong>。agent 生成的原型和文案,哪怕看起来完整,也可能带着幻觉出来的接口字段、编造的费率数字、不存在的合规条款。上线前的评审环节不能被”原型已经很像成品了”这种视觉完成度带偏,内容层面的核对不能省。</li>
+</ul>
+<h2 id="最小启动命令"><a href="#最小启动命令" class="headerlink" title="最小启动命令"></a>最小启动命令</h2><p>准备工作:Node 需要 <code>~24</code> 版本,pnpm 锁定在 <code>10.33.2</code>,建议用 Corepack 来对齐版本,避免本地 pnpm 版本漂移导致的依赖安装问题[4]:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">corepack <span class="built_in">enable</span></span><br><span class="line">corepack pnpm --version   <span class="comment"># 应该打印 10.33.2</span></span><br><span class="line">pnpm install</span><br></pre></td></tr></table></figure>
+
+<p>启动 daemon 和 web:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">pnpm tools-dev start web --daemon-port 7457 --web-port 5175</span><br></pre></td></tr></table></figure>
+
+<p>源码开发模式下，<code>tools-dev</code> 会在未指定端口时选择可用的 daemon 与 web 端口；<code>--daemon-port</code> 和 <code>--web-port</code> 可把它们固定下来。[2] 上面的 7457 与 5175 只是本次本地环境使用的值。生产 daemon 的文档默认端口是 7456，也可以按部署配置调整。2</p>
+<h2 id="适合什么团队"><a href="#适合什么团队" class="headerlink" title="适合什么团队"></a>适合什么团队</h2><p>这套工作流对以下几类团队价值比较明确:</p>
+<ul>
+<li><strong>有明确 PRD 习惯、但原型环节一直靠外包或者临时抓设计师救火的产品团队</strong>。Open Design 能把”写完 PRD 到有可点原型”这段时间压缩下来,前提是团队本身有把需求写清楚的习惯,不然生成出来的原型只会放大需求模糊的问题。</li>
+<li><strong>已经在用 Claude Code 或者其他支持的 CLI agent 做日常研发的团队</strong>,复用同一套本地环境和权限模型,不需要额外接入一套新的设计系统或者云端账号体系。</li>
+<li><strong>希望项目文件和工作区留在本机的团队</strong>。本地优先可以减少把项目资产交给另一套设计云平台，但所选 agent 背后的模型服务仍可能把 prompt 发往云端；交易所团队不能把“本地文件”误当成“所有数据都不出机器”。</li>
+</ul>
+<p>不太适合的场景:团队没有稳定的 PRD 写作习惯、指望靠原型生成工具倒逼需求澄清;或者需要高度定制化的视觉设计交付(品牌视觉规范复杂、需要专业设计师精修的场景),agent 生成的原型更适合做交互验证和评审沟通,不是最终视觉交付物。</p>
+<p><img src="/blog/assets/migrated/d31f5df5bf727207823b.png" alt="Open Design 产品原型工作台的实际界面截图" title="Open Design 产品原型工作台的实际界面截图"></p>
+<p><em>这是官方仓库产品导览里的原型工作台截图,展示的是生成出的原型和预览面板并排展示的实际界面。评审的时候直接对着这个界面走一遍交互,比对着静态设计稿口头描述效率高很多——但截图里看到的完成度,不代表内容和数据都经过了核实,这一层判断还是要回到人工评审。</em></p>
+<h2 id="开始前检查清单"><a href="#开始前检查清单" class="headerlink" title="开始前检查清单"></a>开始前检查清单</h2><ul>
+<li>PRD 是不是已经写清楚了主要状态和异常路径,而不是只有正常流程</li>
+<li>本机是不是已经装好了要用的 coding agent(Claude Code、Hermes 或其他),并且能独立跑通一次简单任务</li>
+<li>Node 版本是不是 24.x,pnpm 是不是通过 Corepack 锁定在 10.33.2</li>
+<li>daemon 端口和 web 端口是否和本机其他服务冲突,需要的话提前定好自定义端口</li>
+<li>要喂给 agent 的示例数据是不是已经替换成了假数据,没有生产数据、没有真实用户 PII</li>
+<li>prompt 和项目目录文件里有没有混入 API Key、私钥、助记词等敏感信息</li>
+<li>评审环节是不是已经安排了人工核对内容,而不是只看原型的视觉完成度</li>
+<li>如果要用 Hermes 的 ACP 路径,是不是已经确认过本机 Hermes 装好了 acp 可选依赖(<code>uv pip install -e &#39;.[acp]&#39;</code>)</li>
+</ul>
+<h2 id="Sources"><a href="#Sources" class="headerlink" title="Sources"></a>Sources</h2><p>[1] <a href="https://github.com/nexu-io/open-design">https://github.com/nexu-io/open-design</a> — Open Design<br>[2] <a href="https://github.com/nexu-io/open-design/blob/main/docs/architecture.md">https://github.com/nexu-io/open-design/blob/main/docs/architecture.md</a> — Open Design Architecture<br>[3] <a href="https://github.com/nexu-io/open-design/blob/main/docs/agent-adapters.md">https://github.com/nexu-io/open-design/blob/main/docs/agent-adapters.md</a> — Open Design Agent Adapters<br>[4] <a href="https://github.com/nexu-io/open-design/blob/main/QUICKSTART.md">https://github.com/nexu-io/open-design/blob/main/QUICKSTART.md</a> — Open Design Quickstart<br>[5] <a href="https://hermes-agent.nousresearch.com/docs/user-guide/features/acp">https://hermes-agent.nousresearch.com/docs/user-guide/features/acp</a> — Hermes ACP Host Integration<br>[6] <a href="https://github.com/nexu-io/open-design/blob/main/apps/daemon/src/runtimes/defs/hermes.ts">https://github.com/nexu-io/open-design/blob/main/apps/daemon/src/runtimes/defs/hermes.ts</a> — Open Design Hermes Runtime Definition<br>[7] <a href="https://github.com/nexu-io/open-design/blob/main/apps/daemon/src/runtimes/defs/claude.ts">https://github.com/nexu-io/open-design/blob/main/apps/daemon/src/runtimes/defs/claude.ts</a> — Open Design Claude Runtime Definition</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/881.html">https://leon-book.github.io/blog/index.php/archives/881.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/blog/assets/migrated/5f3743e18c836306883d.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">问题推着我往前走：一次面试带来的启发</div></div><div class="info-2"><div class="info-item-1">  今天的二面，让我感触很深。 面试官是一位老大哥，他也是从技术转向产品，再走向管理。我们聊到转型时，他说的一段话让我印象特别深。按我的理解，大概是：  从技术转产品，是因为发现有些用户的问题，单靠技术解决不了。 从产品转管理，是因为发现个人的能力和资源有限，需要组织一个团队，一起解决问题。 围绕的始终是同一件事：怎么把用户的问题解决。  这些话让我重新看了一遍自己的工作经历。 过去介绍自己，我习惯讲做过哪些系统、写过哪些模块、处理过哪些故障。今天我开始意识到，这些经历还可以从另一个角度理解：这些年，我究竟在解决什么问题？又为什么一步步走到了现在？ 从把功能做出来开始2018 年，我开始接触数字货币交易所业务，在 BNZ 做的第一个项目是 OTC 法币交易。 项目从 3 月开始，到 5 月 14 日上线。上线后的表现不错，我拿到了一万多元的项目奖金。金额不算特别大，但当时是真的开心，因为自己的能力和付出得到了认可。 那时的成就感很直接：把东西做出来，顺利上线，有人使用，也得到认可。 之后，公司开始重构老系统，采用 PHP 加 Swoole 的架构。我主要负责 OTC 部分，重写了...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</div></div><div class="info-2"><div class="info-item-1">  在传统的中心化交易所（CEX，如币安、欧易）中，交易深度是由专业的做市商（Market Maker）在买卖盘上挂出密密麻麻的订单来维持的。然而，在完全去中心化、没有中央撮合系统的去中心化交易所（DEX）中，上亿美元的流动性和极低的交易滑点究竟是如何实现的？ 本文将结合最新行业核心数据与经典的爆仓、亏损真实惨案，为你深度拆解 DEX 维持流动性的底层逻辑，以及它们是如何在链上招揽做市商的。🧱 一、 DEX 的深度是如何维护的？（机制与数据解析）DEX 无法像传统交易所那样依赖中心化服务器进行每秒数万次的订单匹配，因此它们开创了独特的链上流动性维护机制。目前行业内主要分为三大流派： 1. 经典恒定乘积池（AMM 模式） 核心公式：X × Y &#x3D; K（X 和 Y 为池中两种代币的数量，K 为常数）。 代表平台：Uniswap V2、PancakeSwap。 维护机制：这是 DeFi 的开创性发明。它不需要任何专业做市商挂单，而是让任何人都可以将两种代币（如 ETH 和 USDT）按 50:50 的价值比例存入一个公共资金池。 深度的本质：资金池的体量（TVL）决定了交易...</div></div></div></a></nav><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Open-Design-%E7%9A%84%E5%AE%9A%E4%BD%8D-%E6%9C%AC%E5%9C%B0%E4%BC%98%E5%85%88-agent-%E6%98%AF%E5%80%9F%E6%9D%A5%E7%9A%84"><span class="toc-number">1.</span> <span class="toc-text">Open Design 的定位:本地优先,agent 是借来的</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9C%9F%E5%AE%9E%E8%B0%83%E7%94%A8%E9%93%BE-%E4%BB%8E%E7%82%B9%E5%87%BB%E5%88%B0%E9%A1%B9%E7%9B%AE%E7%9B%AE%E5%BD%95%E9%87%8C%E7%9A%84%E6%96%87%E4%BB%B6"><span class="toc-number">2.</span> <span class="toc-text">真实调用链:从点击到项目目录里的文件</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Hermes-%E8%BF%99%E6%9D%A1%E8%B7%AF-ACP-JSON-RPC-over-stdio"><span class="toc-number">3.</span> <span class="toc-text">Hermes 这条路:ACP JSON-RPC over stdio</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Claude-Code-%E8%BF%99%E6%9D%A1%E8%B7%AF-%E9%9D%9E%E4%BA%A4%E4%BA%92-stream-json"><span class="toc-number">4.</span> <span class="toc-text">Claude Code 这条路:非交互 stream-json</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%B9%E6%98%93%E6%90%9E%E6%B7%B7%E7%9A%84%E4%B8%80%E4%BB%B6%E4%BA%8B-od-mcp-install-hermes-%E4%B8%8D%E6%98%AF%E2%80%9D%E7%94%A8-Hermes-%E5%BD%93%E5%BC%95%E6%93%8E%E2%80%9D"><span class="toc-number">5.</span> <span class="toc-text">容易搞混的一件事:od mcp install hermes 不是”用 Hermes 当引擎”</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%A7%E5%93%81%E7%BB%8F%E7%90%86%E7%9A%84%E5%B7%A5%E4%BD%9C%E6%B5%81-%E4%BB%8E-brief-%E5%88%B0%E5%8F%AF%E7%82%B9%E7%9A%84%E5%8E%9F%E5%9E%8B"><span class="toc-number">6.</span> <span class="toc-text">产品经理的工作流:从 brief 到可点的原型</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BB%93%E5%90%88%E6%B0%B8%E7%BB%AD%E5%90%88%E7%BA%A6%E4%B8%BE%E4%BE%8B-%E4%B8%BA%E4%BB%80%E4%B9%88%E5%85%88%E5%86%99%E5%BC%82%E5%B8%B8%E8%B7%AF%E5%BE%84%E5%86%8D%E7%94%BB%E9%A1%B5%E9%9D%A2"><span class="toc-number">7.</span> <span class="toc-text">结合永续合约举例:为什么先写异常路径再画页面</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Hermes-%E4%B8%8E-Claude-Code-%E9%80%82%E7%94%A8%E5%9C%BA%E6%99%AF%E5%AF%B9%E6%AF%94"><span class="toc-number">8.</span> <span class="toc-text">Hermes 与 Claude Code:适用场景对比</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9D%83%E9%99%90%E4%B8%8E%E5%AE%89%E5%85%A8%E8%BE%B9%E7%95%8C"><span class="toc-number">9.</span> <span class="toc-text">权限与安全边界</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9C%80%E5%B0%8F%E5%90%AF%E5%8A%A8%E5%91%BD%E4%BB%A4"><span class="toc-number">10.</span> <span class="toc-text">最小启动命令</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%80%82%E5%90%88%E4%BB%80%E4%B9%88%E5%9B%A2%E9%98%9F"><span class="toc-number">11.</span> <span class="toc-text">适合什么团队</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BC%80%E5%A7%8B%E5%89%8D%E6%A3%80%E6%9F%A5%E6%B8%85%E5%8D%95"><span class="toc-number">12.</span> <span class="toc-text">开始前检查清单</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Sources"><span class="toc-number">13.</span> <span class="toc-text">Sources</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

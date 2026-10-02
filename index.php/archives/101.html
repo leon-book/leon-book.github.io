@@ -1,0 +1,644 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>PHP如何修改session的生存时间 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="PHP 如何修改 Session 的生存时间在 PHP 中，Session 是一种用于跟踪用户状态的机制，通过在服务器端存储用户数据，并使用会话 ID 进行身份验证和数据关联。默认情况下，Session 的生存时间是由服务器配置决定的，但你也可以通过 PHP 的相关函数来修改 Session 的生存时间。本篇博客将介绍如何在 PHP 中修改 Session 的生存时间。 1. 使用 sessi">
+<meta property="og:type" content="article">
+<meta property="og:title" content="PHP如何修改session的生存时间">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/101.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="PHP 如何修改 Session 的生存时间在 PHP 中，Session 是一种用于跟踪用户状态的机制，通过在服务器端存储用户数据，并使用会话 ID 进行身份验证和数据关联。默认情况下，Session 的生存时间是由服务器配置决定的，但你也可以通过 PHP 的相关函数来修改 Session 的生存时间。本篇博客将介绍如何在 PHP 中修改 Session 的生存时间。 1. 使用 sessi">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2016-09-22T04:44:00.000Z">
+<meta property="article:modified_time" content="2016-09-22T04:44:00.000Z">
+<meta property="article:author" content="leon">
+<meta property="article:tag" content="php">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "PHP如何修改session的生存时间",
+  "url": "https://leon-book.github.io/blog/index.php/archives/101.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2016-09-22T04:44:00.000Z",
+  "dateModified": "2016-09-22T04:44:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/101.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'PHP如何修改session的生存时间',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">PHP如何修改session的生存时间</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">PHP如何修改session的生存时间</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2016-09-22T04:44:00.000Z" title="发表于 2016-09-22 13:44:00">2016-09-22</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2016-09-22T04:44:00.000Z" title="更新于 2016-09-22 13:44:00">2016-09-22</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/">编程语言</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/101.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<h1 id="PHP-如何修改-Session-的生存时间"><a href="#PHP-如何修改-Session-的生存时间" class="headerlink" title="PHP 如何修改 Session 的生存时间"></a>PHP 如何修改 Session 的生存时间</h1><p>在 PHP 中，Session 是一种用于跟踪用户状态的机制，通过在服务器端存储用户数据，并使用会话 ID 进行身份验证和数据关联。默认情况下，Session 的生存时间是由服务器配置决定的，但你也可以通过 PHP 的相关函数来修改 Session 的生存时间。本篇博客将介绍如何在 PHP 中修改 Session 的生存时间。</p>
+<h2 id="1-使用-session-cookie-lifetime-设置"><a href="#1-使用-session-cookie-lifetime-设置" class="headerlink" title="1. 使用 session.cookie_lifetime 设置"></a>1. 使用 <code>session.cookie_lifetime</code> 设置</h2><p>PHP 提供了 <code>session.cookie_lifetime</code> 配置选项，用于设置 Session Cookie 的生存时间（以秒为单位）。该选项决定了客户端浏览器中的 Session Cookie 的过期时间，从而间接影响了 Session 的生存时间。</p>
+<p>示例：</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 设置 Session Cookie 的生存时间为 1 小时</span></span><br><span class="line"><span class="title function_ invoke__">ini_set</span>(<span class="string">&#x27;session.cookie_lifetime&#x27;</span>, <span class="number">3600</span>);</span><br></pre></td></tr></table></figure>
+
+<p>在上述示例中，通过 <code>ini_set()</code> 函数设置 <code>session.cookie_lifetime</code> 选项为 3600 秒（1 小时），这意味着 Session Cookie 在 1 小时后过期，从而导致 Session 的生存时间为 1 小时。</p>
+<h2 id="2-使用-session-gc-maxlifetime-设置"><a href="#2-使用-session-gc-maxlifetime-设置" class="headerlink" title="2. 使用 session.gc_maxlifetime 设置"></a>2. 使用 <code>session.gc_maxlifetime</code> 设置</h2><p>PHP 还提供了 <code>session.gc_maxlifetime</code> 配置选项，用于设置 Session 的最大生存时间（以秒为单位）。该选项决定了 Session 数据在服务器端的保留时间。</p>
+<p>示例：</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 设置 Session 的最大生存时间为 1 小时</span></span><br><span class="line"><span class="title function_ invoke__">ini_set</span>(<span class="string">&#x27;session.gc_maxlifetime&#x27;</span>, <span class="number">3600</span>);</span><br></pre></td></tr></table></figure>
+
+<p>在上述示例中，通过 <code>ini_set()</code> 函数设置 <code>session.gc_maxlifetime</code> 选项为 3600 秒（1 小时），这意味着 Session 数据在服务器端将保留 1 小时，超过这个时间将被垃圾回收机制清除。</p>
+<h2 id="3-使用-session-set-cookie-params-函数"><a href="#3-使用-session-set-cookie-params-函数" class="headerlink" title="3. 使用 session_set_cookie_params() 函数"></a>3. 使用 <code>session_set_cookie_params()</code> 函数</h2><p>除了配置选项外，PHP 还提供了 <code>session_set_cookie_params()</code> 函数，用于设置 Session Cookie 的参数，包括生存时间。</p>
+<p>示例：</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 设置 Session Cookie 的生存时间为 1 小时</span></span><br><span class="line"><span class="title function_ invoke__">session_set_cookie_params</span>(<span class="number">3600</span>);</span><br></pre></td></tr></table></figure>
+
+<p>在上述示例中，通过 <code>session_set_cookie_params()</code> 函数设置 Session Cookie 的生存时间为 3600 秒（1 小时）。</p>
+<h2 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h2><p>通过上述方法，你可以在 PHP 中修改 Session 的生存时间。使用 <code>session.cookie_lifetime</code> 配置选项或 <code>session_set_cookie_params()</code> 函数可以设置 Session Cookie 的生存时间，从而间接影响 Session 的生存时间。而使用 <code>session.gc_maxlifetime</code> 配置选项可以设置 Session 数据在服务器端的最大保留时间。根据你的需求，选择适合的方法来修改 Session 的生存时间，以满足你的应用需求。希望本篇博客对你在 PHP 中修改 Session 的生存时间有所帮助！</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/101.html">https://leon-book.github.io/blog/index.php/archives/101.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/php/">php</a></div><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/102.html" title="LINUX下查看用户列表"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">LINUX下查看用户列表</div></div><div class="info-2"><div class="info-item-1">  Linux 下查看用户列表在 Linux 系统中，可以使用一些命令和文件来查看用户列表。了解当前系统上的用户列表对于管理和维护系统非常重要。本篇博客将介绍几种常用的方法来在 Linux 下查看用户列表。 1. 使用 cat /etc/passwd/etc/passwd 文件是 Linux 系统中存储用户账户信息的文件之一。可以使用 cat 命令来查看该文件的内容，从而获取用户列表。 cat /etc/passwd  上述命令会将 /etc/passwd 文件的内容输出到终端，其中每行表示一个用户账户，字段之间使用冒号进行分隔。通常，用户名位于第一个字段。 2. 使用 cut 命令和 /etc/passwd可以结合使用 cut 命令和 /etc/passwd 文件来获取用户列表。通过指定字段分隔符和字段编号，可以提取出用户名字段。 cut -d: -f1 /etc/passwd  上述命令会将 /etc/passwd 文件的内容按照冒号作为分隔符，并提取出每行的第一个字段，即用户名。 3. 使用 awk 命令和 /etc/passwd另一种获取用户列表的方法是使用 awk 命令...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/100.html" title="Mysql 数据库设置自动添加时间"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Mysql 数据库设置自动添加时间</div></div><div class="info-2"><div class="info-item-1">  MySQL 数据库设置自动添加时间在 MySQL 数据库中，可以通过设置默认值或触发器来实现自动添加时间戳（如创建时间和更新时间）的功能。这样可以方便地记录数据的创建和修改时间，提高数据管理的效率。本篇博客将介绍如何在 MySQL 数据库中设置自动添加时间。 1. 使用默认值使用默认值是一种简单的方法，可以在创建表时设置默认值为当前时间戳。这样，在插入数据时，如果没有显式指定时间戳字段的值，将自动使用默认值。 示例： CREATE TABLE users (  id INT PRIMARY KEY,  name VARCHAR(100),  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);  在上述示例中，created_at 列的默认值为当前时间戳，updated_at 列的默认值也为当前时间戳，并且在更新数据时会自动更新为当前时间戳。 2. 使用触发器使用触发器是另一种方法...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/index.php/archives/28.html" title="PHP函数file_get_contents()使用 https 协议时报错：SSL operation failed"><img class="cover" src="/blog/assets/migrated/0d0217328afadbb08837.png" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2015-10-11</div><div class="info-item-2">PHP函数file_get_contents()使用 https 协议时报错：SSL operation failed</div></div><div class="info-2"><div class="info-item-1">  场景：file_get_contents() 函数是用于将文件的内容读入到一个字符串中，是读取文件内容常用的函数之一。 但是有时在服务器上使用file_get_contents() 函数请求https 协议的url文件时会报错误，无法正确读取文件内容， 查看log日志，日志内容类似如下： PHP Warning:  file_get_contents(): Failed to enable crypto in ......PHP Warning:  file_get_contents......: failedream: operation failed in ......PHP Warning:  file_get_contents(): SSL operatwith code 1. OpenSSL Error messages:error:14090086:SSL routines:SSL3_GET_SERVER_CERTIFICATE:certificate verin ......  原因：服务器未正确配置好https证书 解决方法：（三种解决方法） 方法一：下载ht...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/30.html" title="PHP 多进程开发中常用的PCNTL常用的函数"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2015-10-30</div><div class="info-item-2">PHP 多进程开发中常用的PCNTL常用的函数</div></div><div class="info-2"><div class="info-item-1">  PHP进程控制函数库(PCNTL)，使php能在类unix系统中实现跟c一样的创建子进程、使用exec函数执行程序、处理信号等功能。 PCNTL使用ticks来作为信号处理机制（signal handle callback mechanism），可以最小程度地降低处理异步事件时的负载。Tick 是一个在代码段中解释器每执行N条低级语句就会发生的事件，这个代码段需要通过declare来指定。php多进程开发中常用的PCNTL常用的函数列表如下： 1. pcntl_alarm ( int $seconds )设置一个$seconds秒后发送SIGALRM信号的计数器 2. pcntl_signal ( int $signo , callback $handler [, bool $restart_syscalls ] )为$signo设置一个处理该信号的回调函数。下面是一个隔5秒发送一个SIGALRM信号，并由signal_handler函数获取，然后打印一个“Caught SIGALRM”的例子： 3. pcntl_exec ( string $path [, array $a...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/488.html" title="一个简陋的 PHP View 适用于Swoole"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2020-06-30</div><div class="info-item-2">一个简陋的 PHP View 适用于Swoole</div></div><div class="info-2"><div class="info-item-1">  仅支持 向模板传递变量 /** * 视图  * @param array $params 模板变量 * @param string $method 视图模板 * @return mixed|string */public static function view(array $params = [], $method = &#x27;&#x27;): string&#123;    // 利用堆栈追踪回溯    $array = debug_backtrace();    $file = $array[0][&#x27;file&#x27;] ?? &#x27;&#x27;;    $method = $method ?: ($array[1][&#x27;function&#x27;] ?? &#x27;&#x27;);    $fileDir = rtrim($file, &#x27;.php&#x27;);    $viewFile = str_replace(&#x27;Controller&#x27;, &#x27;View&#x27;, $fileDir . DS...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/42.html" title="PHP 开发常见151 个问题汇总"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2015-12-01</div><div class="info-item-2">PHP 开发常见151 个问题汇总</div></div><div class="info-2"><div class="info-item-1">  作为一名 PHP 开发人员，我们经常会遇到各种各样的问题和挑战。在本篇博客中，我们将汇总一些常见的 PHP 开发问题，并提供相应的解决方案，帮助您更好地应对这些问题。下面是一些常见问题及其解决方案的列表： 注：本篇博客为问题列表，详细解决方案请参考相关技术文档或进行进一步的搜索和学习。 1. 语言基础 如何定义和使用变量？ 如何进行字符串连接？ 如何使用条件语句（if-else）？ 如何使用循环语句（for、while）？ 如何处理数组和关联数组？ 如何定义和调用函数？ 如何处理日期和时间？ 如何使用文件操作函数？ 如何处理异常和错误？  2. 数据库操作 如何连接和选择数据库？ 如何执行查询语句？ 如何插入、更新和删除数据？ 如何处理数据库事务？ 如何处理数据库连接错误和超时？  3. 表单处理 如何获取和处理表单数据？ 如何验证用户输入？ 如何防止 SQL 注入攻击？ 如何防止跨站脚本攻击（XSS）？  4. 文件上传 如何处理文件上传？ 如何限制文件类型和大小？ 如何保存上传的文件到服务器？  5. 图像处理 如何调整图像尺寸和比例？ 如何添加水印到图像？ 如何生成缩略...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/382.html" title="Nginx+PHP 环境 499 错误码排查过程小记"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2019-06-01</div><div class="info-item-2">Nginx+PHP 环境 499 错误码排查过程小记</div></div><div class="info-2"><div class="info-item-1">  过程0x01经搜索得知： 哪些情况下会使 Nginx 返回 HTTP CODE 499？ 即：「客户端主动关闭连接」 但某一时间段内全部请求均为返回 499，这显然不是所有客户端主动意识上的「关闭」，可能是因为客户端等待超时，自动关闭连接；加上 499 的时间段内包含部分 502，让我不得不怀疑： PHP 进程「死」了。 0x02这里的死，不一定是进程结束，也有可能是僵尸，或是陷入死循环，一直在执行某个脚本…… 若是逐个检查代码时间来不及（以先解决问题为重），遂排查： Nginx+FastCGI 到底是谁影响超时时间 以及： PHP-max_execution_time 与 fpm.request_terminate_timeout 介绍 0x03经过上面的调整，大约一周后再次维护服务器。发现情况有所改善—— 499 错误已经由某一时段大量、集中出现变为偶尔发生，且只出现在某几个特定 URI 请求上。 我决定对这几个 URI 对应的接口控制器代码进行检查。由于系统开发时间紧张，代码质量并不高，怀疑是否是程序内有 BUG。 首先查看代码执行时间，约为 1900 ms 左右，简直...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/129.html" title="PHP 中的钩子：register_shutdown_function"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2016-12-16</div><div class="info-item-2">PHP 中的钩子：register_shutdown_function</div></div><div class="info-2"><div class="info-item-1">  在 PHP 中，register_shutdown_function 是一个非常有用的钩子函数，用于注册一个函数在脚本执行结束时自动调用。无论是正常结束还是由于错误或异常而终止，注册的函数都会被执行。这使得 register_shutdown_function 成为进行清理工作、记录日志或释放资源的理想选择。 1. 基本用法1.1 注册钩子函数使用 register_shutdown_function 可以轻松注册一个在脚本结束时运行的函数。以下是基本的示例： &lt;?phpfunction shutdownFunction() &#123;    echo &quot;脚本执行结束，执行清理工作。\n&quot;;&#125;register_shutdown_function(&#x27;shutdownFunction&#x27;);// 模拟一些代码echo &quot;正在执行代码...\n&quot;;?&gt;  1.2 输出结果当执行上述代码时，输出将是： 正在执行代码...脚本执行结束，执行清理工作。  2. 错误处理register_shutdown_f...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#PHP-%E5%A6%82%E4%BD%95%E4%BF%AE%E6%94%B9-Session-%E7%9A%84%E7%94%9F%E5%AD%98%E6%97%B6%E9%97%B4"><span class="toc-number">1.</span> <span class="toc-text">PHP 如何修改 Session 的生存时间</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E4%BD%BF%E7%94%A8-session-cookie-lifetime-%E8%AE%BE%E7%BD%AE"><span class="toc-number">1.1.</span> <span class="toc-text">1. 使用 session.cookie_lifetime 设置</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E4%BD%BF%E7%94%A8-session-gc-maxlifetime-%E8%AE%BE%E7%BD%AE"><span class="toc-number">1.2.</span> <span class="toc-text">2. 使用 session.gc_maxlifetime 设置</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E4%BD%BF%E7%94%A8-session-set-cookie-params-%E5%87%BD%E6%95%B0"><span class="toc-number">1.3.</span> <span class="toc-text">3. 使用 session_set_cookie_params() 函数</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BB%93%E8%AE%BA"><span class="toc-number">1.4.</span> <span class="toc-text">结论</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

@@ -1,0 +1,714 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>PHP7转PHP8代码需要做哪些修改？ | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="在将 ·PHP 7· 代码转换为 PHP 8 时，可能需要做出一些修改，因为 PHP 8 引入了一些新特性并删除了一些过时的特性。以下是可能需要修改的一些方面： 声明严格模式：PHP 8 强制实施了类型声明，因此需要在 PHP 7 代码中进行相应修改，添加类型声明。可以使用 declare(strict_types&#x3D;1); 声明严格模式，强制要求在函数和方法中进行类型声明。 面向对象编程：PH">
+<meta property="og:type" content="article">
+<meta property="og:title" content="PHP7转PHP8代码需要做哪些修改？">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/590.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="在将 ·PHP 7· 代码转换为 PHP 8 时，可能需要做出一些修改，因为 PHP 8 引入了一些新特性并删除了一些过时的特性。以下是可能需要修改的一些方面： 声明严格模式：PHP 8 强制实施了类型声明，因此需要在 PHP 7 代码中进行相应修改，添加类型声明。可以使用 declare(strict_types&#x3D;1); 声明严格模式，强制要求在函数和方法中进行类型声明。 面向对象编程：PH">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2023-07-25T10:09:00.000Z">
+<meta property="article:modified_time" content="2023-07-25T10:09:00.000Z">
+<meta property="article:author" content="leon">
+<meta property="article:tag" content="php">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "PHP7转PHP8代码需要做哪些修改？",
+  "url": "https://leon-book.github.io/blog/index.php/archives/590.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2023-07-25T10:09:00.000Z",
+  "dateModified": "2023-07-25T10:09:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/590.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'PHP7转PHP8代码需要做哪些修改？',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">PHP7转PHP8代码需要做哪些修改？</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">PHP7转PHP8代码需要做哪些修改？</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2023-07-25T10:09:00.000Z" title="发表于 2023-07-25 19:09:00">2023-07-25</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2023-07-25T10:09:00.000Z" title="更新于 2023-07-25 19:09:00">2023-07-25</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/">编程语言</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E8%B8%A9%E5%9D%91%E6%95%99%E8%AE%AD/">踩坑教训</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/590.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<p>在将 ·PHP 7· 代码转换为 <code>PHP 8</code> 时，可能需要做出一些修改，因为 <code>PHP 8</code> 引入了一些新特性并删除了一些过时的特性。以下是可能需要修改的一些方面：</p>
+<p>声明严格模式：<code>PHP 8</code> 强制实施了类型声明，因此需要在 <code>PHP 7</code> 代码中进行相应修改，添加类型声明。可以使用 <code>declare(strict_types=1)</code>; 声明严格模式，强制要求在函数和方法中进行类型声明。</p>
+<p>面向对象编程：<code>PHP 8</code> 引入了一些新的面向对象编程特性，如构造函数属性推断、命名参数和属性提取等。如果使用了这些新特性，需要进行相应修改。</p>
+<p>函数调用：<code>PHP 8</code> 修改了一些函数的参数，可能需要根据新的参数列表进行修改。例如，<code>array_key_first()</code> 和 <code>array_key_last()</code> 函数需要一个数组参数，而在 PHP 7 中不需要。</p>
+<p>错误处理：<code>PHP 8</code> 改变了一些错误处理方式，如对于未声明变量的引用，现在会抛出一个 Error 异常而不是一个 Notice 错误。因此，需要相应地处理这些错误。</p>
+<p>移除过时的特性：PHP 8 移除了一些过时的特性，如 <code>create_function()</code> 函数和 <code>magic_quotes_gpc</code> 配置选项等。需要检查代码中是否使用了这些过时的特性，并进行相应的修改。</p>
+<p>以上是可能需要修改的一些方面，具体需要根据代码的实际情况进行修改。可以使用 PHP 官方提供的迁移工具来辅助进行代码迁移，例如 <code>php-src/UPGRADING</code> 文件和 <code>php-compat-info</code> 工具。</p>
+<h1 id="php-src-UPGRADING-和-php-compat-info"><a href="#php-src-UPGRADING-和-php-compat-info" class="headerlink" title="php-src/UPGRADING 和 php-compat-info"></a><code>php-src/UPGRADING</code> 和 <code>php-compat-info</code></h1><p>以下是使用 php-src&#x2F;UPGRADING 文件和 php-compat-info 工具进行 PHP 7 代码转换为 PHP 8 的步骤：</p>
+<p>下载 <code>php-src/UPGRADING</code> 文件：可以从 PHP 官方网站下载 <code>php-src/UPGRADING</code> 文件，该文件包含了从 <code>PHP 7</code> 到 <code>PHP 8</code> 的所有重大变化和不兼容之处。</p>
+<p>使用 <code>php-compat-info</code> 工具：<code>php-compat-info</code> 工具是一个命令行工具，可以分析代码库中使用的 PHP 版本和扩展，并生成有关 <code>PHP 7</code> 到 <code>PHP 8</code> 转换的报告。</p>
+<p>检查报告：根据 <code>php-compat-info</code> 工具生成的报告，检查代码库中使用的 PHP 版本和扩展，并查找需要修改的部分。报告中将显示需要修改的代码行以及建议的修改方法。</p>
+<p>进行修改：根据报告中的建议，对代码进行相应的修改。修改后，可以再次使用 <code>php-compat-info</code> 工具进行检查，确保代码与 PHP 8 兼容。</p>
+<p>尽管 <code>php-compat-info</code> 工具可以帮助分析代码并提供有用的建议，但它并不能处理所有情况。因此，在进行代码转换时，建议仔细阅读 <code>php-src/UPGRADING</code> 文件和 PHP 官方文档，以确保代码的兼容性和正确性。此外，建议进行逐步转换，先进行部分功能的测试和修改，而不是一次性修改整个代码库。这样可以更好地控制风险，避免潜在的问题。</p>
+<h1 id="PHP8对函数参数列表的修改"><a href="#PHP8对函数参数列表的修改" class="headerlink" title="PHP8对函数参数列表的修改"></a><code>PHP8</code>对函数参数列表的修改</h1><p>PHP 8 对一些函数的参数列表进行了修改，以下是一些常见的函数和它们在 PHP 8 中的参数列表变化：</p>
+<ul>
+<li><code>implode()</code> 函数的参数顺序变化，将 glue 参数放在第一位，将 pieces 参数放在第二位。PHP 7 参数列表：implode($glue, $pieces) PHP 8 参数列表：implode($pieces, $glue &#x3D; ‘’)</li>
+<li><code>array_key_first()</code> 和 <code>array_key_last()</code> 函数需要传入一个数组参数。PHP 7 参数列表：array_key_first($array)、array_key_last($array) PHP 8参数列表：array_key_first(array $array)、array_key_last(array $array)</li>
+<li><code>str_starts_with()</code> 和 <code>str_ends_with()</code> 函数需要传入一个字符串参数。PHP 7 参数列表：str_starts_with($haystack, $needle)、str_ends_with($haystack, $needle) PHP 8 参数列表：str_starts_with(string $haystack, string $needle)、str_ends_with(string $haystack, string $needle)</li>
+<li>(<code>mb_strimwidth()</code> 函数将 start 参数改名为 startpos。PHP 7 参数列表：mb_strimwidth($str, $start, $width, $trimmarker &#x3D; ‘’, $encoding &#x3D; mb_internal_encoding()). PHP 8 参数列表：mb_strimwidth(string $str, int $startpos, int $width, string $trimmarker &#x3D; ‘’, string $encoding &#x3D; mb_internal_encoding())</li>
+</ul>
+<p>以上仅列举了一些常见的函数，还有其他函数的参数列表也可能发生变化。在进行 PHP 7 到 PHP 8 的代码升级时，需要仔细查阅官方文档和 php-src&#x2F;UPGRADING 文件，以确保代码的正确性和兼容性。</p>
+<h1 id="严格模式"><a href="#严格模式" class="headerlink" title="严格模式"></a>严格模式</h1><p><code>PHP 8</code> 引入了声明严格模式（<code>strict mode</code>），它是一种更加严格的类型检查模式，可以让开发者在开发过程中更加安全、可靠地编写 PHP 代码。</p>
+<p>在声明严格模式下，PHP 将会对类型和变量使用更加严格的检查，包括以下几个方面：</p>
+<p>类型声明在声明严格模式下，函数和方法的参数类型必须与声明的类型相匹配。如果类型不匹配，PHP 会抛出一个致命错误。</p>
+<p>示例：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">declare(strict_types=<span class="number">1</span>);</span><br><span class="line"> </span><br><span class="line">function <span class="title function_">sum</span><span class="params">(<span class="type">int</span> $a, <span class="type">int</span> $b)</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> $a + $b;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">echo <span class="title function_">sum</span><span class="params">(<span class="number">1</span>, <span class="number">2</span>)</span>; <span class="comment">// 输出 3</span></span><br><span class="line">echo <span class="title function_">sum</span><span class="params">(<span class="number">1.5</span>, <span class="number">2</span>)</span>; <span class="comment">// 报错：Uncaught TypeError</span></span><br></pre></td></tr></table></figure>
+
+<p>返回类型声明在声明严格模式下，函数和方法的返回值类型必须与声明的类型相匹配。如果类型不匹配，PHP 会抛出一个致命错误。</p>
+<p>示例：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">declare(strict_types=<span class="number">1</span>);</span><br><span class="line"> </span><br><span class="line">function <span class="title function_">divide</span><span class="params">(<span class="type">int</span> $a, <span class="type">int</span> $b)</span>: <span class="type">float</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> $a / $b;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">echo <span class="title function_">divide</span><span class="params">(<span class="number">6</span>, <span class="number">2</span>)</span>; <span class="comment">// 输出 3.0</span></span><br><span class="line">echo <span class="title function_">divide</span><span class="params">(<span class="number">6</span>, <span class="number">0</span>)</span>; <span class="comment">// 报错：Uncaught TypeError</span></span><br></pre></td></tr></table></figure>
+
+<p>类型推导在声明严格模式下，PHP 会自动推导一些变量的类型。如果推导出来的类型与声明的类型不匹配，PHP 会抛出一个致命错误。</p>
+<p>示例：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">declare(strict_types=<span class="number">1</span>);</span><br><span class="line"> </span><br><span class="line">function <span class="title function_">multiply</span><span class="params">(<span class="type">int</span> $a, <span class="type">int</span> $b)</span> &#123;</span><br><span class="line">    $result = $a * $b;</span><br><span class="line">    <span class="keyword">return</span> $result;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">echo <span class="title function_">multiply</span><span class="params">(<span class="number">2</span>, <span class="number">3</span>)</span>; <span class="comment">// 输出 6</span></span><br><span class="line">echo <span class="title function_">multiply</span><span class="params">(<span class="string">&quot;2&quot;</span>, <span class="number">3</span>)</span>; <span class="comment">// 报错：Uncaught TypeError</span></span><br></pre></td></tr></table></figure>
+
+<p>需要注意的是，声明严格模式需要在文件的开头通过 <code>declare(strict_types=1)</code> 声明启用。如果未启用声明严格模式，则 PHP 会采用弱类型检查模式，允许一些类型的自动转换。</p>
+<h1 id="命名参数"><a href="#命名参数" class="headerlink" title="命名参数"></a>命名参数</h1><p><code>PHP 8</code> 引入了命名参数（<code>named parameters</code>）功能，它可以让我们通过参数名来传递函数和方法的参数，而不必按照原始函数定义的参数顺序传递参数。</p>
+<p>在 PHP 8 中，我们可以通过在函数或方法的调用时使用 参数名 &#x3D;&gt; 值 的方式来传递参数，而不必按照原始函数定义的参数顺序传递参数。这种传递参数的方式称为命名参数。</p>
+<p>命名参数的优点包括：</p>
+<p>更好的可读性：命名参数可以提高函数或方法调用的可读性，因为参数名称可以清晰地表明参数的作用。</p>
+<p>更高的灵活性：通过命名参数，我们可以只传递需要的参数，而不必传递所有参数，这样可以让函数或方法更加灵活。</p>
+<p>下面是一个简单的例子，展示了如何使用命名参数：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">function <span class="title function_">createPerson</span><span class="params">(<span class="built_in">string</span> $name, <span class="type">int</span> $age, <span class="built_in">string</span> $gender)</span> &#123;</span><br><span class="line">    <span class="comment">// 创建一个人员对象</span></span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line"><span class="comment">// 使用命名参数调用函数</span></span><br><span class="line">createPerson(name: <span class="string">&quot;Tom&quot;</span>, age: <span class="number">18</span>, gender: <span class="string">&quot;male&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+<p>在上面的例子中，我们通过 参数名 &#x3D;&gt; 值 的方式来传递函数的参数。这样可以让代码更加清晰易懂，特别是在函数参数较多时。命名参数必须在普通参数之后传递，且不能重复声明同一个参数。此外，在使用命名参数时，我们不必按照原始函数定义的参数顺序传递参数，但是必须使用参数名称来传递参数。</p>
+<h1 id="函数调用"><a href="#函数调用" class="headerlink" title="函数调用"></a>函数调用</h1><p><code>PHP 8</code> 引入了一些新的函数调用语法，包括可选链式调用、null 合并运算符的链式调用、match 表达式等。</p>
+<h1 id="可选链式调用："><a href="#可选链式调用：" class="headerlink" title="可选链式调用："></a>可选链式调用：</h1><p>可选链式调用是一种在调用对象方法或访问对象属性时，如果对象为 null 则不抛出异常而是返回 null 的语法糖。在 <code>PHP 8</code> 中，我们可以使用 <code>?-&gt;</code> 运算符来进行可选链式调用，示例如下：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 在对象方法调用中使用可选链式调用</span></span><br><span class="line">$result = $object?-&gt;getValue();</span><br><span class="line"> </span><br><span class="line"><span class="comment">// 在对象属性访问中使用可选链式调用</span></span><br><span class="line">$value = $object?-&gt;property;</span><br></pre></td></tr></table></figure>
+
+<p><code>null</code> 合并运算符的链式调用：</p>
+<p>null 合并运算符（<code>??</code>）的链式调用可以让我们在多个变量中查找非空值并返回第一个非空值。在 <code>PHP 8</code> 中，我们可以使用 <code>??=</code> 运算符来进行 <code>null</code> 合并运算符的链式调用，示例如下：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 在 null 合并运算符中使用链式调用</span></span><br><span class="line">$result = $object-&gt;getValue() ?? $object-&gt;getValue2() ?? $<span class="keyword">default</span>;</span><br></pre></td></tr></table></figure>
+
+<h1 id="match-表达式："><a href="#match-表达式：" class="headerlink" title="match 表达式："></a><code>match</code> 表达式：</h1><p><code>match</code> 表达式是一种新的语法糖，用于替代 <code>switch</code> 语句。在 <code>PHP 8</code> 中，<code>match</code> 表达式可以更加简洁地实现类似的功能，示例如下：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 使用 match 表达式代替 switch 语句</span></span><br><span class="line">$value = <span class="number">5</span>;</span><br><span class="line">$result = match ($value) &#123;</span><br><span class="line">    <span class="number">1</span> =&gt; <span class="string">&#x27;one&#x27;</span>,</span><br><span class="line">    <span class="number">2</span> =&gt; <span class="string">&#x27;two&#x27;</span>,</span><br><span class="line">    <span class="number">3</span>, <span class="number">4</span> =&gt; <span class="string">&#x27;three or four&#x27;</span>,</span><br><span class="line">    <span class="keyword">default</span> =&gt; <span class="string">&#x27;other&#x27;</span>,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>在上面的示例中，我们使用 <code>match</code> 表达式根据变量 <code>$value</code> 的值来匹配不同的条件，并返回对应的结果。在 <code>match</code> 表达式中，我们可以使用逗号将多个条件合并在一起，用于匹配相同的结果。此外，<code>match</code> 表达式中必须有一个 <code>default</code> 分支来处理无法匹配的情况。</p>
+<h1 id="PHP8移除的过时特性"><a href="#PHP8移除的过时特性" class="headerlink" title="PHP8移除的过时特性"></a>PHP8移除的过时特性</h1><p><code>PHP</code> 在不同的版本中移除了很多过时的特性，以下是一些常见的被移除的特性：</p>
+<ul>
+<li>不再支持 <code>ASP</code> 风格的标记，即将 <code>&lt;?</code> 和 <code>?&gt;</code> 用于标记 PHP 代码的方式。这种标记在 PHP 7.4 中被移除。</li>
+<li>不再支持未赋值的函数调用，即对一个未定义的函数进行调用，这在 PHP 7.2 中被移除。</li>
+<li>不再支持传递可变数量的参数给引用参数，这在 PHP 7.3 中被移除。</li>
+<li>不再支持传递未声明的类给 <code>instanceof</code> 运算符，这在 PHP 8.0 中被移除。</li>
+<li>不再支持使用被废弃的错误控制运算符 <code>@</code>，这在 PHP 8.0 中被移除。</li>
+<li>不再支持使用被废弃的 <code>each()</code> 函数，这在 PHP 7.2 中被移除。</li>
+<li>不再支持使用被废弃的 <code>create_function()</code> 函数，这在 PHP 7.2 中被移除。</li>
+<li>不再支持使用被废弃的 <code>mbstring</code> 和 <code>iconv</code> 扩展中的一些函数，例如 <code>mb_ereg_replace()</code> 和 <code>iconv_set_encoding()</code> 等。</li>
+</ul>
+<p>在进行 <code>PHP</code> 版本升级时，需要仔细查阅官方文档和 <code>php-src/UPGRADING</code> 文件，以确保代码的正确性和兼容性。</p>
+<h1 id="str-contains-和-str-starts-with-函数"><a href="#str-contains-和-str-starts-with-函数" class="headerlink" title="str_contains() 和 str_starts_with() 函数"></a><code>str_contains()</code> 和 <code>str_starts_with()</code> 函数</h1><p><code>PHP 8</code> 新增了两个字符串函数 <code>str_contains()</code> 和 <code>str_starts_with()</code>，用于判断一个字符串是否包含另一个字符串或者以另一个字符串开头。如果要适配这两个函数，可以按照以下方式使用：</p>
+<p><code>str_contains()</code> 函数该函数用于判断一个字符串是否包含另一个字符串，如果包含则返回 <code>true</code>，否则返回 <code>false</code>。它的参数列表如下：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="type">bool</span> <span class="title function_">str_contains</span><span class="params">(<span class="built_in">string</span> $haystack, <span class="built_in">string</span> $needle)</span></span><br></pre></td></tr></table></figure>
+
+<p>其中，<code>$haystack</code> 表示要搜索的字符串，<code>$needle</code> 表示要查找的子字符串。</p>
+<p>示例：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">$<span class="built_in">string</span> = <span class="string">&quot;hello world&quot;</span>;</span><br><span class="line"><span class="keyword">if</span> (str_contains($<span class="built_in">string</span>, <span class="string">&quot;world&quot;</span>)) &#123;</span><br><span class="line">    echo <span class="string">&quot;包含&quot;</span>;</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    echo <span class="string">&quot;不包含&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>输出：</p>
+<p>包含<br><code>str_starts_with()</code> 函数该函数用于判断一个字符串是否以另一个字符串开头，如果是则返回 <code>true</code>，否则返回 <code>false</code>。它的参数列表如下：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="type">bool</span> <span class="title function_">str_starts_with</span><span class="params">(<span class="built_in">string</span> $haystack, <span class="built_in">string</span> $needle)</span></span><br></pre></td></tr></table></figure>
+
+<p>其中，<code>$haystack</code> 表示要搜索的字符串，<code>$needle</code> 表示要查找的前缀字符串。</p>
+<p>示例：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">$<span class="built_in">string</span> = <span class="string">&quot;hello world&quot;</span>;</span><br><span class="line"><span class="keyword">if</span> (str_starts_with($<span class="built_in">string</span>, <span class="string">&quot;hello&quot;</span>)) &#123;</span><br><span class="line">    echo <span class="string">&quot;以 hello 开头&quot;</span>;</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    echo <span class="string">&quot;不以 hello 开头&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>输出：</p>
+<p>以 <code>hello</code> 开头<br>这两个函数仅在 <code>PHP 8</code> 中才可用，如果在 <code>PHP 7</code> 或更早的版本中使用，会导致语法错误。如果要在旧版本的 PHP 中使用类似的功能，可以使用其他函数或者手动实现。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/590.html">https://leon-book.github.io/blog/index.php/archives/590.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/php/">php</a></div><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/592.html" title="PHP 事务中锁等待超时 读数据异常问题 for update"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">PHP 事务中锁等待超时 读数据异常问题 for update</div></div><div class="info-2"><div class="info-item-1">  在PHP中，默认情况下，当一个事务因为锁等待超时而失败时，MySQL扩展不会抛出异常或错误，而是简单地返回一个空的结果集。这对于应用程序来说可能并不方便，因为无法区分是数据本身为空，还是因为锁等待超时导致读不到数据。 网上给的结局方案 都不是很靠谱 可能是场景不同吧.延长锁等待时间,治标不治本 innodb_lock_wait_timeout. 我的遇到的场景是允许抛错异常中断操作的. 并发场景下 我们需要锁定一条记录 for update 排他锁. 如果锁的久了其他请求会等待锁解开.默认锁等待50秒, 超时后PHP 并不会抛出异常. 找了很多方法 , 根本捕获不了 , 修改 innodb_rollback_on_timeout=ON也没有什么卵用. 最后自己的解决方案是: 通过记录响应时长 超过50秒则在代码中抛错. </div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/589.html" title="WebSocket 协议部分详解"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">WebSocket 协议部分详解</div></div><div class="info-2"><div class="info-item-1">  WebSocket 是一种支持双向通信的网络协议。 双向通信：客户端（比如浏览器）可以向服务端发送消息，服务端也可以主动向客户端发送消息。这样就实现了客户端和服务端的双向通信，那么上面所说的消息推送就比较容易实现了。 原先的 HTTP1.0/1.1 只能是客户端向服务端发送消息。 协议特点：  建立在 TCP 协议之上。 WebSocket 协议是从 HTTP 协议升级而来。 与 HTTP 协议良好兼容新。默认端口是 80 和 443，握手阶段采用 HTTP 协议。 数据格式比较轻量，通信效率高，性能开销小。 可以发送文本，也可以发送二进制数据。 没有同源限制，客户端可以与任意服务端通信。 协议标识符是 ws（如果加密，则为 wss），服务器网址就是 URL。 可以支持扩展，定了扩展协议。 保持连接状态，websocket 是一种有状态的协议，通信就可以省略部分状态信息。 实时性更强，因为是双向通信协议，所以服务端可以随时向客户端发送数据。  WebSocket 数据交换数据帧格式在 WebSocket 协议中，客户端与服务端数据交换的最小信息单位叫做帧（frame），由 1...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/index.php/archives/39.html" title="布隆过滤器：高效的数据查找算法及其在 PHP 中的实现"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2015-11-11</div><div class="info-item-2">布隆过滤器：高效的数据查找算法及其在 PHP 中的实现</div></div><div class="info-2"><div class="info-item-1">  在计算机科学领域，布隆过滤器（Bloom Filter）是一种概率型数据结构，用于快速判断一个元素是否属于一个集合。它以极低的存储空间和高效的查找速度而著名，适用于大规模数据的快速过滤和查询。在本篇博客中，我们将介绍布隆过滤器的原理，并讨论如何在 PHP 中实现布隆过滤器。 1. 布隆过滤器原理布隆过滤器基于哈希函数和位数组实现。它包含一个位数组（通常由比特位组成）和多个哈希函数。当一个元素被加入到布隆过滤器中时，通过多个哈希函数对元素进行哈希运算，并将对应的位数组位置置为1。当判断一个元素是否存在时，同样使用多个哈希函数对该元素进行哈希运算，并检查对应的位数组位置是否为1。 2. PHP 实现布隆过滤器在 PHP 中，可以使用扩展库 php-bloom-filter 来实现布隆过滤器。下面是一个简单的示例： 首先，安装 php-bloom-filter 扩展库。可以使用 Composer 进行安装： composer require ssc/php-bloom-filter  然后，使用以下代码创建一个布隆过滤器并添加元素： use SSC\BloomFilter\Bloo...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/419.html" title="分割PHP配置文件 php.ini"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2019-10-21</div><div class="info-item-2">分割PHP配置文件 php.ini</div></div><div class="info-2"><div class="info-item-1">  分割PHP配置文件 的方法 编译php 时 增加如下参数 ./configure  --with-config-file-scan-dir=PATH --wi...  这个是指定附加的ini配置文件的目录位置，此目录下的ini文件会被追加到php.ini配置中。 我们可以在 PATH 目录下 创建分割配置文件 $ cat redis.ini    extension=/usr/local/php7/lib/php/extensions/no-debug-non-zts-20180731/redis.so </div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/60.html" title="PHP设计模式：迭代器模式"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2015-12-29</div><div class="info-item-2">PHP设计模式：迭代器模式</div></div><div class="info-2"><div class="info-item-1">  概述迭代器模式是一种行为型设计模式，它提供一种遍历聚合对象中各个元素的方法，而无需暴露聚合对象的内部表示。通过使用迭代器模式，可以在不暴露聚合对象内部结构的情况下，让客户端代码能够逐个访问聚合对象中的元素。 适用场景迭代器模式适用于以下情况：  当你需要遍历一个聚合对象的元素，但又不希望暴露聚合对象的内部结构给客户端代码时。 当你希望提供多种遍历方式，而不仅限于顺序遍历时。 当你希望能够让聚合对象的表示和遍历算法独立变化时。  结构迭代器模式由以下组件组成：  迭代器接口（Iterator）：迭代器接口定义了遍历聚合对象元素的方法。 具体迭代器（ConcreteIterator）：具体迭代器实现了迭代器接口，提供对聚合对象的顺序遍历。 聚合对象接口（Aggregate）：聚合对象接口定义了创建具体迭代器对象的方法。 具体聚合对象（ConcreteAggregate）：具体聚合对象实现了聚合对象接口，创建相应的具体迭代器对象。  示例&lt;?php// 迭代器接口interface Iterator&#123;    public function hasNext();   ...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/254.html" title="PHP 中 &#96;default_socket_timeout&#96;"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2017-12-13</div><div class="info-item-2">PHP 中 &#96;default_socket_timeout&#96;</div></div><div class="info-2"><div class="info-item-1">  default_socket_timeout 是 PHP 中的一个配置选项，用于设置 socket 连接的默认超时时间（以秒为单位）。在进行网络请求（如通过 fsockopen、stream_socket_client 或其他网络函数）时，超时时间决定了在等待响应时的最大时间限制。 1. 配置方法default_socket_timeout 可以在 php.ini 文件中进行配置，也可以在运行时通过 ini_set 函数进行设置。 1.1 在 php.ini 中设置打开您的 php.ini 文件，找到以下行并修改其值： ; Default timeout for socket based streams (seconds)default_socket_timeout = 60  将 60 修改为您希望的超时时间（单位为秒）。 1.2 在代码中设置如果您希望在运行时动态修改超时时间，可以使用 ini_set 函数： ini_set(&#x27;default_socket_timeout&#x27;, 30); // 设置为 30 秒  2. 如何使用当您进行网络请求时，如果服...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/424.html" title="PHP 抓取 交易对 日线数据生成csv脚本"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2019-10-28</div><div class="info-item-2">PHP 抓取 交易对 日线数据生成csv脚本</div></div><div class="info-2"><div class="info-item-1">  抓取 ht_usdt 交易对日线数据脚本&lt;?php$context = stream_context_create(array(        &quot;http&quot; =&gt; [            &quot;timeout&quot; =&gt; 3        ],    ));$data = file_get_contents(&#x27;https://apiv2.bitz.com/Market/kline?symbol=ht_usdt&amp;resolution=1day&amp;size=300&#x27;, false, $context);echo &quot;字节&quot;, strlen($data),PHP_EOL;if (!$data) &#123;    echo &#x27;失败&#x27;,PHP_EOL;    exit;&#125;$dataArr = json_decode($data, true)[&#x27;data&#x27;][&#x27;bars&#x27;] ?? [];$newDataArr = ...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/74.html" title="PHP 判断二进制文件的格式"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2016-03-07</div><div class="info-item-2">PHP 判断二进制文件的格式</div></div><div class="info-2"><div class="info-item-1">  最简单的方法就是判断文件后缀名,但是问题是如果修改了文件后缀名呢?那么现在从外部文件名的后缀无法判断文件的格式,那么就从内部查找;不同格式的文件结构 中都会有规定的标识,也是一种文件结构协议!  每个二进制文件的头两个字节作为文件标识; 每个二进制文件中都存在不同的标识符(具体未统计);  //从文件内部判断类型 取每个文件的前两个字节$filename = &quot;./1.png&quot;;$file = fopen($filename, &quot;rb&quot;);$bin = fread($file, 2); //只读2字节fclose($file);// unpack() 函数从二进制字符串对数据进行解包。$strInfo = @unpack(&quot;C2&quot;, $bin);$typeCode = &quot;$strInfo[1]&quot;.&quot;$strInfo[2]&quot;;$fileType = &#x27;&#x27;;switch ($typeCode)&#123;    case 7790:        $fileTy...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#php-src-UPGRADING-%E5%92%8C-php-compat-info"><span class="toc-number">1.</span> <span class="toc-text">php-src&#x2F;UPGRADING 和 php-compat-info</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#PHP8%E5%AF%B9%E5%87%BD%E6%95%B0%E5%8F%82%E6%95%B0%E5%88%97%E8%A1%A8%E7%9A%84%E4%BF%AE%E6%94%B9"><span class="toc-number">2.</span> <span class="toc-text">PHP8对函数参数列表的修改</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%B8%A5%E6%A0%BC%E6%A8%A1%E5%BC%8F"><span class="toc-number">3.</span> <span class="toc-text">严格模式</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%91%BD%E5%90%8D%E5%8F%82%E6%95%B0"><span class="toc-number">4.</span> <span class="toc-text">命名参数</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8"><span class="toc-number">5.</span> <span class="toc-text">函数调用</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%8F%AF%E9%80%89%E9%93%BE%E5%BC%8F%E8%B0%83%E7%94%A8%EF%BC%9A"><span class="toc-number">6.</span> <span class="toc-text">可选链式调用：</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#match-%E8%A1%A8%E8%BE%BE%E5%BC%8F%EF%BC%9A"><span class="toc-number">7.</span> <span class="toc-text">match 表达式：</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#PHP8%E7%A7%BB%E9%99%A4%E7%9A%84%E8%BF%87%E6%97%B6%E7%89%B9%E6%80%A7"><span class="toc-number">8.</span> <span class="toc-text">PHP8移除的过时特性</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#str-contains-%E5%92%8C-str-starts-with-%E5%87%BD%E6%95%B0"><span class="toc-number">9.</span> <span class="toc-text">str_contains() 和 str_starts_with() 函数</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

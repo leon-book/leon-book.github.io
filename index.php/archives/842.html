@@ -1,0 +1,713 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>从 MySQL + TiDB 迁移至 PostgreSQL + Apache Doris —— 我们为什么做这个决定 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="背景我们的系统长期以来采用 MySQL（InnoDB） 作为 OLTP 主库，TiDB 作为分布式扩展层，整体承载了核心业务的读写和部分分析型查询。 然而，近期的外部变化让我们不得不重新审视这套技术选型：  云运营商开始停止维护 MySQL 8.4 以下版本，意味着旧版本将失去安全补丁和官方支持； MySQL 8.4 引入了大量不向前兼容的变更，升级成本极高，部分语法和行为与旧版本存在显著差异">
+<meta property="og:type" content="article">
+<meta property="og:title" content="从 MySQL + TiDB 迁移至 PostgreSQL + Apache Doris —— 我们为什么做这个决定">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/842.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="背景我们的系统长期以来采用 MySQL（InnoDB） 作为 OLTP 主库，TiDB 作为分布式扩展层，整体承载了核心业务的读写和部分分析型查询。 然而，近期的外部变化让我们不得不重新审视这套技术选型：  云运营商开始停止维护 MySQL 8.4 以下版本，意味着旧版本将失去安全补丁和官方支持； MySQL 8.4 引入了大量不向前兼容的变更，升级成本极高，部分语法和行为与旧版本存在显著差异">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2026-04-07T13:53:46.000Z">
+<meta property="article:modified_time" content="2026-04-07T13:53:46.000Z">
+<meta property="article:author" content="leon">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "从 MySQL + TiDB 迁移至 PostgreSQL + Apache Doris —— 我们为什么做这个决定",
+  "url": "https://leon-book.github.io/blog/index.php/archives/842.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2026-04-07T13:53:46.000Z",
+  "dateModified": "2026-04-07T13:53:46.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/842.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '从 MySQL + TiDB 迁移至 PostgreSQL + Apache Doris —— 我们为什么做这个决定',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">从 MySQL + TiDB 迁移至 PostgreSQL + Apache Doris —— 我们为什么做这个决定</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">从 MySQL + TiDB 迁移至 PostgreSQL + Apache Doris —— 我们为什么做这个决定</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-04-07T13:53:46.000Z" title="发表于 2026-04-07 22:53:46">2026-04-07</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-04-07T13:53:46.000Z" title="更新于 2026-04-07 22:53:46">2026-04-07</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/842.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>我们的系统长期以来采用 <strong>MySQL（InnoDB）</strong> 作为 OLTP 主库，<strong>TiDB</strong> 作为分布式扩展层，整体承载了核心业务的读写和部分分析型查询。</p>
+<p>然而，近期的外部变化让我们不得不重新审视这套技术选型：</p>
+<ol>
+<li><strong>云运营商开始停止维护 MySQL 8.4 以下版本</strong>，意味着旧版本将失去安全补丁和官方支持；</li>
+<li><strong>MySQL 8.4 引入了大量不向前兼容的变更</strong>，升级成本极高，部分语法和行为与旧版本存在显著差异；</li>
+<li><strong>TiDB 宣布在 MySQL 8.4 协议适配上存在严重兼容性问题</strong>，无法跟进升级，继续使用意味着与主库协议脱节，维护风险急剧上升。</li>
+</ol>
+<p>在综合评估成本、风险与长期可维护性之后，我们决定：</p>
+<ul>
+<li><strong>OLTP 层</strong>：MySQL → <strong>PostgreSQL</strong></li>
+<li><strong>OLAP &#x2F; 分布式分析层</strong>：TiDB → <strong>Apache Doris</strong></li>
+</ul>
+<p>本文记录这次迁移的技术背景、差异对比与决策过程，供团队参考与后续回溯。</p>
+<hr>
+<h2 id="第一部分：MySQL-→-PostgreSQL"><a href="#第一部分：MySQL-→-PostgreSQL" class="headerlink" title="第一部分：MySQL → PostgreSQL"></a>第一部分：MySQL → PostgreSQL</h2><h3 id="为什么不选择继续升级-MySQL？"><a href="#为什么不选择继续升级-MySQL？" class="headerlink" title="为什么不选择继续升级 MySQL？"></a>为什么不选择继续升级 MySQL？</h3><table><thead><tr><th>问题</th><th>描述</th></tr></thead><tbody><tr><td>不向前兼容</td><td>8.4 废弃了大量旧语法（如 <code>GROUP BY</code> 隐式规则、部分函数行为），存量 SQL 改造量巨大</td></tr><tr><td>云厂商 EOL</td><td>主流云厂商已陆续宣布 8.4 以下版本的维护终止时间表，继续留在旧版本有安全风险</td></tr><tr><td>生态成本</td><td>升级 MySQL 大版本需同步升级 ORM、驱动、中间件，牵一发动全身</td></tr><tr><td>历史债务</td><td>借此次重构窗口，团队希望彻底解决长期以来对 MySQL 特性依赖过深的问题</td></tr></tbody></table>
+
+<p>与其在 MySQL 版本升级上消耗大量人力，不如借重构窗口切换到一个更现代、更标准、生态更开放的数据库。</p>
+<hr>
+<h3 id="MySQL（InnoDB）vs-PostgreSQL-核心差异"><a href="#MySQL（InnoDB）vs-PostgreSQL-核心差异" class="headerlink" title="MySQL（InnoDB）vs PostgreSQL 核心差异"></a>MySQL（InnoDB）vs PostgreSQL 核心差异</h3><h4 id="1-存储引擎架构"><a href="#1-存储引擎架构" class="headerlink" title="1. 存储引擎架构"></a>1. 存储引擎架构</h4><table><thead><tr><th> </th><th>MySQL</th><th>PostgreSQL</th></tr></thead><tbody><tr><td>引擎设计</td><td>插件式多引擎（InnoDB / MyISAM / Memory...）</td><td>单一内置引擎（Heap Storage），不可替换</td></tr><tr><td>聚簇索引</td><td>✅ 主键即聚簇索引，数据与索引共存</td><td>❌ 所有索引均为二级索引，通过 <code>ctid</code> 回表</td></tr><tr><td>死行清理</td><td>Undo Log 自动回收</td><td>需要 <code>VACUUM</code> 定期清理死行</td></tr></tbody></table>
+
+<h4 id="2-MVCC-实现差异"><a href="#2-MVCC-实现差异" class="headerlink" title="2. MVCC 实现差异"></a>2. MVCC 实现差异</h4><p>两者都实现了 MVCC（多版本并发控制），但实现路径不同：</p>
+<ul>
+<li><strong>MySQL InnoDB</strong>：旧版本数据存储在 <strong>Undo Log</strong> 中，主数据文件只保留最新版本，读取旧版本需回溯 Undo 链。</li>
+<li><strong>PostgreSQL</strong>：旧版本数据直接存储在<strong>数据页</strong>中，每行记录 <code>xmin / xmax</code> 事务号标记版本，无需 Undo Log，但需要 <code>VACUUM</code> 定期清除死行，防止表膨胀。</li>
+</ul>
+<h4 id="3-锁机制"><a href="#3-锁机制" class="headerlink" title="3. 锁机制"></a>3. 锁机制</h4><table><thead><tr><th>特性</th><th>MySQL InnoDB</th><th>PostgreSQL</th></tr></thead><tbody><tr><td>行级锁</td><td>✅</td><td>✅</td></tr><tr><td>表级锁粒度</td><td>读锁 / 写锁（2种）</td><td>8 种表级锁模式，粒度更细</td></tr><tr><td>间隙锁（Gap Lock）</td><td>✅（防止幻读）</td><td>❌ 不需要，MVCC 直接解决幻读</td></tr><tr><td>Advisory Lock（咨询锁）</td><td>❌</td><td>✅ 独有，适合分布式任务调度</td></tr><tr><td>死锁自动检测</td><td>✅</td><td>✅</td></tr></tbody></table>
+
+<blockquote>
+<p><strong>注意</strong>：PostgreSQL 没有间隙锁，因为其 MVCC 实现本身已经能在 Repeatable Read 级别防止幻读，无需依赖间隙锁。</p>
+</blockquote>
+<h4 id="4-索引体系"><a href="#4-索引体系" class="headerlink" title="4. 索引体系"></a>4. 索引体系</h4><table><thead><tr><th>索引类型</th><th>MySQL InnoDB</th><th>PostgreSQL</th></tr></thead><tbody><tr><td>B-Tree</td><td>✅ 默认</td><td>✅ 默认</td></tr><tr><td>Hash</td><td>⚠️ 支持但不推荐</td><td>✅</td></tr><tr><td>GIN（倒排索引）</td><td>❌</td><td>✅ 适合 JSON、数组、全文检索</td></tr><tr><td>GiST（空间索引）</td><td>❌</td><td>✅ 适合地理/几何类型</td></tr><tr><td>BRIN（块范围索引）</td><td>❌</td><td>✅ 适合超大时序表</td></tr><tr><td>部分索引（Partial Index）</td><td>❌</td><td>✅ 只索引满足条件的行</td></tr><tr><td>表达式索引</td><td>⚠️ 有限</td><td>✅ 完整支持</td></tr><tr><td>INCLUDE 覆盖列</td><td>❌</td><td>✅ PG 11+</td></tr><tr><td>不锁表建索引</td><td>✅ Online DDL</td><td>✅ <code>CREATE INDEX CONCURRENTLY</code></td></tr></tbody></table>
+
+<h4 id="5-SQL-标准兼容性"><a href="#5-SQL-标准兼容性" class="headerlink" title="5. SQL 标准兼容性"></a>5. SQL 标准兼容性</h4><p>PostgreSQL 对 SQL 标准的兼容程度显著高于 MySQL，迁移后我们获得了：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="comment">-- 窗口函数（MySQL 8.0 才支持，PG 很早就有）</span></span><br><span class="line"><span class="keyword">SELECT</span> user_id, amount,</span><br><span class="line">       <span class="built_in">SUM</span>(amount) <span class="keyword">OVER</span> (<span class="keyword">PARTITION</span> <span class="keyword">BY</span> user_id <span class="keyword">ORDER</span> <span class="keyword">BY</span> created_at) <span class="keyword">AS</span> running_total</span><br><span class="line"><span class="keyword">FROM</span> orders;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- CTE（公共表表达式）</span></span><br><span class="line"><span class="keyword">WITH</span> ranked <span class="keyword">AS</span> (</span><br><span class="line">  <span class="keyword">SELECT</span> <span class="operator">*</span>, <span class="built_in">ROW_NUMBER</span>() <span class="keyword">OVER</span> (<span class="keyword">PARTITION</span> <span class="keyword">BY</span> category <span class="keyword">ORDER</span> <span class="keyword">BY</span> score <span class="keyword">DESC</span>) <span class="keyword">AS</span> rn</span><br><span class="line">  <span class="keyword">FROM</span> products</span><br><span class="line">)</span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> ranked <span class="keyword">WHERE</span> rn <span class="operator">&lt;=</span> <span class="number">3</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- JSONB 原生支持（比 MySQL JSON 类型更强）</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> events <span class="keyword">WHERE</span> payload @<span class="operator">&gt;</span> <span class="string">&#x27;&#123;&quot;type&quot;: &quot;login&quot;&#125;&#x27;</span>;</span><br><span class="line"><span class="keyword">CREATE</span> INDEX idx_payload <span class="keyword">ON</span> events <span class="keyword">USING</span> GIN(payload);</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 范围类型</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> reservations</span><br><span class="line"><span class="keyword">WHERE</span> daterange(start_date, end_date) @<span class="operator">&gt;</span> <span class="string">&#x27;2026-04-07&#x27;</span>::<span class="type">date</span>;</span><br></pre></td></tr></table></figure>
+
+<h4 id="6-事务与一致性"><a href="#6-事务与一致性" class="headerlink" title="6. 事务与一致性"></a>6. 事务与一致性</h4><table><thead><tr><th>特性</th><th>MySQL InnoDB</th><th>PostgreSQL</th></tr></thead><tbody><tr><td>默认事务隔离级别</td><td>Repeatable Read</td><td>Read Committed</td></tr><tr><td>DDL 事务</td><td>❌ DDL 自动提交，无法回滚</td><td>✅ DDL 可包含在事务中并回滚</td></tr><tr><td>ACID</td><td>✅</td><td>✅</td></tr></tbody></table>
+
+<blockquote>
+<p>PostgreSQL 支持 <strong>DDL 事务</strong> 是一个非常重要的运维优势。执行 <code>ALTER TABLE</code> 失败时可以整体回滚，避免数据库处于中间状态。</p>
+</blockquote>
+<hr>
+<h3 id="迁移注意事项"><a href="#迁移注意事项" class="headerlink" title="迁移注意事项"></a>迁移注意事项</h3><p>迁移过程中需要重点关注以下差异：</p>
+<p><strong>语法层面</strong></p>
+<ul>
+<li>MySQL 的 <code>`反引号`</code> 标识符在 PG 中需改为 <code>&quot;双引号&quot;</code></li>
+<li><code>AUTO_INCREMENT</code> 改为 <code>SERIAL</code> 或 <code>GENERATED ALWAYS AS IDENTITY</code></li>
+<li><code>LIMIT x, y</code> 改为 <code>LIMIT y OFFSET x</code></li>
+<li><code>GROUP BY</code> 在 PG 中更严格，SELECT 的非聚合列必须出现在 GROUP BY 中</li>
+</ul>
+<p><strong>行为层面</strong></p>
+<ul>
+<li>PG 字符串比较<strong>大小写敏感</strong>，MySQL 默认不敏感</li>
+<li>PG 的 <code>boolean</code> 类型是真正的布尔，不是 <code>0/1</code> 整数</li>
+<li>时间类型处理更严格，需要明确时区</li>
+</ul>
+<p><strong>运维层面</strong></p>
+<ul>
+<li>需要制定 <code>VACUUM</code> 和 <code>ANALYZE</code> 的定期维护策略</li>
+<li>监控表膨胀（Table Bloat），必要时执行 <code>VACUUM FULL</code></li>
+</ul>
+<hr>
+<h2 id="第二部分：TiDB-→-Apache-Doris"><a href="#第二部分：TiDB-→-Apache-Doris" class="headerlink" title="第二部分：TiDB → Apache Doris"></a>第二部分：TiDB → Apache Doris</h2><h3 id="为什么放弃-TiDB？"><a href="#为什么放弃-TiDB？" class="headerlink" title="为什么放弃 TiDB？"></a>为什么放弃 TiDB？</h3><p>TiDB 是一款兼容 MySQL 协议的 HTAP 分布式数据库，在 MySQL 5.7 &#x2F; 8.0 时代为我们提供了良好的水平扩展能力。但随着 MySQL 8.4 的演进，问题开始浮现：</p>
+<table><thead><tr><th>问题</th><th>描述</th></tr></thead><tbody><tr><td>协议兼容性断层</td><td>TiDB 对 MySQL 8.4 协议的适配存在严重滞后，驱动层和语法层均有不兼容问题</td></tr><tr><td>OLAP 性能天花板</td><td>TiDB 的 HTAP 属性偏向 OLTP，复杂分析查询性能不及专业 OLAP 引擎</td></tr><tr><td>运维复杂度高</td><td>TiDB 集群组件多（TiDB / TiKV / PD / TiFlash），运维链路长，出现问题排查成本高</td></tr><tr><td>成本偏高</td><td>TiFlash（列存）需要独立节点，资源开销大</td></tr></tbody></table>
+
+<p>面对这些问题，我们选择将 OLAP 职责交给更专业的引擎——<strong>Apache Doris</strong>。</p>
+<hr>
+<h3 id="TiDB-vs-Apache-Doris-核心差异"><a href="#TiDB-vs-Apache-Doris-核心差异" class="headerlink" title="TiDB vs Apache Doris 核心差异"></a>TiDB vs Apache Doris 核心差异</h3><table><thead><tr><th>维度</th><th>TiDB</th><th>Apache Doris</th></tr></thead><tbody><tr><td>定位</td><td>HTAP（兼顾 OLTP + OLAP）</td><td>专注 OLAP（实时数仓）</td></tr><tr><td>兼容协议</td><td>MySQL 协议</td><td>MySQL 协议（高度兼容）</td></tr><tr><td>存储模型</td><td>行存（TiKV）+ 列存（TiFlash）</td><td>纯列存</td></tr><tr><td>查询引擎</td><td>TiDB SQL Layer + MPP</td><td>MPP 向量化执行引擎</td></tr><tr><td>实时写入</td><td>✅ 强一致事务写入</td><td>✅ 支持实时导入（微批）</td></tr><tr><td>复杂聚合性能</td><td>一般（依赖 TiFlash）</td><td>✅ 极强（原生列存 + 向量化）</td></tr><tr><td>集群架构</td><td>多组件（复杂）</td><td>FE + BE（相对简洁）</td></tr><tr><td>运维难度</td><td>高</td><td>中</td></tr><tr><td>MySQL 8.4 兼容</td><td>❌ 存在严重问题</td><td>✅ 独立演进，不依赖 MySQL 版本</td></tr></tbody></table>
+
+<hr>
+<h3 id="Apache-Doris-的核心优势"><a href="#Apache-Doris-的核心优势" class="headerlink" title="Apache Doris 的核心优势"></a>Apache Doris 的核心优势</h3><h4 id="1-向量化执行引擎"><a href="#1-向量化执行引擎" class="headerlink" title="1. 向量化执行引擎"></a>1. 向量化执行引擎</h4><p>Doris 采用全面向量化的执行引擎，利用 SIMD 指令集对列存数据进行批量计算，在 GROUP BY、JOIN、聚合类查询上性能远超行存数据库。</p>
+<h4 id="2-丰富的数据模型"><a href="#2-丰富的数据模型" class="headerlink" title="2. 丰富的数据模型"></a>2. 丰富的数据模型</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Duplicate Key Model   → 明细表，保留所有原始数据</span><br><span class="line">Aggregate Key Model   → 预聚合，适合指标汇总</span><br><span class="line">Unique Key Model      → 主键唯一，适合 CDC 场景（Update/Delete）</span><br></pre></td></tr></table></figure>
+
+<h4 id="3-实时数据接入"><a href="#3-实时数据接入" class="headerlink" title="3. 实时数据接入"></a>3. 实时数据接入</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Flink → Doris（通过 Doris Flink Connector）</span><br><span class="line">Kafka → Doris（Routine Load）</span><br><span class="line">MySQL Binlog → Doris（通过 Flink CDC）</span><br></pre></td></tr></table></figure>
+
+<h4 id="4-与-PostgreSQL-协同"><a href="#4-与-PostgreSQL-协同" class="headerlink" title="4. 与 PostgreSQL 协同"></a>4. 与 PostgreSQL 协同</h4><p>在新架构中，PostgreSQL 与 Doris 各司其职：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">业务写入 → PostgreSQL（OLTP）</span><br><span class="line">                ↓</span><br><span class="line">         Binlog / CDC 同步</span><br><span class="line">                ↓</span><br><span class="line">         Apache Doris（OLAP）</span><br><span class="line">                ↓</span><br><span class="line">         报表 / 数据分析 / BI 工具</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="新架构总览"><a href="#新架构总览" class="headerlink" title="新架构总览"></a>新架构总览</h2><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">┌─────────────────────────────────────────┐</span><br><span class="line">│              业务应用层                   │</span><br><span class="line">└────────────┬──────────────┬─────────────┘</span><br><span class="line">             │              │</span><br><span class="line">      OLTP写入/读取    分析型查询/报表</span><br><span class="line">             │              │</span><br><span class="line">    ┌────────▼──────┐  ┌────▼──────────┐</span><br><span class="line">    │  PostgreSQL   │  │ Apache Doris  │</span><br><span class="line">    │  (主库 OLTP)  │  │  (OLAP 数仓)  │</span><br><span class="line">    └───────────────┘  └───────────────┘</span><br><span class="line">             │              ▲</span><br><span class="line">             └──── CDC ─────┘</span><br><span class="line">              (Flink / Debezium)</span><br></pre></td></tr></table></figure>
+
+<p><strong>旧架构</strong>：MySQL (OLTP) + TiDB (分布式扩展 &#x2F; HTAP)<br><strong>新架构</strong>：PostgreSQL (OLTP) + Apache Doris (OLAP)</p>
+<p>职责更清晰，每层使用最适合的工具。</p>
+<hr>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>这次迁移的核心驱动力是<strong>外部环境的变化</strong>（云厂商 EOL、MySQL 8.4 不兼容），但结果是我们主动拥抱了更好的技术选型：</p>
+<table><thead><tr><th> </th><th>旧方案</th><th>新方案</th><th>收益</th></tr></thead><tbody><tr><td>OLTP</td><td>MySQL InnoDB</td><td>PostgreSQL</td><td>更强的 SQL 标准支持、更丰富的索引类型、DDL 事务、更活跃的开源社区</td></tr><tr><td>OLAP / 分布式</td><td>TiDB</td><td>Apache Doris</td><td>更专业的列存引擎、更高的分析性能、更低的运维复杂度、不依赖 MySQL 版本</td></tr></tbody></table>
+
+<p>技术债务的清偿往往需要一个契机</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/842.html">https://leon-book.github.io/blog/index.php/archives/842.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/843.html" title="使用 Kafka 替换定时任务的架构方案"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">使用 Kafka 替换定时任务的架构方案</div></div><div class="info-2"><div class="info-item-1">   标签：Kafka Golang 定时任务 事件驱动 架构设计Go Kafka 库：github.com/segmentio/kafka-go   为什么要替换定时任务？定时任务在小规模系统中运行良好，但随着业务增长，问题逐渐暴露： 问题描述时间耦合必须等到固定时间点才触发，实时性差重复执行多实例部署需要额外分布式锁，稍有不慎就重复执行全量扫描通常需要扫全表找待处理数据，数据量大时拖垮数据库失败难追踪没有自然的重试机制，失败了难以回溯扩展性差任务量增大时无法动态扩容消费能力   方案一：事件驱动替代状态轮询适用场景 订单支付后触发发货 用户注册后发送欢迎邮件 状态流转触发下游处理  流程对比❌ 旧方案（定时轮询）┌─────────────────────────────────────────────┐│  Cron Job（每 5 分钟）                        ││       ↓                                      ││  SELECT * FROM orders WHERE status=&#x27;pai...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/841.html" title="Go 微服务从零到生产：完整学习路径"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Go 微服务从零到生产：完整学习路径</div></div><div class="info-2"><div class="info-item-1">  全局视角第一阶段  Go 基础          → 能写业务逻辑第二阶段  单体服务          → 能跑一个完整的 HTTP 服务第三阶段  拆分微服务        → 多个服务互相通信第四阶段  服务治理          → 服务发现、配置中心、链路追踪第五阶段  容器化            → Docker 打包，跑在任何地方第六阶段  编排部署          → Kubernetes 管理成百上千个容器第七阶段  流量治理          → Istio 控制服务间流量   第一阶段：Go 基础目标：能用 Go 写业务逻辑，看懂别人的代码。 核心概念// 1. 零值可用的结构体var a phparray.Arraya.Set(&quot;name&quot;, &quot;Tom&quot;)      // 直接用，无需 New()// 2. 错误处理（Go 没有 try-catch）data, err := json.Marshal(obj)if err != nil &#123;    return fmt.Errorf(&quot;mar...</div></div></div></a></nav><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%83%8C%E6%99%AF"><span class="toc-number">1.</span> <span class="toc-text">背景</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E9%83%A8%E5%88%86%EF%BC%9AMySQL-%E2%86%92-PostgreSQL"><span class="toc-number">2.</span> <span class="toc-text">第一部分：MySQL → PostgreSQL</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E4%B8%8D%E9%80%89%E6%8B%A9%E7%BB%A7%E7%BB%AD%E5%8D%87%E7%BA%A7-MySQL%EF%BC%9F"><span class="toc-number">2.1.</span> <span class="toc-text">为什么不选择继续升级 MySQL？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#MySQL%EF%BC%88InnoDB%EF%BC%89vs-PostgreSQL-%E6%A0%B8%E5%BF%83%E5%B7%AE%E5%BC%82"><span class="toc-number">2.2.</span> <span class="toc-text">MySQL（InnoDB）vs PostgreSQL 核心差异</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-%E5%AD%98%E5%82%A8%E5%BC%95%E6%93%8E%E6%9E%B6%E6%9E%84"><span class="toc-number">2.2.1.</span> <span class="toc-text">1. 存储引擎架构</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-MVCC-%E5%AE%9E%E7%8E%B0%E5%B7%AE%E5%BC%82"><span class="toc-number">2.2.2.</span> <span class="toc-text">2. MVCC 实现差异</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-%E9%94%81%E6%9C%BA%E5%88%B6"><span class="toc-number">2.2.3.</span> <span class="toc-text">3. 锁机制</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-%E7%B4%A2%E5%BC%95%E4%BD%93%E7%B3%BB"><span class="toc-number">2.2.4.</span> <span class="toc-text">4. 索引体系</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#5-SQL-%E6%A0%87%E5%87%86%E5%85%BC%E5%AE%B9%E6%80%A7"><span class="toc-number">2.2.5.</span> <span class="toc-text">5. SQL 标准兼容性</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#6-%E4%BA%8B%E5%8A%A1%E4%B8%8E%E4%B8%80%E8%87%B4%E6%80%A7"><span class="toc-number">2.2.6.</span> <span class="toc-text">6. 事务与一致性</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%81%E7%A7%BB%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-number">2.3.</span> <span class="toc-text">迁移注意事项</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E9%83%A8%E5%88%86%EF%BC%9ATiDB-%E2%86%92-Apache-Doris"><span class="toc-number">3.</span> <span class="toc-text">第二部分：TiDB → Apache Doris</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E6%94%BE%E5%BC%83-TiDB%EF%BC%9F"><span class="toc-number">3.1.</span> <span class="toc-text">为什么放弃 TiDB？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#TiDB-vs-Apache-Doris-%E6%A0%B8%E5%BF%83%E5%B7%AE%E5%BC%82"><span class="toc-number">3.2.</span> <span class="toc-text">TiDB vs Apache Doris 核心差异</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Apache-Doris-%E7%9A%84%E6%A0%B8%E5%BF%83%E4%BC%98%E5%8A%BF"><span class="toc-number">3.3.</span> <span class="toc-text">Apache Doris 的核心优势</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-%E5%90%91%E9%87%8F%E5%8C%96%E6%89%A7%E8%A1%8C%E5%BC%95%E6%93%8E"><span class="toc-number">3.3.1.</span> <span class="toc-text">1. 向量化执行引擎</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-%E4%B8%B0%E5%AF%8C%E7%9A%84%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B"><span class="toc-number">3.3.2.</span> <span class="toc-text">2. 丰富的数据模型</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-%E5%AE%9E%E6%97%B6%E6%95%B0%E6%8D%AE%E6%8E%A5%E5%85%A5"><span class="toc-number">3.3.3.</span> <span class="toc-text">3. 实时数据接入</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-%E4%B8%8E-PostgreSQL-%E5%8D%8F%E5%90%8C"><span class="toc-number">3.3.4.</span> <span class="toc-text">4. 与 PostgreSQL 协同</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%B0%E6%9E%B6%E6%9E%84%E6%80%BB%E8%A7%88"><span class="toc-number">4.</span> <span class="toc-text">新架构总览</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">5.</span> <span class="toc-text">总结</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

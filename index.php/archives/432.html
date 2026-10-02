@@ -1,0 +1,632 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>[踩坑] Websocket 增量推送 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="最近开发新功能 有借助 webscocket 推送行情.发现一个问题, 增量推送 存在丢包现象;原因: ·webscocket·服务端 diff数据 只推一次 客户端一丢包 下次 diff数据 就失效了. 解决方案 : 同事推荐个方案 服务端发包传递序号 1-1024 循环使用.客户端拿包 需要判断如果序号不连贯 就全量拿包. 做游戏也是相同如果当前包序号3 拿到了5 证明丢了一个包 , 需要">
+<meta property="og:type" content="article">
+<meta property="og:title" content="[踩坑] Websocket 增量推送">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/432.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="最近开发新功能 有借助 webscocket 推送行情.发现一个问题, 增量推送 存在丢包现象;原因: ·webscocket·服务端 diff数据 只推一次 客户端一丢包 下次 diff数据 就失效了. 解决方案 : 同事推荐个方案 服务端发包传递序号 1-1024 循环使用.客户端拿包 需要判断如果序号不连贯 就全量拿包. 做游戏也是相同如果当前包序号3 拿到了5 证明丢了一个包 , 需要">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2019-11-13T04:56:00.000Z">
+<meta property="article:modified_time" content="2019-11-13T04:56:00.000Z">
+<meta property="article:author" content="leon">
+<meta property="article:tag" content="websocket">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[踩坑] Websocket 增量推送",
+  "url": "https://leon-book.github.io/blog/index.php/archives/432.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2019-11-13T04:56:00.000Z",
+  "dateModified": "2019-11-13T04:56:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/432.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '[踩坑] Websocket 增量推送',
+  isHighlightShrink: false,
+  isToc: false,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">[踩坑] Websocket 增量推送</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">[踩坑] Websocket 增量推送</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2019-11-13T04:56:00.000Z" title="发表于 2019-11-13 13:56:00">2019-11-13</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2019-11-13T04:56:00.000Z" title="更新于 2019-11-13 13:56:00">2019-11-13</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E8%B8%A9%E5%9D%91%E6%95%99%E8%AE%AD/">踩坑教训</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E5%8D%8F%E8%AE%AE/">协议</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/432.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<p>最近开发新功能 有借助 <code>webscocket</code> 推送行情.<br>发现一个问题, 增量推送 存在丢包现象;<br>原因:</p>
+<p>·webscocket·服务端 diff数据 只推一次 客户端一丢包 下次 <code>diff</code>数据 就失效了.</p>
+<p>解决方案 :</p>
+<p>同事推荐个方案 服务端发包传递序号 1-1024 循环使用.<br>客户端拿包 需要判断如果序号不连贯 就全量拿包.</p>
+<p>做游戏也是相同如果当前包序号3 拿到了5 证明丢了一个包 , 需要断开连接.<br>我们做平台的 可以好一点不需要针对不同用户创建 序号池, 自己有个自增编号就行了 数据是一致的.</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/432.html">https://leon-book.github.io/blog/index.php/archives/432.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/websocket/">websocket</a></div><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/433.html" title="Cannot assign requested address 踩坑及解决方案"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Cannot assign requested address 踩坑及解决方案</div></div><div class="info-2"><div class="info-item-1">  解决 “Cannot assign requested address” 错误的踩坑及解决方案在进行网络编程或者使用网络服务时，有时会遇到 “Cannot assign requested address” 错误。这个错误通常表示操作系统无法分配请求的地址。本文将探讨可能导致这个错误的一些原因，并提供解决方案。 1. 错误原因分析出现 “Cannot assign requested address” 错误的原因可能包括但不限于：  IP 地址无效：请求的 IP 地址可能无效或者不可用。 端口已被占用：请求的端口可能已经被其他应用程序占用。 网络配置问题：可能存在网络配置问题，导致操作系统无法正确分配地址。  2. 解决方案针对 “Cannot assign requested address” 错误，可以尝试以下解决方案：  检查 IP 地址和端口：确保请求的 IP 地址和端口是有效的，并且没有被其他应用程序占用。 检查网络配置：检查操作系统的网络配置，确保网络正常连接并且没有异常。 检查防火墙和代理：有时防火墙或者代理服务器的配置可能会导致地址分配问题，检查并正确配置防火...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/431.html" title="PHP 还原科学计数法"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">PHP 还原科学计数法</div></div><div class="info-2"><div class="info-item-1">  /** * 还原科学计数法 */public function scToNum($num)&#123;    $num = floatval($num);    $parts = explode(&#x27;E&#x27;, $num);    if (count($parts) != 2) &#123;        return $num;    &#125;    $exp = abs(end($parts)) + 3;    $decimal = number_format($num, $exp);    $decimal = rtrim($decimal, &#x27;0&#x27;);    $toNumber = rtrim($decimal, &#x27;.&#x27;);    return implode(&#x27;&#x27;, explode(&#x27;,&#x27;, $toNumber));&#125; </div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/index.php/archives/583.html" title="Webscoket 客户端连接 2分钟断开 1006 错误码"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2023-05-24</div><div class="info-item-2">Webscoket 客户端连接 2分钟断开 1006 错误码</div></div><div class="info-2"><div class="info-item-1">  问题描述 :观察客户端 每2分钟 websocket 断开连接, 提示 1006 CLOSE_ABNORMAL. 排查问题 :服务端观察日志能发现的确与客户端同一时间断开连接. 但服务端onClose事件并不是服务端主动要求断开的.客户端也有6秒 定时发ping包, 双方心跳检测都不是超时问题.知道运维同学 帮忙查了下, 使用cloudflare CDN的新域名观察后并没有这个问题.那就破案了,现有的域名CND用的都是Google Cloud , 运维同学咨询了谷歌售后服务. 回答的都绝了 聊天内容如下 : &gt; $1 : 关于负载均衡的问题，,用户 -&gt; 负载均衡 -&gt; nginx，https的服务没有问题，websocket的服务2分钟后就断了&gt; $1 : timeout设置为999999999&gt; $2 : 这是有哪些地方需要单独设置吗  &gt; $1 : 对&gt; $2 : 那会影响https的服务吗&gt; $1 : 对&gt; $2 : 把websocket单独令出来  上面对话简单来说就是 我们webscoket服务用的谷歌云的负载...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/6.html" title="TCP、UDP、HTTP和WebSocket 之间的区别"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2015-07-11</div><div class="info-item-2">TCP、UDP、HTTP和WebSocket 之间的区别</div></div><div class="info-2"><div class="info-item-1">  TCP（Transmission Control Protocol）： TCP是一种可靠的、面向连接的传输层协议。 TCP提供数据传输的可靠性保证，通过序列号、确认应答、重传等机制来确保数据的可靠性和顺序性。 TCP适用于对数据传输可靠性要求较高的场景，如文件传输、电子邮件等。  UDP（User Datagram Protocol）： UDP是一种不可靠的、面向无连接的传输层协议。 UDP不提供数据传输的可靠性保证，数据包可能会丢失、乱序或重复。 UDP适用于对实时性要求较高、数据传输速度更重要的场景，如音视频传输、实时游戏等。  HTTP（Hypertext Transfer Protocol）： HTTP是基于TCP协议的应用层协议，用于在客户端和服务器之间传输超文本数据。 HTTP是一种无状态的请求-响应协议，每个请求和响应之间是相互独立的。 HTTP适用于传输网页、图片、文本等静态资源，以及进行简单的数据交互。  WebSocket： WebSocket是一种全双工通信协议，建立在HTTP协议之上。 WebSocket允许客户端和服务器之间进行双向实时通信，相比于H...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/505.html" title="WebSocket是什么"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2021-09-14</div><div class="info-item-2">WebSocket是什么</div></div><div class="info-2"><div class="info-item-1">  WebSocket：实时双向通信的协议WebSocket是一种在Web应用程序中实现实时双向通信的协议。它提供了一种持久化的连接，允许客户端和服务器之间进行全双工通信，从而实现实时数据交换。本文将介绍WebSocket的基本原理、优势以及在Web开发中的应用。 1. WebSocket的基本原理WebSocket协议建立在传输层协议（如TCP）之上，通过在客户端和服务器之间建立一条持久化的连接，实现双向通信。与传统的HTTP请求-响应模型不同，WebSocket允许服务器主动向客户端发送数据，而不需要客户端发起请求。 在建立WebSocket连接时，客户端和服务器通过进行一次特殊的握手过程来协商连接的建立。一旦连接建立成功，双方就可以通过发送消息来进行实时的双向通信。这种持久化的连接减少了通信的延迟，并且可以更高效地传输实时数据。 2. WebSocket的优势相比传统的HTTP请求-响应模型，WebSocket具有以下优势：  实时性和效率：WebSocket提供了实时的双向通信，服务器可以主动向客户端推送数据，避免了频繁的轮询或长轮询的开销，提供更高效的数据传输和实时性。...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/460.html" title="Swoole WebSoctet 使用 zlib 压缩之 PHP 与 pako.js"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2020-04-03</div><div class="info-item-2">Swoole WebSoctet 使用 zlib 压缩之 PHP 与 pako.js</div></div><div class="info-2"><div class="info-item-1">  一些理论知识先说一下deflate算法吧，deflate是zip压缩文件的默认算法， 其实deflate现在不光用在zip文件中, 在7z, xz等其他的压缩文件中都用， 实际上deflate只是一种压缩数据流的算法，任何需要流式压缩的地方都可以用。 也就是说 zlib 格式, gzip 格式，是文件格式，deflate 是这些文件格式使用的压缩算法。 传输方式 deflate 压缩后是二进制，通常有两种传输方式：  二进制 Base64编码  二进制PHP // 压缩，注意：其中 ZLIB_ENCODING_DEFLATE 参数是不能少的$data = gzdeflate(json_encode($array, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 6, ZLIB_ENCODING_DEFLATE);// 使用 swoole 以二进制的方式发送$webSocket-&gt;push($fd, $data, WEBSOCKET_OPCODE_BINARY);  JavaScript // 消息事件ws.onmess...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/589.html" title="WebSocket 协议部分详解"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2023-07-14</div><div class="info-item-2">WebSocket 协议部分详解</div></div><div class="info-2"><div class="info-item-1">  WebSocket 是一种支持双向通信的网络协议。 双向通信：客户端（比如浏览器）可以向服务端发送消息，服务端也可以主动向客户端发送消息。这样就实现了客户端和服务端的双向通信，那么上面所说的消息推送就比较容易实现了。 原先的 HTTP1.0/1.1 只能是客户端向服务端发送消息。 协议特点：  建立在 TCP 协议之上。 WebSocket 协议是从 HTTP 协议升级而来。 与 HTTP 协议良好兼容新。默认端口是 80 和 443，握手阶段采用 HTTP 协议。 数据格式比较轻量，通信效率高，性能开销小。 可以发送文本，也可以发送二进制数据。 没有同源限制，客户端可以与任意服务端通信。 协议标识符是 ws（如果加密，则为 wss），服务器网址就是 URL。 可以支持扩展，定了扩展协议。 保持连接状态，websocket 是一种有状态的协议，通信就可以省略部分状态信息。 实时性更强，因为是双向通信协议，所以服务端可以随时向客户端发送数据。  WebSocket 数据交换数据帧格式在 WebSocket 协议中，客户端与服务端数据交换的最小信息单位叫做帧（frame），由 1...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/633.html" title="如何在Linux Shell中读取WebSocket响应"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2023-12-27</div><div class="info-item-2">如何在Linux Shell中读取WebSocket响应</div></div><div class="info-2"><div class="info-item-1">  如何在Linux Shell中读取WebSocket响应 curl 请求的方式 不在有效 经常抛错curl &#x27;wss://ws.test.com&#x27; -H &#x27;Upgrade: websocket&#x27; -H &#x27;Connection: Upgrade&#x27; --verbose* Protocol &quot;wss&quot; not supported or disabled in libcurl* Closing connection -1curl: (1) Protocol &quot;wss&quot; not supported or disabled in libcurl  更换使用 wscatnpm install -g wscat/usr/bin/wscat -&gt; /usr/lib/node_modules/wscat/bin/wscatnpm WARN notsup Unsupported engine for commander@9.5.0: wanted: &#123;&quot;node&quot;...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

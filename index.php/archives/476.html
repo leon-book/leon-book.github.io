@@ -1,0 +1,637 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Linux 环境变量命令 ENV | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="env：显示所有的环境变量 [root@root ~] envXDG_SESSION_ID&#x3D;10532HOSTNAME&#x3D;lenTERM&#x3D;linuxSHELL&#x3D;&#x2F;bin&#x2F;bashHISTSIZE&#x3D;1000SSH_CLIENT&#x3D;172.31.0.9 59430 22SSH_TTY&#x3D;&#x2F;dev&#x2F;pts&#x2F;0USER&#x3D;rootLS_COLORS&#x3D;rs&#x3D;0:di&#x3D;01;34:ln&#x3D;01;36:mh&#x3D;00:p">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux 环境变量命令 ENV">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/476.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="env：显示所有的环境变量 [root@root ~] envXDG_SESSION_ID&#x3D;10532HOSTNAME&#x3D;lenTERM&#x3D;linuxSHELL&#x3D;&#x2F;bin&#x2F;bashHISTSIZE&#x3D;1000SSH_CLIENT&#x3D;172.31.0.9 59430 22SSH_TTY&#x3D;&#x2F;dev&#x2F;pts&#x2F;0USER&#x3D;rootLS_COLORS&#x3D;rs&#x3D;0:di&#x3D;01;34:ln&#x3D;01;36:mh&#x3D;00:p">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2020-05-04T07:45:00.000Z">
+<meta property="article:modified_time" content="2020-05-04T07:45:00.000Z">
+<meta property="article:author" content="leon">
+<meta property="article:tag" content="linux">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Linux 环境变量命令 ENV",
+  "url": "https://leon-book.github.io/blog/index.php/archives/476.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2020-05-04T07:45:00.000Z",
+  "dateModified": "2020-05-04T07:45:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/476.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Linux 环境变量命令 ENV',
+  isHighlightShrink: false,
+  isToc: false,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">Linux 环境变量命令 ENV</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Linux 环境变量命令 ENV</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2020-05-04T07:45:00.000Z" title="发表于 2020-05-04 16:45:00">2020-05-04</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2020-05-04T07:45:00.000Z" title="更新于 2020-05-04 16:45:00">2020-05-04</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/">操作系统</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/476.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<p><code>env</code>：显示所有的环境变量</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">[root@root ~] env</span><br><span class="line">XDG_SESSION_ID=<span class="number">10532</span></span><br><span class="line">HOSTNAME=len</span><br><span class="line">TERM=linux</span><br><span class="line">SHELL=/bin/bash</span><br><span class="line">HISTSIZE=<span class="number">1000</span></span><br><span class="line">SSH_CLIENT=<span class="number">172.31</span>.<span class="number">0.9</span> <span class="number">59430</span> <span class="number">22</span></span><br><span class="line">SSH_TTY=/dev/pts/<span class="number">0</span></span><br><span class="line">USER=root</span><br><span class="line">LS_COLORS=rs=<span class="number">0</span>:di=<span class="number">01</span>;<span class="number">34</span>:ln=<span class="number">01</span>;<span class="number">36</span>:mh=<span class="number">00</span>:pi=<span class="number">40</span>;<span class="number">33</span>:so=<span class="number">01</span>;<span class="number">35</span>:<span class="keyword">do</span>=<span class="number">01</span>;<span class="number">35</span>:bd=<span class="number">40</span>;<span class="number">33</span>;<span class="number">01</span>:cd=<span class="number">40</span>;<span class="number">33</span>;<span class="number">01</span>:or=<span class="number">40</span>;<span class="number">31</span>;<span class="number">01</span>:mi=<span class="number">01</span>;<span class="number">05</span>;<span class="number">37</span>;<span class="number">41</span>:su=<span class="number">37</span>;<span class="number">41</span>:sg=<span class="number">30</span>;<span class="number">43</span>:ca=<span class="number">30</span>;<span class="number">41</span>:tw=<span class="number">30</span>;<span class="number">42</span>:ow=<span class="number">34</span>;<span class="number">42</span>:st=<span class="number">37</span>;<span class="number">44</span>:ex=<span class="number">01</span>;<span class="number">32</span>:*.tar=<span class="number">01</span>;<span class="number">31</span>:*.tgz=<span class="number">01</span>;<span class="number">31</span>:*.arc=<span class="number">01</span>;<span class="number">31</span>:*.arj=<span class="number">01</span>;<span class="number">31</span>:*.taz=<span class="number">01</span>;<span class="number">31</span>:*.lha=<span class="number">01</span>;<span class="number">31</span>:*.lz4=<span class="number">01</span>;<span class="number">31</span>:*.lzh=<span class="number">01</span>;<span class="number">31</span>:*.lzma=<span class="number">01</span>;<span class="number">31</span>:*.tlz=<span class="number">01</span>;<span class="number">31</span>:*.txz=<span class="number">01</span>;<span class="number">31</span>:*.tzo=<span class="number">01</span>;<span class="number">31</span>:*.t7z=<span class="number">01</span>;<span class="number">31</span>:*.zip=<span class="number">01</span>;<span class="number">31</span>:*.z=<span class="number">01</span>;<span class="number">31</span>:*.Z=<span class="number">01</span>;<span class="number">31</span>:*.dz=<span class="number">01</span>;<span class="number">31</span>:*.gz=<span class="number">01</span>;<span class="number">31</span>:*.lrz=<span class="number">01</span>;<span class="number">31</span>:*.lz=<span class="number">01</span>;<span class="number">31</span>:*.lzo=<span class="number">01</span>;<span class="number">31</span>:*.xz=<span class="number">01</span>;<span class="number">31</span>:*.bz2=<span class="number">01</span>;<span class="number">31</span>:*.bz=<span class="number">01</span>;<span class="number">31</span>:*.tbz=<span class="number">01</span>;<span class="number">31</span>:*.tbz2=<span class="number">01</span>;<span class="number">31</span>:*.tz=<span class="number">01</span>;<span class="number">31</span>:*.deb=<span class="number">01</span>;<span class="number">31</span>:*.rpm=<span class="number">01</span>;<span class="number">31</span>:*.jar=<span class="number">01</span>;<span class="number">31</span>:*.war=<span class="number">01</span>;<span class="number">31</span>:*.ear=<span class="number">01</span>;<span class="number">31</span>:*.sar=<span class="number">01</span>;<span class="number">31</span>:*.rar=<span class="number">01</span>;<span class="number">31</span>:*.alz=<span class="number">01</span>;<span class="number">31</span>:*.ace=<span class="number">01</span>;<span class="number">31</span>:*.zoo=<span class="number">01</span>;<span class="number">31</span>:*.cpio=<span class="number">01</span>;<span class="number">31</span>:*.<span class="number">7</span>z=<span class="number">01</span>;<span class="number">31</span>:*.rz=<span class="number">01</span>;<span class="number">31</span>:*.cab=<span class="number">01</span>;<span class="number">31</span>:*.jpg=<span class="number">01</span>;<span class="number">35</span>:*.jpeg=<span class="number">01</span>;<span class="number">35</span>:*.gif=<span class="number">01</span>;<span class="number">35</span>:*.bmp=<span class="number">01</span>;<span class="number">35</span>:*.pbm=<span class="number">01</span>;<span class="number">35</span>:*.pgm=<span class="number">01</span>;<span class="number">35</span>:*.ppm=<span class="number">01</span>;<span class="number">35</span>:*.tga=<span class="number">01</span>;<span class="number">35</span>:*.xbm=<span class="number">01</span>;<span class="number">35</span>:*.xpm=<span class="number">01</span>;<span class="number">35</span>:*.tif=<span class="number">01</span>;<span class="number">35</span>:*.tiff=<span class="number">01</span>;<span class="number">35</span>:*.png=<span class="number">01</span>;<span class="number">35</span>:*.svg=<span class="number">01</span>;<span class="number">35</span>:*.svgz=<span class="number">01</span>;<span class="number">35</span>:*.mng=<span class="number">01</span>;<span class="number">35</span>:*.pcx=<span class="number">01</span>;<span class="number">35</span>:*.mov=<span class="number">01</span>;<span class="number">35</span>:*.mpg=<span class="number">01</span>;<span class="number">35</span>:*.mpeg=<span class="number">01</span>;<span class="number">35</span>:*.m2v=<span class="number">01</span>;<span class="number">35</span>:*.mkv=<span class="number">01</span>;<span class="number">35</span>:*.webm=<span class="number">01</span>;<span class="number">35</span>:*.ogm=<span class="number">01</span>;<span class="number">35</span>:*.mp4=<span class="number">01</span>;<span class="number">35</span>:*.m4v=<span class="number">01</span>;<span class="number">35</span>:*.mp4v=<span class="number">01</span>;<span class="number">35</span>:*.vob=<span class="number">01</span>;<span class="number">35</span>:*.qt=<span class="number">01</span>;<span class="number">35</span>:*.nuv=<span class="number">01</span>;<span class="number">35</span>:*.wmv=<span class="number">01</span>;<span class="number">35</span>:*.asf=<span class="number">01</span>;<span class="number">35</span>:*.rm=<span class="number">01</span>;<span class="number">35</span>:*.rmvb=<span class="number">01</span>;<span class="number">35</span>:*.flc=<span class="number">01</span>;<span class="number">35</span>:*.avi=<span class="number">01</span>;<span class="number">35</span>:*.fli=<span class="number">01</span>;<span class="number">35</span>:*.flv=<span class="number">01</span>;<span class="number">35</span>:*.gl=<span class="number">01</span>;<span class="number">35</span>:*.dl=<span class="number">01</span>;<span class="number">35</span>:*.xcf=<span class="number">01</span>;<span class="number">35</span>:*.xwd=<span class="number">01</span>;<span class="number">35</span>:*.yuv=<span class="number">01</span>;<span class="number">35</span>:*.cgm=<span class="number">01</span>;<span class="number">35</span>:*.emf=<span class="number">01</span>;<span class="number">35</span>:*.axv=<span class="number">01</span>;<span class="number">35</span>:*.anx=<span class="number">01</span>;<span class="number">35</span>:*.ogv=<span class="number">01</span>;<span class="number">35</span>:*.ogx=<span class="number">01</span>;<span class="number">35</span>:*.aac=<span class="number">01</span>;<span class="number">36</span>:*.au=<span class="number">01</span>;<span class="number">36</span>:*.flac=<span class="number">01</span>;<span class="number">36</span>:*.mid=<span class="number">01</span>;<span class="number">36</span>:*.midi=<span class="number">01</span>;<span class="number">36</span>:*.mka=<span class="number">01</span>;<span class="number">36</span>:*.mp3=<span class="number">01</span>;<span class="number">36</span>:*.mpc=<span class="number">01</span>;<span class="number">36</span>:*.ogg=<span class="number">01</span>;<span class="number">36</span>:*.ra=<span class="number">01</span>;<span class="number">36</span>:*.wav=<span class="number">01</span>;<span class="number">36</span>:*.axa=<span class="number">01</span>;<span class="number">36</span>:*.oga=<span class="number">01</span>;<span class="number">36</span>:*.spx=<span class="number">01</span>;<span class="number">36</span>:*.xspf=<span class="number">01</span>;<span class="number">36</span>:</span><br><span class="line">MAIL=/var/spool/mail/root</span><br><span class="line">PATH=/usr/local/node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/root/bin</span><br><span class="line">PWD=/root</span><br><span class="line">LANG=en_US.UTF<span class="number">-8</span></span><br><span class="line">MODULEPATH=/usr/share/Modules/modulefiles:/etc/modulefiles</span><br><span class="line">LOADEDMODULES=</span><br><span class="line">HISTCONTROL=ignoredups</span><br><span class="line">SHLVL=<span class="number">1</span></span><br><span class="line">HOME=/root</span><br><span class="line">LOGNAME=root</span><br><span class="line">SSH_CONNECTION=<span class="number">172.31</span>.<span class="number">0.9</span> <span class="number">59430</span> <span class="number">172.31</span>.<span class="number">0.27</span> <span class="number">22</span></span><br><span class="line">MODULESHOME=/usr/share/Modules</span><br><span class="line">LESSOPEN=||/usr/bin/lesspipe.sh %s</span><br><span class="line">XDG_RUNTIME_DIR=/run/user/<span class="number">0</span></span><br><span class="line">BASH_FUNC_module()=() &#123;  eval `/usr/bin/modulecmd bash $*`</span><br><span class="line">&#125;</span><br><span class="line">_=/usr/bin/env</span><br></pre></td></tr></table></figure>
+
+<p>添加 环境变量</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">vi /etc/profile</span><br></pre></td></tr></table></figure>
+
+<p>添加</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">export GOOGLE_APPLICATION_CREDENTIALS=/opt/webserver/detect<span class="number">-111.</span>json</span><br></pre></td></tr></table></figure>
+
+<p><code>source /etc/profile</code> 好了</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/476.html">https://leon-book.github.io/blog/index.php/archives/476.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/linux/">linux</a></div><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/477.html" title="踩坑：IPv6 MySQL IP Chat(15) 引发 Bug"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">踩坑：IPv6 MySQL IP Chat(15) 引发 Bug</div></div><div class="info-2"><div class="info-item-1">  踩坑：IPv6 MySQL IP Chat(15) 引发 Bug在开发过程中，使用IPv6地址存储和处理可能会引发一些意想不到的问题。本文将讨论在使用MySQL数据库存储IPv6地址时，在Chat应用程序中遇到的一个特定问题，以及如何解决这个Bug。 Bug描述假设我们正在开发一个Chat应用程序，其中用户可以通过IPv6地址进行连接和通信。我们选择使用MySQL数据库来存储用户的IP地址。在Chat应用程序中，我们将IPv6地址存储为VARBINARY(16)类型以确保完整性和正确性。 然而，在测试过程中，我们发现一个奇怪的Bug：有时候无法正确识别并连接到IPv6地址为::1的用户。经过调试和分析，我们发现只有在用户的IPv6地址为::1时才会出现此问题。 Bug分析经过深入分析，我们发现MySQL在处理IPv6地址时，将::1视为IPv4地址的回环地址127.0.0.1，而不是IPv6的本地主机地址。 这是因为在MySQL的IPv6支持中，将IPv4地址映射到IPv6地址空间中的一个特定区域。因此，当MySQL遇到IPv6地址::1时，会将其解释为IPv4的回环地址12...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/475.html" title="MySQL 如何截取精度聚合 sum 使用 TRUNCATE"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">MySQL 如何截取精度聚合 sum 使用 TRUNCATE</div></div><div class="info-2"><div class="info-item-1">  MySQL 如何截取精度聚合 sum 使用 TRUNCATE在处理数据时，有时候我们需要对聚合函数的结果进行精度控制，特别是对于一些涉及金额、数量等敏感数据的处理。MySQL提供了TRUNCATE()函数，可以用于截取小数部分，从而实现精度控制。本文将介绍如何在MySQL中使用TRUNCATE()函数对SUM()函数的结果进行精度截取。 使用 TRUNCATE 函数TRUNCATE()函数用于截取小数部分，并返回指定精度的值。它的语法如下： TRUNCATE(X, D)  其中：  X 是要截取小数部分的数值。 D 是保留的小数位数。  示例假设我们有一个订单表orders，其中包含订单金额amount字段。我们希望计算所有订单金额的总和，并将结果保留两位小数。 我们可以使用SUM()函数计算订单金额的总和，然后结合TRUNCATE()函数截取小数部分： SELECT TRUNCATE(SUM(amount), 2) AS total_amountFROM orders;  这将返回所有订单金额的总和，并将结果保留两位小数。 应用场景在实际应用中，对聚合函数的结果进行精度控制...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/index.php/archives/471.html" title="Linux 系统中&#x2F;dev&#x2F;shm的作用"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2020-04-18</div><div class="info-item-2">Linux 系统中&#x2F;dev&#x2F;shm的作用</div></div><div class="info-2"><div class="info-item-1">  Linux 系统中 &#x2F;dev&#x2F;shm 的作用在Linux系统中，/dev/shm是一个特殊的虚拟文件系统，通常用于在内存中创建临时文件系统，提供高速的共享内存区域。本文将介绍/dev/shm的作用以及其在Linux系统中的应用。 1. 作用和特点/dev/shm是一个内存中的虚拟文件系统，其主要作用包括：  提供共享内存：/dev/shm允许多个进程共享内存数据，这比使用磁盘上的临时文件系统更快速和高效。 减少磁盘 I&#x2F;O：由于/dev/shm位于内存中，而不是磁盘上，因此对其进行读写操作不会涉及到磁盘I&#x2F;O，可以显著提高性能。 用于临时文件存储：/dev/shm可以用于存储临时文件，例如进程间通信的共享数据、临时文件缓存等。  2. 应用场景/dev/shm在Linux系统中有多种应用场景，包括但不限于：  共享内存通信：多个进程之间可以通过/dev/shm共享内存区域进行通信，从而实现高效的数据交换和共享。 临时文件存储：临时文件可以存储在/dev/shm中，这样可以减少磁盘 I&#x2F;O，提高文件读写速度。 数据库临时表：一些...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/43.html" title="Linux 系统如何清除内存缓存"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2015-12-03</div><div class="info-item-2">Linux 系统如何清除内存缓存</div></div><div class="info-2"><div class="info-item-1">  与 其他操作系统一样，GNU&#x2F;Linux 同样提供了高效的内存管理功能，甚至更加高效。当然，如果某些进程消耗光所有内存的时候，Linux 也提供了清除内存缓存的方法。 在本文中，我们将探讨如何清除 Linux 系统上的 RAM 内存缓存、缓冲区和交换空间以提高整体性能。 理解内存缓存、缓冲区以及交换空间我们首先探讨一下 Linux 系统内存缓存、缓冲区以及交换空间用途。 内存缓存内存缓存是内核用来保存定期访问的数据的机制。虽然这可以提高系统响应能力，但过度的缓存可能会导致保留过时的数据，从而影响性能。 缓冲区与内存缓存一样，缓冲区也临时保存数据，但用途不同。缓冲区存储 CPU 和硬盘等组件之间传输的数据，促进顺畅的数据通信。同样的，过多的缓冲数据也会降低系统速度。 交换空间交换空间是硬盘上分配的区域，当物理 RAM 耗尽时，由它充当虚拟内存。虽然它可以防止由于内存不足而导致系统崩溃，但如果过度使用，它可能会降低系统速度。 Linux 系统如何清除内存缓存每个 Linux 系统都有三个选项，可以在不中断任何进程或服务的情况下清除缓存。 请除页面缓存（PageCache...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/166.html" title="理解Linux的单用户多任务，多用户多任务概念"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2017-02-05</div><div class="info-item-2">理解Linux的单用户多任务，多用户多任务概念</div></div><div class="info-2"><div class="info-item-1">  理解 Linux 的单用户多任务与多用户多任务概念引言在 Linux 操作系统中，单用户多任务和多用户多任务是两个重要的概念。它们描述了操作系统在不同的运行模式下如何处理任务和用户的并发执行。本文将解释这两个概念，并说明它们在 Linux 系统中的作用和区别。 单用户多任务在单用户多任务环境下，操作系统允许单个用户同时执行多个任务。这意味着用户可以在同一时间内运行多个应用程序，并在它们之间进行切换。每个任务都会分配一定的系统资源，如 CPU 时间、内存等。 Linux 提供了强大的多任务管理机制，使得用户可以同时运行多个程序，并轻松切换它们之间的上下文。通过在终端中运行多个命令、打开多个窗口或使用工作区切换等方式，用户可以同时处理多个任务。 单用户多任务环境非常适合个人计算机和工作站，因为它提供了高效的任务管理和资源利用。 多用户多任务在多用户多任务环境下，操作系统允许多个用户同时执行多个任务。每个用户都有自己的账户和权限，可以独立地运行和管理自己的任务和进程。 Linux 支持多用户访问和身份验证机制，因此多个用户可以同时登录到操作系统，并在各自的环境中执行任务。每个用户都...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/347.html" title="Linux 分区下误删的文件恢复"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2019-02-22</div><div class="info-item-2">Linux 分区下误删的文件恢复</div></div><div class="info-2"><div class="info-item-1">  在 Linux 系统中，误删文件时，恢复文件的难度和成功率取决于多种因素，包括文件系统类型、删除文件后的操作等。以下是恢复误删文件的步骤和方法。 1. 理解文件删除原理在 Linux 中，删除文件时，操作系统只是将文件的指针从文件系统中移除，文件数据仍然存在于磁盘上，直到被新的数据覆盖。因此，尽快采取恢复措施是非常重要的。 2. 检查是否有备份在尝试恢复之前，检查是否有任何备份（如 rsync、tar、cp 等）。恢复备份是最直接的方法。 3. 恢复工具如果没有备份，可以使用以下工具尝试恢复误删的文件。 3.1 extundeleteextundelete 是一个用于恢复 ext3&#x2F;ext4 文件系统中删除文件的工具。 安装在 Debian&#x2F;Ubuntu 系统上： sudo apt install extundelete  在 CentOS&#x2F;RHEL 系统上： sudo yum install extundelete  使用 卸载文件系统：在恢复前，确保文件系统未挂载。 sudo umount /dev/sdX1  # 替换为实际设备  恢复文件...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/102.html" title="LINUX下查看用户列表"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2016-09-23</div><div class="info-item-2">LINUX下查看用户列表</div></div><div class="info-2"><div class="info-item-1">  Linux 下查看用户列表在 Linux 系统中，可以使用一些命令和文件来查看用户列表。了解当前系统上的用户列表对于管理和维护系统非常重要。本篇博客将介绍几种常用的方法来在 Linux 下查看用户列表。 1. 使用 cat /etc/passwd/etc/passwd 文件是 Linux 系统中存储用户账户信息的文件之一。可以使用 cat 命令来查看该文件的内容，从而获取用户列表。 cat /etc/passwd  上述命令会将 /etc/passwd 文件的内容输出到终端，其中每行表示一个用户账户，字段之间使用冒号进行分隔。通常，用户名位于第一个字段。 2. 使用 cut 命令和 /etc/passwd可以结合使用 cut 命令和 /etc/passwd 文件来获取用户列表。通过指定字段分隔符和字段编号，可以提取出用户名字段。 cut -d: -f1 /etc/passwd  上述命令会将 /etc/passwd 文件的内容按照冒号作为分隔符，并提取出每行的第一个字段，即用户名。 3. 使用 awk 命令和 /etc/passwd另一种获取用户列表的方法是使用 awk 命令...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/513.html" title="手把手教你用Strace诊断问题"><img class="cover" src="/blog/assets/migrated/32ae71c11d8569d97178.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2021-12-10</div><div class="info-item-2">手把手教你用Strace诊断问题</div></div><div class="info-2"><div class="info-item-1">  早些年，如果你知道有个 strace 命令，就很牛了，而现在大家基本都知道 strace 了，如果你遇到性能问题求助别人，十有八九会建议你用 strace 挂上去看看，不过当你挂上去了，看着满屏翻滚的字符，却十有八九看不出个所以然。本文通过一个简单的案例，向你展示一下在用 strace 诊断问题时的一些套路。 如下真实案例，如有雷同，实属必然！让我们看一台高负载服务器的 top 结果：   技巧：运行 top 时，按「1」打开 CPU 列表，按「shift+p」以 CPU 排序。  在本例中大家很容易发现 CPU 主要是被若干个 PHP 进程占用了，同时 PHP 进程占用的比较多的内存，不过系统内存尚有结余，SWAP 也不严重，这并不是问题主因。 不过在 CPU 列表中能看到 CPU 主要消耗在内核态「sy」，而不是用户态「us」，和我们的经验不符。Linux 操作系统有很多用来跟踪程序行为的工具，内核态的函数调用跟踪用「strace」，用户态的函数调用跟踪用「ltrace」，所以这里我们应该用「strace」： shell&gt; strace -p &lt;PID&gt;...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

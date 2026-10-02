@@ -1,0 +1,717 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>[踩坑] PHP 7.2 项目中安装 aws/aws-sdk-php 的完整踩坑与解决方案 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="背景：一个运行在 PHP 7.2.34 的老项目，需要引入 aws&#x2F;aws-sdk-php，在 Composer 2.x 环境下经历了一系列失败，最终成功安装 3.288.1。本文记录完整排障过程与最终正确解法。   一、环境背景基础环境PHP:        7.2.34Composer:   2.9.2OS:         CentOS &#x2F; RHEL 7  Composer 镜像&amp;qu">
+<meta property="og:type" content="article">
+<meta property="og:title" content="[踩坑] PHP 7.2 项目中安装 aws&#x2F;aws-sdk-php 的完整踩坑与解决方案">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/830.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="背景：一个运行在 PHP 7.2.34 的老项目，需要引入 aws&#x2F;aws-sdk-php，在 Composer 2.x 环境下经历了一系列失败，最终成功安装 3.288.1。本文记录完整排障过程与最终正确解法。   一、环境背景基础环境PHP:        7.2.34Composer:   2.9.2OS:         CentOS &#x2F; RHEL 7  Composer 镜像&amp;qu">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2026-01-31T07:45:44.000Z">
+<meta property="article:modified_time" content="2026-01-31T07:45:44.000Z">
+<meta property="article:author" content="leon">
+<meta property="article:tag" content="git">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[踩坑] PHP 7.2 项目中安装 aws/aws-sdk-php 的完整踩坑与解决方案",
+  "url": "https://leon-book.github.io/blog/index.php/archives/830.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2026-01-31T07:45:44.000Z",
+  "dateModified": "2026-01-31T07:45:44.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/830.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '[踩坑] PHP 7.2 项目中安装 aws/aws-sdk-php 的完整踩坑与解决方案',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">[踩坑] PHP 7.2 项目中安装 aws/aws-sdk-php 的完整踩坑与解决方案</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">[踩坑] PHP 7.2 项目中安装 aws/aws-sdk-php 的完整踩坑与解决方案</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-01-31T07:45:44.000Z" title="发表于 2026-01-31 16:45:44">2026-01-31</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-01-31T07:45:44.000Z" title="更新于 2026-01-31 16:45:44">2026-01-31</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E8%B8%A9%E5%9D%91%E6%95%99%E8%AE%AD/">踩坑教训</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/830.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<blockquote>
+<p><strong>背景</strong>：<br>一个运行在 <strong>PHP 7.2.34</strong> 的老项目，需要引入 <code>aws/aws-sdk-php</code>，在 Composer 2.x 环境下经历了一系列失败，最终成功安装 <strong>3.288.1</strong>。<br>本文记录完整排障过程与最终正确解法。</p>
+</blockquote>
+<hr>
+<h2 id="一、环境背景"><a href="#一、环境背景" class="headerlink" title="一、环境背景"></a>一、环境背景</h2><h3 id="基础环境"><a href="#基础环境" class="headerlink" title="基础环境"></a>基础环境</h3><figure class="highlight text"><table><tr><td class="code"><pre><span class="line">PHP:        7.2.34</span><br><span class="line">Composer:   2.9.2</span><br><span class="line">OS:         CentOS / RHEL 7</span><br></pre></td></tr></table></figure>
+
+<h3 id="Composer-镜像"><a href="#Composer-镜像" class="headerlink" title="Composer 镜像"></a>Composer 镜像</h3><figure class="highlight json"><table><tr><td class="code"><pre><span class="line"><span class="attr">&quot;repositories&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;packagist&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;composer&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;url&quot;</span><span class="punctuation">:</span> <span class="string">&quot;https://packagist.org&quot;</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="二、最初的问题：aws-aws-sdk-php-无法安装"><a href="#二、最初的问题：aws-aws-sdk-php-无法安装" class="headerlink" title="二、最初的问题：aws&#x2F;aws-sdk-php 无法安装"></a>二、最初的问题：aws&#x2F;aws-sdk-php 无法安装</h2><p>尝试安装：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">composer require aws/aws-sdk-php:3.199.3</span><br></pre></td></tr></table></figure>
+
+<p>错误信息（核心）：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">found aws/aws-sdk-php[3.199.3] but these were not loaded,</span><br><span class="line">because they are affected by security advisories</span><br></pre></td></tr></table></figure>
+
+<h3 id="尝试过的方案（全部失败）"><a href="#尝试过的方案（全部失败）" class="headerlink" title="尝试过的方案（全部失败）"></a>尝试过的方案（全部失败）</h3><ul>
+<li><code>--no-audit</code></li>
+<li><code>&quot;audit&quot;: { &quot;block-insecure&quot;: false }</code></li>
+<li>忽略 PHP 版本</li>
+<li>降级 &#x2F; 固定版本</li>
+<li>Composer 自降级</li>
+</ul>
+<h3 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h3><blockquote>
+<p>**在 Composer 2.6+ + Packagist 环境下，<br>aws&#x2F;aws-sdk-php 某些旧版本已经被仓库层“强制封禁”，无法通过任何参数绕过。**</p>
+</blockquote>
+<hr>
+<h2 id="三、选择可行版本：3-288-1"><a href="#三、选择可行版本：3-288-1" class="headerlink" title="三、选择可行版本：3.288.1"></a>三、选择可行版本：3.288.1</h2><p>改用一个 <strong>PHP 7.2 可用，且未被封禁</strong> 的版本：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">composer require aws/aws-sdk-php:3.288.1</span><br></pre></td></tr></table></figure>
+
+<p>却遇到了新的错误：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">aws/aws-sdk-php 3.288.1 requires guzzlehttp/promises ^1.4.0 || ^2.0</span><br><span class="line">but the package is fixed to v1.3.1 (lock file version)</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="四、真正的坑：Composer-的-Partial-Update-Lock-文件"><a href="#四、真正的坑：Composer-的-Partial-Update-Lock-文件" class="headerlink" title="四、真正的坑：Composer 的 Partial Update + Lock 文件"></a>四、真正的坑：Composer 的 Partial Update + Lock 文件</h2><h3 id="问题本质"><a href="#问题本质" class="headerlink" title="问题本质"></a>问题本质</h3><ul>
+<li>项目中 <strong><code>guzzlehttp/promises</code> 被锁死在 1.3.1</strong></li>
+<li>AWS SDK 要求 <code>&gt;= 1.4.0</code></li>
+<li>使用了 <strong>部分更新（partial update）</strong></li>
+<li>Composer <strong>不允许隐式修改已锁定依赖</strong></li>
+</ul>
+<p>错误提示里这句是关键：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">the package is fixed to v1.3.1 (lock file version) by a partial update</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="五、正确解法（关键步骤）"><a href="#五、正确解法（关键步骤）" class="headerlink" title="五、正确解法（关键步骤）"></a>五、正确解法（关键步骤）</h2><h3 id="最终成功命令"><a href="#最终成功命令" class="headerlink" title="最终成功命令"></a>最终成功命令</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">composer update aws/aws-sdk-php guzzlehttp/promises --with-all-dependencies</span><br></pre></td></tr></table></figure>
+
+<p>或等价写法：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">composer require aws/aws-sdk-php:3.288.1 -W</span><br></pre></td></tr></table></figure>
+
+<h3 id="W-with-all-dependencies-的含义"><a href="#W-with-all-dependencies-的含义" class="headerlink" title="-W / --with-all-dependencies 的含义"></a><code>-W / --with-all-dependencies</code> 的含义</h3><blockquote>
+<p>允许 Composer：</p>
+<ul>
+<li>升级</li>
+<li>降级</li>
+<li>移除</li>
+</ul>
+<p>当前 <code>composer.lock</code> 中的相关依赖</p>
+</blockquote>
+<hr>
+<h2 id="六、推荐的依赖组合（PHP-7-2-7-3）"><a href="#六、推荐的依赖组合（PHP-7-2-7-3）" class="headerlink" title="六、推荐的依赖组合（PHP 7.2 &#x2F; 7.3）"></a>六、推荐的依赖组合（PHP 7.2 &#x2F; 7.3）</h2><figure class="highlight json"><table><tr><td class="code"><pre><span class="line"><span class="attr">&quot;require&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;aws/aws-sdk-php&quot;</span><span class="punctuation">:</span> <span class="string">&quot;3.288.1&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;guzzlehttp/guzzle&quot;</span><span class="punctuation">:</span> <span class="string">&quot;^6.5.8 || ^7.5&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;guzzlehttp/psr7&quot;</span><span class="punctuation">:</span> <span class="string">&quot;^1.9 || ^2.4&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;guzzlehttp/promises&quot;</span><span class="punctuation">:</span> <span class="string">&quot;^1.5 || ^2.0&quot;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="七、经验总结（非常重要）"><a href="#七、经验总结（非常重要）" class="headerlink" title="七、经验总结（非常重要）"></a>七、经验总结（非常重要）</h2><h3 id="1️⃣-Composer-装不上包，不一定是版本不兼容"><a href="#1️⃣-Composer-装不上包，不一定是版本不兼容" class="headerlink" title="1️⃣ Composer 装不上包，不一定是版本不兼容"></a>1️⃣ Composer 装不上包，不一定是版本不兼容</h3><ul>
+<li><p>可能是：</p>
+<ul>
+<li>仓库级封禁</li>
+<li>安全 advisory</li>
+<li>lock 文件锁死</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="2️⃣-composer-require-默认是“部分更新”"><a href="#2️⃣-composer-require-默认是“部分更新”" class="headerlink" title="2️⃣ composer require 默认是“部分更新”"></a>2️⃣ <code>composer require</code> 默认是“部分更新”</h3><blockquote>
+<p><strong>不会动 lock 里的其它包</strong></p>
+</blockquote>
+<p>需要显式加：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">-W</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="3️⃣-老项目升级依赖的正确姿势"><a href="#3️⃣-老项目升级依赖的正确姿势" class="headerlink" title="3️⃣ 老项目升级依赖的正确姿势"></a>3️⃣ 老项目升级依赖的正确姿势</h3><ul>
+<li>不要死磕最新版</li>
+<li>选择 <strong>“生态可接受”的最后可用版本</strong></li>
+<li>控制升级范围</li>
+<li>一步一步来</li>
+</ul>
+<hr>
+<h2 id="八、最终结论"><a href="#八、最终结论" class="headerlink" title="八、最终结论"></a>八、最终结论</h2><blockquote>
+<p>**在 PHP 7.2 + Composer 2.x 环境下，<br>成功安装 aws&#x2F;aws-sdk-php 的关键不是版本号本身，<br>而是正确处理 Composer 的依赖锁与更新策略。**</p>
+</blockquote>
+<hr>
+<h2 id="九、附：最终成功命令（备忘）"><a href="#九、附：最终成功命令（备忘）" class="headerlink" title="九、附：最终成功命令（备忘）"></a>九、附：最终成功命令（备忘）</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">composer update aws/aws-sdk-php guzzlehttp/promises --with-all-dependencies</span><br></pre></td></tr></table></figure>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/830.html">https://leon-book.github.io/blog/index.php/archives/830.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/git/">git</a></div><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/831.html" title="利用 Google 翻译 进行多语言SQL 生成"><img class="cover" src="/blog/assets/migrated/036e3748a221f028cb69.png" onerror="onerror=null;src='/blog/img/404.jpg'" alt="cover of previous post"><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">利用 Google 翻译 进行多语言SQL 生成</div></div><div class="info-2"><div class="info-item-1">   &lt;!DOCTYPE html&gt;&lt;html lang=&quot;zh&quot;&gt;&lt;head&gt;    &lt;meta charset=&quot;UTF-8&quot;&gt;    &lt;title&gt;多语言翻译 → SQL 生成器（并行加速版）&lt;/title&gt;    &lt;style&gt;        body &#123;            font-family: system-ui, -apple-system, BlinkMacSystemFont;            background: #f4f6f8;            padding: 30px;        &#125;        .container &#123;            max-width: 900px;            margin: auto;            background: #fff;            padding: 25px;            border-rad...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/829.html" title="指纹分析开源工具库"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">指纹分析开源工具库</div></div><div class="info-2"><div class="info-item-1">  ✅ 1. FingerprintJS BotD — 浏览器指纹 + Bot 检测（开源）📌 GitHub 上的 BotD 是一套开源的浏览器指纹与机器人检测库（客户端 JS 采集），适合服务端校验配合使用。它能收集浏览器端特征用于判断是否自动化环境（Selenium、无头浏览器等）。 (GitHub)  特点  开源、MIT 授权 收集和分析浏览器端特征 可结合服务端 API 验证结果 适合作为 bot&#x2F;爬虫判定前端埋点   用途  在服务端判断客户端是否像机器人 结合 CC 防护分数作风险评估 在 Gin&#x2F;Express 等应用中接收指纹信息并分析    📍 GitHub: https://github.com/fingerprintjs/BotD (GitHub) ⚠️ 注意：BotD 是客户端采集库，还需要服务端验证配合，适合做指纹 + 行为评分基础。  ✅ 2. AntiBotDetector（辅助被动识别工具）虽然不是专门针对 CC 攻击的库，但 AntiBotDetector 是一个开源项目，能够识别诸如 Cloudflare、Akamai...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/index.php/archives/674.html" title="Git 修改已提交的commit注释"><img class="cover" src="/blog/assets/migrated/21e1210b8e41ecdad484.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2024-05-02</div><div class="info-item-2">Git 修改已提交的commit注释</div></div><div class="info-2"><div class="info-item-1">  两种情况：1.已经将代码push到远程仓库2.还没将代码push到远程仓库，还在本地的仓库中 这两种情况下的修改大体相同，只是第一种情况最后会多一步下面来说怎么修改 先搞清楚你要修改哪次的提交注释或者哪几次的提交注释 修改最后一次注释如果你只想修改最后一次注释（就是最新的一次提交），那好办： git commit --amend  出现有注释的界面（你的注释应该显示在第一行）， 输入i进入修改模式，修改好注释后，按Esc键 退出编辑模式，输入:wq保存并退出。ok，修改完成。例如修改时编辑界面的图：  修改之前的注释修改之前的某次注释  输入： git rebase -i HEAD~2  最后的数字2指的是显示到倒数第几次 比如这个输入的2就会显示倒数的两次注释（最上面两行）    git rebase -i HEAD~2         hint: Waiting for your editor to close the file... pick 36bceb83c [test] 测试2pick c68574f7b [test] 测试1# Rebase 01c82d86d....</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/669.html" title="Git Reset 三种模式"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2024-04-05</div><div class="info-item-2">Git Reset 三种模式</div></div><div class="info-2"><div class="info-item-1">  在使用 Git 进行版本控制时，我们经常需要撤销一些提交，回到之前的状态。Git 提供了 reset 命令来实现这个功能。本文将介绍 Git reset 命令的三种模式：--soft、--mixed 和 --hard，并解释它们之间的区别和用途。 正文1. --soft 模式git reset --soft 模式用于撤销提交，但保留暂存区和工作区的修改。下面是一个示例： git reset --soft HEAD~1  在上述示例中，HEAD~1 表示回退到上一个提交，使用 --soft 模式后，Git 会将当前分支的 HEAD 移动到指定的提交位置，并且保留之前的修改。这样做的好处是可以重新提交之前的修改，方便对代码进行调整和优化。 2. --mixed 模式git reset --mixed 模式是默认的模式，用于撤销提交并重置暂存区，但保留工作区的修改。下面是一个示例： git reset --mixed HEAD~1  在上述示例中，HEAD~1 表示回退到上一个提交，使用 --mixed 模式后，Git 会将当前分支的 HEAD 移动到指定的提交位置，并且重置暂存区...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/753.html" title="设置Git别名实现在提交前先拉取最新更改"><img class="cover" src="/blog/assets/migrated/57eb8e82598a3889c588.png" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2024-11-01</div><div class="info-item-2">设置Git别名实现在提交前先拉取最新更改</div></div><div class="info-2"><div class="info-item-1">  在日常的代码开发工作中，经常需要在提交代码前先拉取最新的更改，以避免冲突和保持团队代码同步。通过设置Git指令别名，我们可以简化这一操作，同时避免一些无用的merge操作，使代码管理变得更加高效。 问题背景在使用Git进行代码管理时，经常会遇到需要先执行git pull再执行git commit -m的情况。这样做可以确保本地代码库是最新的，避免提交代码时出现冲突。然而，频繁地手动执行这两个命令可能会增加开发人员的工作量，特别是在团队协作中。 解决方案为了简化这一操作，我们可以通过设置Git别名来实现在提交前先拉取最新更改的功能，同时避免一些无用的merge操作。下面是如何实现的步骤：  打开终端，并输入以下命令来编辑Git配置文件：  git config --global --edit    在打开的配置文件中，添加如下内容：  [alias]    commitpull = !git pull --rebase &amp;&amp; git commit   保存并关闭配置文件。现在您可以使用git commitpull -m &quot;Your commit mes...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/457.html" title="解决git文件名大小写无法修改的问题"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2020-02-19</div><div class="info-item-2">解决git文件名大小写无法修改的问题</div></div><div class="info-2"><div class="info-item-1">  解决 Git 文件名大小写无法修改的问题简介在使用 Git 进行版本控制时，有时会遇到一种问题：文件名大小写发生变化后，Git 无法正确识别和跟踪这些变化。本篇博客将介绍导致文件名大小写问题的原因，并提供解决方案和代码示例。 原因Git 在默认配置下对文件名的大小写是不敏感的。这意味着在某些操作系统（例如 Windows）上，修改文件名的大小写只是一个表面上的修改，而 Git 无法正确跟踪这些变化。这是因为 Git 将文件名存储在索引（index）中，而索引中的文件名是根据操作系统的文件系统来存储的。 解决方案要解决 Git 文件名大小写无法修改的问题，可以采取以下步骤：  修改 Git 配置：首先，需要将 Git 配置中的 core.ignorecase 选项设置为 false，以使 Git 对文件名大小写敏感。 git config core.ignorecase false  重命名文件：接下来，将文件名变更为一个临时名称，然后再将其修改回所需的大小写。这样可以使 Git 正确地识别和跟踪文件名的大小写变化。 git mv old_filename temp_filen...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/497.html" title="解决git冲突：please move or remove them before you can merge"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2020-12-02</div><div class="info-item-2">解决git冲突：please move or remove them before you can merge</div></div><div class="info-2"><div class="info-item-1">  问题：使用git，pull代码时报错：please move or remove them before you can merge意思：请在合并之前移动或删除它们造成的原因：本地修改时与远端提交的代码冲突而又没有merge合并解决： git clean -d -fx &quot; &quot;  参数解释： d ：删除未被添加到git的路径中的文件f ：强制运行x ：删除忽略文件已经对git来说不识别的文件  注意：但是这样是有风险的，会删除本地的修改，也就是选择与远端同步，就是你写的、修改的代码统统会被移除！好多人直接这么做，几天的代码就没了，所以执行之前把自己冲突的代码先备份一下，解决冲突后再还原，然后再继续pull代码，切记一定要注意。 </div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/150.html" title="Linux编译安装 git"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2017-01-05</div><div class="info-item-2">Linux编译安装 git</div></div><div class="info-2"><div class="info-item-1">  在 Linux 上编译安装 GitGit 是一个分布式版本控制系统，广泛用于软件开发和版本控制。在 Linux 系统上，你可以通过源代码编译安装 Git。本篇博客将介绍如何在 Linux 上编译安装 Git。 1. 安装依赖在编译安装 Git 之前，首先需要安装一些必要的依赖包。运行以下命令来安装这些依赖： sudo apt updatesudo apt install build-essential libssl-dev libcurl4-gnutls-dev libexpat1-dev gettext cmake  这将安装编译 Git 所需的编译工具、库和依赖项。 2. 下载源代码接下来，我们需要下载 Git 的源代码。你可以从 Git 官方网站下载最新版本的源代码，或者使用以下命令下载稳定版本： wget https://github.com/git/git/archive/refs/tags/v2.34.1.tar.gz  这将下载 Git 2.34.1 版本的源代码压缩包。 3. 编译和安装下载完源代码后，解压缩源代码压缩包，并进入源代码目录： tar -xf v...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E7%8E%AF%E5%A2%83%E8%83%8C%E6%99%AF"><span class="toc-number">1.</span> <span class="toc-text">一、环境背景</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9F%BA%E7%A1%80%E7%8E%AF%E5%A2%83"><span class="toc-number">1.1.</span> <span class="toc-text">基础环境</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Composer-%E9%95%9C%E5%83%8F"><span class="toc-number">1.2.</span> <span class="toc-text">Composer 镜像</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%9C%80%E5%88%9D%E7%9A%84%E9%97%AE%E9%A2%98%EF%BC%9Aaws-aws-sdk-php-%E6%97%A0%E6%B3%95%E5%AE%89%E8%A3%85"><span class="toc-number">2.</span> <span class="toc-text">二、最初的问题：aws&#x2F;aws-sdk-php 无法安装</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B0%9D%E8%AF%95%E8%BF%87%E7%9A%84%E6%96%B9%E6%A1%88%EF%BC%88%E5%85%A8%E9%83%A8%E5%A4%B1%E8%B4%A5%EF%BC%89"><span class="toc-number">2.1.</span> <span class="toc-text">尝试过的方案（全部失败）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%93%E8%AE%BA"><span class="toc-number">2.2.</span> <span class="toc-text">结论</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E9%80%89%E6%8B%A9%E5%8F%AF%E8%A1%8C%E7%89%88%E6%9C%AC%EF%BC%9A3-288-1"><span class="toc-number">3.</span> <span class="toc-text">三、选择可行版本：3.288.1</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E7%9C%9F%E6%AD%A3%E7%9A%84%E5%9D%91%EF%BC%9AComposer-%E7%9A%84-Partial-Update-Lock-%E6%96%87%E4%BB%B6"><span class="toc-number">4.</span> <span class="toc-text">四、真正的坑：Composer 的 Partial Update + Lock 文件</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%97%AE%E9%A2%98%E6%9C%AC%E8%B4%A8"><span class="toc-number">4.1.</span> <span class="toc-text">问题本质</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%AD%A3%E7%A1%AE%E8%A7%A3%E6%B3%95%EF%BC%88%E5%85%B3%E9%94%AE%E6%AD%A5%E9%AA%A4%EF%BC%89"><span class="toc-number">5.</span> <span class="toc-text">五、正确解法（关键步骤）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%80%E7%BB%88%E6%88%90%E5%8A%9F%E5%91%BD%E4%BB%A4"><span class="toc-number">5.1.</span> <span class="toc-text">最终成功命令</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#W-with-all-dependencies-%E7%9A%84%E5%90%AB%E4%B9%89"><span class="toc-number">5.2.</span> <span class="toc-text">-W &#x2F; --with-all-dependencies 的含义</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E6%8E%A8%E8%8D%90%E7%9A%84%E4%BE%9D%E8%B5%96%E7%BB%84%E5%90%88%EF%BC%88PHP-7-2-7-3%EF%BC%89"><span class="toc-number">6.</span> <span class="toc-text">六、推荐的依赖组合（PHP 7.2 &#x2F; 7.3）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93%EF%BC%88%E9%9D%9E%E5%B8%B8%E9%87%8D%E8%A6%81%EF%BC%89"><span class="toc-number">7.</span> <span class="toc-text">七、经验总结（非常重要）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1%EF%B8%8F%E2%83%A3-Composer-%E8%A3%85%E4%B8%8D%E4%B8%8A%E5%8C%85%EF%BC%8C%E4%B8%8D%E4%B8%80%E5%AE%9A%E6%98%AF%E7%89%88%E6%9C%AC%E4%B8%8D%E5%85%BC%E5%AE%B9"><span class="toc-number">7.1.</span> <span class="toc-text">1️⃣ Composer 装不上包，不一定是版本不兼容</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2%EF%B8%8F%E2%83%A3-composer-require-%E9%BB%98%E8%AE%A4%E6%98%AF%E2%80%9C%E9%83%A8%E5%88%86%E6%9B%B4%E6%96%B0%E2%80%9D"><span class="toc-number">7.2.</span> <span class="toc-text">2️⃣ composer require 默认是“部分更新”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3%EF%B8%8F%E2%83%A3-%E8%80%81%E9%A1%B9%E7%9B%AE%E5%8D%87%E7%BA%A7%E4%BE%9D%E8%B5%96%E7%9A%84%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF"><span class="toc-number">7.3.</span> <span class="toc-text">3️⃣ 老项目升级依赖的正确姿势</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E6%9C%80%E7%BB%88%E7%BB%93%E8%AE%BA"><span class="toc-number">8.</span> <span class="toc-text">八、最终结论</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%9D%E3%80%81%E9%99%84%EF%BC%9A%E6%9C%80%E7%BB%88%E6%88%90%E5%8A%9F%E5%91%BD%E4%BB%A4%EF%BC%88%E5%A4%87%E5%BF%98%EF%BC%89"><span class="toc-number">9.</span> <span class="toc-text">九、附：最终成功命令（备忘）</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

@@ -1,0 +1,749 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Apache Pulsar 订阅模式与消费模型深度解析（Go 实战） | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="在落地 Pulsar 的过程中，开发者最容易踩的坑集中在两个问题上： 问题一：”我有多个消费者，消息是怎么分发的？顺序能保证吗？” 问题二：”消费者处理业务逻辑很慢，会不会把整个消费流程阻塞住？” 这两个问题的答案，分别对应 Pulsar 的订阅模式（Subscription Type） 和消费模型（Consumption Pattern）。 本文基于 Go 语言，通过完整可运行的代码，逐一拆">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Apache Pulsar 订阅模式与消费模型深度解析（Go 实战）">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/855.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="在落地 Pulsar 的过程中，开发者最容易踩的坑集中在两个问题上： 问题一：”我有多个消费者，消息是怎么分发的？顺序能保证吗？” 问题二：”消费者处理业务逻辑很慢，会不会把整个消费流程阻塞住？” 这两个问题的答案，分别对应 Pulsar 的订阅模式（Subscription Type） 和消费模型（Consumption Pattern）。 本文基于 Go 语言，通过完整可运行的代码，逐一拆">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2026-05-25T08:36:00.000Z">
+<meta property="article:modified_time" content="2026-05-25T08:36:00.000Z">
+<meta property="article:author" content="leon">
+<meta property="article:tag" content="golang">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Apache Pulsar 订阅模式与消费模型深度解析（Go 实战）",
+  "url": "https://leon-book.github.io/blog/index.php/archives/855.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2026-05-25T08:36:00.000Z",
+  "dateModified": "2026-05-25T08:36:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/855.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Apache Pulsar 订阅模式与消费模型深度解析（Go 实战）',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">Apache Pulsar 订阅模式与消费模型深度解析（Go 实战）</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Apache Pulsar 订阅模式与消费模型深度解析（Go 实战）</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-05-25T08:36:00.000Z" title="发表于 2026-05-25 17:36:00">2026-05-25</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-05-25T08:36:00.000Z" title="更新于 2026-05-25 17:36:00">2026-05-25</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/">编程语言</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E5%85%B6%E4%BB%96/">其他</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/855.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<p>在落地 Pulsar 的过程中，开发者最容易踩的坑集中在两个问题上：</p>
+<p><strong>问题一</strong>：”我有多个消费者，消息是怎么分发的？顺序能保证吗？”</p>
+<p><strong>问题二</strong>：”消费者处理业务逻辑很慢，会不会把整个消费流程阻塞住？”</p>
+<p>这两个问题的答案，分别对应 Pulsar 的<strong>订阅模式（Subscription Type）</strong> 和<strong>消费模型（Consumption Pattern）</strong>。</p>
+<p>本文基于 Go 语言，通过完整可运行的代码，逐一拆解四种订阅模式，并给出生产环境中解决阻塞问题的异步消费方案。</p>
+<hr>
+<h2 id="环境准备"><a href="#环境准备" class="headerlink" title="环境准备"></a>环境准备</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 1. 启动本地 Pulsar（Docker）</span></span><br><span class="line">docker run -d --name pulsar \</span><br><span class="line">  -p 6650:6650 \</span><br><span class="line">  apachepulsar/pulsar:latest \</span><br><span class="line">  bin/pulsar standalone</span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 初始化 Go 项目</span></span><br><span class="line">go mod init pulsar-demo</span><br><span class="line">go get github.com/apache/pulsar-client-go/pulsar</span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 运行 Demo</span></span><br><span class="line">go run pulsar_subscription_demo.go</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="一、基础概念：订阅模式是什么？"><a href="#一、基础概念：订阅模式是什么？" class="headerlink" title="一、基础概念：订阅模式是什么？"></a>一、基础概念：订阅模式是什么？</h2><p>Pulsar 的<strong>订阅（Subscription）</strong> 是消费者与 Topic 之间的绑定关系，由三个要素确定：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Topic  ──────────────────→  Subscription</span><br><span class="line">                              │</span><br><span class="line">                              ├─ SubscriptionName（订阅名，唯一标识）</span><br><span class="line">                              ├─ Type（订阅模式，决定分发规则）</span><br><span class="line">                              └─ Cursor（消费进度，记录哪些消息已 Ack）</span><br></pre></td></tr></table></figure>
+
+<p><strong>订阅模式在 Consumer 订阅时声明，一旦该订阅名创建，模式不可更改。</strong></p>
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line">consumer, err := client.Subscribe(pulsar.ConsumerOptions&#123;</span><br><span class="line">    Topic:            <span class="string">&quot;persistent://public/default/my-topic&quot;</span>,</span><br><span class="line">    SubscriptionName: <span class="string">&quot;my-sub&quot;</span>,</span><br><span class="line">    Type:             pulsar.KeyShared,  <span class="comment">// ← 在这里声明，只此一次</span></span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+
+<p>Pulsar 提供四种订阅模式，覆盖从”严格有序”到”最大吞吐”的所有需求：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">严格有序 ◄─────────────────────────────────► 最大吞吐</span><br><span class="line">    │                                           │</span><br><span class="line"> Exclusive     Failover      Key_Shared      Shared</span><br><span class="line"> （独占）      （主备）      （Key路由）     （共享）</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="二、Topic-命名规则"><a href="#二、Topic-命名规则" class="headerlink" title="二、Topic 命名规则"></a>二、Topic 命名规则</h2><p>在看代码之前，先理解 Pulsar Topic 的完整命名格式：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">persistent://  public  /  default  /  my-topic</span><br><span class="line">─────────────  ──────     ───────     ────────</span><br><span class="line">存储类型         租户       命名空间     Topic名称</span><br><span class="line"></span><br><span class="line">persistent     = 消息持久化到磁盘（BookKeeper）</span><br><span class="line">non-persistent = 消息不落盘，Broker 重启即丢失</span><br><span class="line">public         = 默认租户（内置）</span><br><span class="line">default        = 默认命名空间（内置）</span><br></pre></td></tr></table></figure>
+
+<p>三层命名空间（租户 &#x2F; 命名空间 &#x2F; Topic）正是 Pulsar 原生多租户的基础，每一层都可以独立配置权限、配额和存储策略。</p>
+<hr>
+<h2 id="三、创建客户端连接"><a href="#三、创建客户端连接" class="headerlink" title="三、创建客户端连接"></a>三、创建客户端连接</h2><p>客户端是整个应用的单例，一个进程通常只需要一个 Client。</p>
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">newClient</span><span class="params">()</span></span> pulsar.Client &#123;</span><br><span class="line">    client, err := pulsar.NewClient(pulsar.ClientOptions&#123;</span><br><span class="line">        <span class="comment">// Broker 地址，格式 pulsar://host:6650</span></span><br><span class="line">        <span class="comment">// 生产环境通常是 pulsar+ssl://host:6651（开启 TLS）</span></span><br><span class="line">        URL: <span class="string">&quot;pulsar://localhost:6650&quot;</span>,</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 单次操作超时（Send / Receive 超时后返回 error，而非永久阻塞）</span></span><br><span class="line">        OperationTimeout: <span class="number">30</span> * time.Second,</span><br><span class="line"></span><br><span class="line">        <span class="comment">// TCP 连接建立超时（网络不通时快速失败，而非等待系统默认超时）</span></span><br><span class="line">        ConnectionTimeout: <span class="number">30</span> * time.Second,</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 生产环境建议补充：</span></span><br><span class="line">        <span class="comment">// Authentication: pulsar.NewAuthenticationToken(&quot;eyJ...&quot;),  // Token 认证</span></span><br><span class="line">        <span class="comment">// TLSOptions: &amp;pulsar.TLSOptions&#123;InsecureSkipVerify: false&#125;, // TLS 加密</span></span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">        log.Fatalf(<span class="string">&quot;创建 Pulsar 客户端失败: %v&quot;</span>, err)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> client</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="四、Producer：发送消息"><a href="#四、Producer：发送消息" class="headerlink" title="四、Producer：发送消息"></a>四、Producer：发送消息</h2><h3 id="4-1-普通消息（无-Key）"><a href="#4-1-普通消息（无-Key）" class="headerlink" title="4.1 普通消息（无 Key）"></a>4.1 普通消息（无 Key）</h3><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">produceMessages</span><span class="params">(client pulsar.Client, topic <span class="type">string</span>, messages []<span class="type">string</span>)</span></span> &#123;</span><br><span class="line">    producer, err := client.CreateProducer(pulsar.ProducerOptions&#123;</span><br><span class="line">        Topic: topic,</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Pulsar 默认开启批量发送（Batching）：</span></span><br><span class="line">        <span class="comment">// 将 10ms 内的多条消息合并成一批发给 Broker，显著提升吞吐量。</span></span><br><span class="line">        <span class="comment">// 若需要严格逐条确认（如金融场景），可关闭：</span></span><br><span class="line">        <span class="comment">// EnableBatching: false,</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 生产环境建议开启压缩，降低网络带宽：</span></span><br><span class="line">        <span class="comment">// CompressionType: pulsar.LZ4,   // 压缩率低，速度快</span></span><br><span class="line">        <span class="comment">// CompressionType: pulsar.ZSTD,  // 压缩率高，CPU 消耗略高</span></span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">        log.Fatalf(<span class="string">&quot;创建 Producer 失败: %v&quot;</span>, err)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">defer</span> producer.Close() <span class="comment">// 关闭时会刷新缓冲区，确保所有消息发出</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> _, msg := <span class="keyword">range</span> messages &#123;</span><br><span class="line">        <span class="comment">// Send() 同步发送：阻塞直到 Broker 确认写入 BookKeeper 多数派副本</span></span><br><span class="line">        <span class="comment">// 返回的 MsgID 是消息的唯一标识，格式：(LedgerID, EntryID, BatchIndex)</span></span><br><span class="line">        <span class="comment">// 可用于日志追踪、消息回溯、审计</span></span><br><span class="line">        msgID, err := producer.Send(context.Background(), &amp;pulsar.ProducerMessage&#123;</span><br><span class="line">            Payload: []<span class="type">byte</span>(msg), <span class="comment">// 消息体是原始字节，序列化格式由业务自定（JSON/Protobuf等）</span></span><br><span class="line">        &#125;)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">            log.Printf(<span class="string">&quot;发送失败: %v&quot;</span>, err)</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            fmt.Printf(<span class="string">&quot;[Producer] 发送: %-20s → MsgID: %v\n&quot;</span>, msg, msgID)</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-带-Key-的消息（Key-Shared-模式专用）"><a href="#4-2-带-Key-的消息（Key-Shared-模式专用）" class="headerlink" title="4.2 带 Key 的消息（Key_Shared 模式专用）"></a>4.2 带 Key 的消息（Key_Shared 模式专用）</h3><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">produceMessagesWithKey</span><span class="params">(client pulsar.Client, topic <span class="type">string</span>, messages []<span class="keyword">struct</span>&#123; key, value <span class="type">string</span> &#125;)</span></span> &#123;</span><br><span class="line">    producer, err := client.CreateProducer(pulsar.ProducerOptions&#123;</span><br><span class="line">        Topic: topic,</span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">        log.Fatalf(<span class="string">&quot;创建 Producer 失败: %v&quot;</span>, err)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">defer</span> producer.Close()</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> _, m := <span class="keyword">range</span> messages &#123;</span><br><span class="line">        _, err := producer.Send(context.Background(), &amp;pulsar.ProducerMessage&#123;</span><br><span class="line">            <span class="comment">// Key 决定消息路由到哪个 Consumer</span></span><br><span class="line">            <span class="comment">// 路由规则：ConsumerIndex = hash(Key) % ActiveConsumerCount</span></span><br><span class="line">            <span class="comment">// 同一个 Key → 始终路由到同一个 Consumer → 该 Key 下消息严格有序</span></span><br><span class="line">            <span class="comment">//</span></span><br><span class="line">            <span class="comment">// 典型 Key 设计：</span></span><br><span class="line">            <span class="comment">//   用户ID  → 同一用户的操作按序处理</span></span><br><span class="line">            <span class="comment">//   订单ID  → 同一订单的状态变更按序处理</span></span><br><span class="line">            <span class="comment">//   设备ID  → 同一 IoT 设备的数据按序入库</span></span><br><span class="line">            Key:     m.key,</span><br><span class="line">            Payload: []<span class="type">byte</span>(m.value),</span><br><span class="line">        &#125;)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">            log.Printf(<span class="string">&quot;发送失败: %v&quot;</span>, err)</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            fmt.Printf(<span class="string">&quot;[Producer] Key=%-10s  Value=%s\n&quot;</span>, m.key, m.value)</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="五、四种订阅模式详解"><a href="#五、四种订阅模式详解" class="headerlink" title="五、四种订阅模式详解"></a>五、四种订阅模式详解</h2><h3 id="5-1-Exclusive-——-独占订阅"><a href="#5-1-Exclusive-——-独占订阅" class="headerlink" title="5.1 Exclusive —— 独占订阅"></a>5.1 Exclusive —— 独占订阅</h3><p><strong>核心特点：</strong> 同一订阅名在同一时刻只允许 1 个 Consumer 连接，第二个会被 Broker 直接拒绝。</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Broker</span><br><span class="line">  msg-1 ──────────────→ Consumer-1（唯一的 Active Consumer）</span><br><span class="line">  msg-2 ──────────────→ Consumer-1</span><br><span class="line">  msg-3 ──────────────→ Consumer-1</span><br><span class="line">                         ↑</span><br><span class="line">              Consumer-2 尝试连接 → 被 Broker 拒绝（ConsumerBusy）</span><br></pre></td></tr></table></figure>
+
+<p><strong>消息顺序：✅ 严格全局有序</strong></p>
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">demoExclusive</span><span class="params">()</span></span> &#123;</span><br><span class="line">    client := newClient()</span><br><span class="line">    <span class="keyword">defer</span> client.Close()</span><br><span class="line"></span><br><span class="line">    topic := <span class="string">&quot;persistent://public/default/demo-exclusive&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 第一个 Consumer：订阅成功，成为唯一的 Active Consumer</span></span><br><span class="line">    consumer, err := client.Subscribe(pulsar.ConsumerOptions&#123;</span><br><span class="line">        Topic:            topic,</span><br><span class="line">        SubscriptionName: <span class="string">&quot;exclusive-sub&quot;</span>,</span><br><span class="line">        Type:             pulsar.Exclusive, <span class="comment">// 独占模式</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">// ReceiverQueueSize：Consumer 本地预拉取队列大小（默认 1000）</span></span><br><span class="line">        <span class="comment">// Pulsar 提前从 Broker 拉取消息缓存到本地内存，减少每次 Receive() 的网络延迟。</span></span><br><span class="line">        <span class="comment">// 设太大：内存占用高；设太小：网络往返频繁。</span></span><br><span class="line">        <span class="comment">// 业务处理快（&lt;10ms）可设大（5000+）；业务处理慢可设小（100~500）。</span></span><br><span class="line">        ReceiverQueueSize: <span class="number">100</span>,</span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">        log.Fatalf(<span class="string">&quot;订阅失败: %v&quot;</span>, err)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">defer</span> consumer.Close()</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 第二个 Consumer：尝试以相同订阅名连接，会被 Broker 拒绝</span></span><br><span class="line">    _, err2 := client.Subscribe(pulsar.ConsumerOptions&#123;</span><br><span class="line">        Topic:            topic,</span><br><span class="line">        SubscriptionName: <span class="string">&quot;exclusive-sub&quot;</span>, <span class="comment">// 同一订阅名 → 必然冲突</span></span><br><span class="line">        Type:             pulsar.Exclusive,</span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="keyword">if</span> err2 != <span class="literal">nil</span> &#123;</span><br><span class="line">        <span class="comment">// 这是预期行为，说明 Exclusive 语义生效</span></span><br><span class="line">        fmt.Printf(<span class="string">&quot;[预期行为] 第二个 Consumer 被拒绝: %v\n&quot;</span>, err2)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">go</span> produceMessages(client, topic, []<span class="type">string</span>&#123;<span class="string">&quot;msg-1&quot;</span>, <span class="string">&quot;msg-2&quot;</span>, <span class="string">&quot;msg-3&quot;</span>&#125;)</span><br><span class="line">    time.Sleep(<span class="number">500</span> * time.Millisecond)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> i := <span class="number">0</span>; i &lt; <span class="number">3</span>; i++ &#123;</span><br><span class="line">        <span class="comment">// WithTimeout 防止 Receive() 在没有消息时永久阻塞</span></span><br><span class="line">        ctx, cancel := context.WithTimeout(context.Background(), <span class="number">3</span>*time.Second)</span><br><span class="line">        msg, err := consumer.Receive(ctx) <span class="comment">// 阻塞，直到有消息到达或超时</span></span><br><span class="line">        cancel()</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">            <span class="keyword">break</span></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        fmt.Printf(<span class="string">&quot;[Consumer] 收到: %s\n&quot;</span>, <span class="type">string</span>(msg.Payload()))</span><br><span class="line"></span><br><span class="line">        <span class="comment">// ⚠️ 黄金法则：先执行业务逻辑，成功后再 Ack</span></span><br><span class="line">        <span class="comment">// 顺序不能颠倒！先 Ack 再处理，业务失败后消息永久丢失</span></span><br><span class="line">        time.Sleep(<span class="number">100</span> * time.Millisecond) <span class="comment">// 模拟业务处理（写DB、调接口等）</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">// Ack：通知 Broker 该消息已成功处理，Cursor 可以推进</span></span><br><span class="line">        <span class="comment">// Ack 后 Broker 不会再投递这条消息</span></span><br><span class="line">        consumer.Ack(msg)</span><br><span class="line">        fmt.Printf(<span class="string">&quot;[Consumer] Ack: %s\n&quot;</span>, <span class="type">string</span>(msg.Payload()))</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>适用场景：</strong></p>
+<table><thead><tr><th>✅ 适合</th><th>❌ 不适合</th></tr></thead><tbody><tr><td>开发测试环境</td><td>生产高可用（宕机无法切换）</td></tr><tr><td>严格单消费者 + 全局有序</td><td>需要水平扩展消费能力</td></tr><tr><td>业务逻辑简单，处理速度快</td><td>处理慢，容易积压</td></tr></tbody></table>
+
+<hr>
+<h3 id="5-2-Failover-——-主备订阅"><a href="#5-2-Failover-——-主备订阅" class="headerlink" title="5.2 Failover —— 主备订阅"></a>5.2 Failover —— 主备订阅</h3><p><strong>核心特点：</strong> 多个 Consumer 可以连接同一订阅，但同一时刻只有主（Active）Consumer 接收消息。主 Consumer 断开后，备（Standby）Consumer 自动升级为 Active，无缝接管。</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">正常状态：</span><br><span class="line">  msg-1 ──→ Consumer-1（Active）</span><br><span class="line">  msg-2 ──→ Consumer-1</span><br><span class="line">             Consumer-2（Standby，保持连接，等待接管）</span><br><span class="line"></span><br><span class="line">Consumer-1 宕机：</span><br><span class="line">  Broker 检测到心跳超时（约 30s，可配置）</span><br><span class="line">             ↓</span><br><span class="line">  Consumer-2 自动升为 Active</span><br><span class="line">  msg-3 ──→ Consumer-2（从上次 Cursor 位置继续，不丢消息）</span><br></pre></td></tr></table></figure>
+
+<p><strong>主备选举规则：</strong> Pulsar 按 Consumer 连接顺序决定优先级，先连接的优先级高。</p>
+<p><strong>消息顺序：✅ 严格全局有序</strong></p>
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">demoFailover</span><span class="params">()</span></span> &#123;</span><br><span class="line">    client := newClient()</span><br><span class="line">    <span class="keyword">defer</span> client.Close()</span><br><span class="line"></span><br><span class="line">    topic := <span class="string">&quot;persistent://public/default/demo-failover&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 主消费者：第一个连接，自动成为 Active</span></span><br><span class="line">    primaryConsumer, err := client.Subscribe(pulsar.ConsumerOptions&#123;</span><br><span class="line">        Topic:            topic,</span><br><span class="line">        SubscriptionName: <span class="string">&quot;failover-sub&quot;</span>,</span><br><span class="line">        Type:             pulsar.Failover,</span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">        log.Fatalf(<span class="string">&quot;主Consumer订阅失败: %v&quot;</span>, err)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">defer</span> primaryConsumer.Close()</span><br><span class="line">    fmt.Println(<span class="string">&quot;[主Consumer] Active，正在接收消息&quot;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 备用消费者：第二个连接，自动成为 Standby</span></span><br><span class="line">    <span class="comment">// 与 Broker 保持心跳连接，随时准备接管</span></span><br><span class="line">    <span class="comment">// 注意：必须使用相同的 SubscriptionName</span></span><br><span class="line">    standbyConsumer, err := client.Subscribe(pulsar.ConsumerOptions&#123;</span><br><span class="line">        Topic:            topic,</span><br><span class="line">        SubscriptionName: <span class="string">&quot;failover-sub&quot;</span>, <span class="comment">// 同一订阅名</span></span><br><span class="line">        Type:             pulsar.Failover,</span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">        log.Fatalf(<span class="string">&quot;备Consumer订阅失败: %v&quot;</span>, err)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">defer</span> standbyConsumer.Close()</span><br><span class="line">    fmt.Println(<span class="string">&quot;[备Consumer] Standby，等待主Consumer故障&quot;</span>)</span><br><span class="line">    fmt.Println(<span class="string">&quot;[说明] 主Consumer宕机 → 备Consumer自动接管 → 从Cursor断点继续 → 不丢消息&quot;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">go</span> produceMessages(client, topic, []<span class="type">string</span>&#123;<span class="string">&quot;msg-1&quot;</span>, <span class="string">&quot;msg-2&quot;</span>, <span class="string">&quot;msg-3&quot;</span>&#125;)</span><br><span class="line">    time.Sleep(<span class="number">500</span> * time.Millisecond)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> i := <span class="number">0</span>; i &lt; <span class="number">3</span>; i++ &#123;</span><br><span class="line">        ctx, cancel := context.WithTimeout(context.Background(), <span class="number">3</span>*time.Second)</span><br><span class="line">        msg, err := primaryConsumer.Receive(ctx)</span><br><span class="line">        cancel()</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">            <span class="keyword">break</span></span><br><span class="line">        &#125;</span><br><span class="line">        fmt.Printf(<span class="string">&quot;[主Consumer] 处理: %s\n&quot;</span>, <span class="type">string</span>(msg.Payload()))</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 若主Consumer在 Ack 前宕机：</span></span><br><span class="line">        <span class="comment">// 备Consumer接管后，Broker 会重新投递这条未 Ack 的消息（At-Least-Once）</span></span><br><span class="line">        primaryConsumer.Ack(msg)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>与 Exclusive 的区别：</strong></p>
+<table><thead><tr><th>维度</th><th>Exclusive</th><th>Failover</th></tr></thead><tbody><tr><td>第二个 Consumer</td><td>❌ 被拒绝</td><td>✅ 可连接（Standby）</td></tr><tr><td>故障切换</td><td>❌ 无法切换</td><td>✅ 自动切换（毫秒级）</td></tr><tr><td>消费顺序</td><td>✅ 严格有序</td><td>✅ 严格有序</td></tr><tr><td>适合场景</td><td>简单单消费者</td><td>高可用 + 严格有序</td></tr></tbody></table>
+
+<hr>
+<h3 id="5-3-Shared-——-共享订阅"><a href="#5-3-Shared-——-共享订阅" class="headerlink" title="5.3 Shared —— 共享订阅"></a>5.3 Shared —— 共享订阅</h3><p><strong>核心特点：</strong> 多个 Consumer 同时连接，消息以 Round-Robin（轮询）方式分发，每条消息只投递给一个 Consumer。吞吐量最高，但不保证顺序。</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Broker（9条消息，3个Consumer轮询）：</span><br><span class="line">  msg-1 ──→ Consumer-1（50ms 处理）</span><br><span class="line">  msg-2 ──→ Consumer-2（100ms 处理）</span><br><span class="line">  msg-3 ──→ Consumer-3（150ms 处理）</span><br><span class="line">  msg-4 ──→ Consumer-1</span><br><span class="line">  msg-5 ──→ Consumer-2</span><br><span class="line">  ...</span><br><span class="line"></span><br><span class="line">完成顺序（按处理速度）：</span><br><span class="line">  msg-1 ✅ (50ms)</span><br><span class="line">  msg-4 ✅ (100ms)</span><br><span class="line">  msg-2 ✅ (150ms)  ← 乱序！</span><br><span class="line">  ...</span><br></pre></td></tr></table></figure>
+
+<p><strong>消息顺序：❌ 不保证</strong></p>
+<p><strong>Individual Ack（Pulsar 核心优势）：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Pulsar Cursor（位图）：</span><br><span class="line">  msg-1 ✅  msg-2 ❌  msg-3 ✅  msg-4 ✅  msg-5 ❌</span><br><span class="line">                ↑                              ↑</span><br><span class="line">         只重投这两条，其余不受影响</span><br><span class="line"></span><br><span class="line">Kafka Offset（线性）：</span><br><span class="line">  offset-1 ✅  offset-2 ❌  offset-3 ✅  offset-4 ✅</span><br><span class="line">                    ↑</span><br><span class="line">     必须等这里提交，否则重启从 offset-2 开始重放</span><br><span class="line">     导致 offset-3、offset-4 被重复消费！</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">demoShared</span><span class="params">()</span></span> &#123;</span><br><span class="line">    client := newClient()</span><br><span class="line">    <span class="keyword">defer</span> client.Close()</span><br><span class="line"></span><br><span class="line">    topic := <span class="string">&quot;persistent://public/default/demo-shared&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">var</span> wg sync.WaitGroup</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 启动 3 个并行 Consumer，模拟水平扩展</span></span><br><span class="line">    <span class="comment">// 水平扩展只需启动更多 Consumer 实例，Broker 自动均衡分发，无需重启或 Rebalance</span></span><br><span class="line">    <span class="keyword">for</span> i := <span class="number">1</span>; i &lt;= <span class="number">3</span>; i++ &#123;</span><br><span class="line">        wg.Add(<span class="number">1</span>)</span><br><span class="line">        consumerID := i</span><br><span class="line"></span><br><span class="line">        consumer, err := client.Subscribe(pulsar.ConsumerOptions&#123;</span><br><span class="line">            Topic:            topic,</span><br><span class="line">            SubscriptionName: <span class="string">&quot;shared-sub&quot;</span>,  <span class="comment">// 同一订阅名，Shared 模式允许多 Consumer 并存</span></span><br><span class="line">            Type:             pulsar.Shared,</span><br><span class="line"></span><br><span class="line">            <span class="comment">// Broker 根据 Consumer 本地队列的剩余容量推送消息（背压机制）</span></span><br><span class="line">            <span class="comment">// 队列满 → Broker 暂停推送 → Consumer 处理完腾出空间 → 继续推送</span></span><br><span class="line">            <span class="comment">// 这是 Pulsar 的流控机制（Flow Control），防止 Consumer OOM</span></span><br><span class="line">            ReceiverQueueSize: <span class="number">100</span>,</span><br><span class="line">        &#125;)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">            log.Printf(<span class="string">&quot;Consumer-%d 订阅失败: %v&quot;</span>, consumerID, err)</span><br><span class="line">            wg.Done()</span><br><span class="line">            <span class="keyword">continue</span></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">go</span> <span class="function"><span class="keyword">func</span><span class="params">(c pulsar.Consumer, id <span class="type">int</span>)</span></span> &#123;</span><br><span class="line">            <span class="keyword">defer</span> wg.Done()</span><br><span class="line">            <span class="keyword">defer</span> c.Close()</span><br><span class="line"></span><br><span class="line">            <span class="keyword">for</span> &#123;</span><br><span class="line">                ctx, cancel := context.WithTimeout(context.Background(), <span class="number">2</span>*time.Second)</span><br><span class="line">                msg, err := c.Receive(ctx)</span><br><span class="line">                cancel()</span><br><span class="line">                <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                    <span class="keyword">return</span> <span class="comment">// 超时，没有更多消息，退出循环</span></span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 模拟不同 Consumer 处理速度不同（演示乱序）</span></span><br><span class="line">                processingTime := time.Duration(id*<span class="number">50</span>) * time.Millisecond</span><br><span class="line">                time.Sleep(processingTime)</span><br><span class="line"></span><br><span class="line">                fmt.Printf(<span class="string">&quot;[Consumer-%d] 收到: %-12s  耗时: %dms\n&quot;</span>,</span><br><span class="line">                    id, <span class="type">string</span>(msg.Payload()), processingTime.Milliseconds())</span><br><span class="line"></span><br><span class="line">                <span class="comment">// Shared 模式下每条消息独立 Ack（Individual Ack）</span></span><br><span class="line">                <span class="comment">// msg-2 未 Ack 不会影响 msg-1、msg-3 的 Ack 和 Cursor 推进</span></span><br><span class="line">                c.Ack(msg)</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;(consumer, consumerID)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    time.Sleep(<span class="number">300</span> * time.Millisecond)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 生产 9 条消息，预期被 3 个 Consumer 轮询分摊（约各 3 条）</span></span><br><span class="line">    produceMessages(client, topic, []<span class="type">string</span>&#123;</span><br><span class="line">        <span class="string">&quot;task-1&quot;</span>, <span class="string">&quot;task-2&quot;</span>, <span class="string">&quot;task-3&quot;</span>,</span><br><span class="line">        <span class="string">&quot;task-4&quot;</span>, <span class="string">&quot;task-5&quot;</span>, <span class="string">&quot;task-6&quot;</span>,</span><br><span class="line">        <span class="string">&quot;task-7&quot;</span>, <span class="string">&quot;task-8&quot;</span>, <span class="string">&quot;task-9&quot;</span>,</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    wg.Wait()</span><br><span class="line">    <span class="comment">// 观察输出：完成顺序不等于发送顺序（乱序是正常的）</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>适用场景：</strong></p>
+<ul>
+<li>日志收集、监控告警（量大、顺序无关）</li>
+<li>任务队列：发邮件、发短信、图片压缩等<strong>幂等任务</strong></li>
+<li>需要弹性水平扩展的通用队列</li>
+</ul>
+<blockquote>
+<p><strong>⚠️ 注意：</strong> Shared 模式下任务必须幂等设计，因为 Consumer 宕机时未 Ack 的消息会重新投递，可能导致重复处理。</p>
+</blockquote>
+<hr>
+<h3 id="5-4-Key-Shared-——-Key-路由订阅-⭐-生产最推荐"><a href="#5-4-Key-Shared-——-Key-路由订阅-⭐-生产最推荐" class="headerlink" title="5.4 Key_Shared —— Key 路由订阅 ⭐ 生产最推荐"></a>5.4 Key_Shared —— Key 路由订阅 ⭐ 生产最推荐</h3><p><strong>核心特点：</strong> 融合 Shared（高并发）和 Failover（有序）的优点。同一个 Key 的消息固定路由到同一个 Consumer（该 Key 下严格有序），不同 Key 的消息分发到不同 Consumer（并行处理）。</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">路由规则：ConsumerIndex = hash(MessageKey) % ActiveConsumerCount</span><br><span class="line"></span><br><span class="line">Broker（3个Consumer，3个用户的订单事件）：</span><br><span class="line">  user-A/下单 ──→ Consumer-1  ┐</span><br><span class="line">  user-A/支付 ──→ Consumer-1  ├── user-A 严格有序：下单→支付→发货</span><br><span class="line">  user-A/发货 ──→ Consumer-1  ┘</span><br><span class="line"></span><br><span class="line">  user-B/下单 ──→ Consumer-2  ┐</span><br><span class="line">  user-B/支付 ──→ Consumer-2  ├── user-B 严格有序：下单→支付→发货</span><br><span class="line">  user-B/发货 ──→ Consumer-2  ┘</span><br><span class="line"></span><br><span class="line">  user-C/下单 ──→ Consumer-3  ┐</span><br><span class="line">  user-C/支付 ──→ Consumer-3  ├── user-C 严格有序：下单→支付→发货</span><br><span class="line">  user-C/发货 ──→ Consumer-3  ┘</span><br><span class="line"></span><br><span class="line">三个用户并行处理，互不等待 → 高吞吐 + 有序</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">demoKeyShared</span><span class="params">()</span></span> &#123;</span><br><span class="line">    client := newClient()</span><br><span class="line">    <span class="keyword">defer</span> client.Close()</span><br><span class="line"></span><br><span class="line">    topic := <span class="string">&quot;persistent://public/default/demo-key-shared&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">var</span> wg sync.WaitGroup</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 启动 3 个 Consumer（Key_Shared 模式）</span></span><br><span class="line">    <span class="comment">// Broker 将不同的 Key 哈希分配到这 3 个 Consumer</span></span><br><span class="line">    <span class="comment">// 当 Consumer 数量变化时，Pulsar 自动重新分配 Key → Consumer 的映射（无需重启）</span></span><br><span class="line">    <span class="keyword">for</span> i := <span class="number">0</span>; i &lt; <span class="number">3</span>; i++ &#123;</span><br><span class="line">        wg.Add(<span class="number">1</span>)</span><br><span class="line">        consumerID := i + <span class="number">1</span></span><br><span class="line"></span><br><span class="line">        consumer, err := client.Subscribe(pulsar.ConsumerOptions&#123;</span><br><span class="line">            Topic:            topic,</span><br><span class="line">            SubscriptionName: <span class="string">&quot;key-shared-sub&quot;</span>,</span><br><span class="line">            Type:             pulsar.KeyShared, <span class="comment">// Key 路由模式</span></span><br><span class="line"></span><br><span class="line">            <span class="comment">// ⚠️ Key_Shared 关键配置：</span></span><br><span class="line">            <span class="comment">// 若某个 Consumer 有消息长时间未 Ack，该 Consumer 负责的所有 Key 后续消息都会阻塞！</span></span><br><span class="line">            <span class="comment">// 原因：为保证 Key 内有序，下一条同 Key 消息必须等上一条 Ack 后才能投递。</span></span><br><span class="line">            <span class="comment">// 解决方案：配置 AckTimeout，超时自动重投，避免永久阻塞整个 Key 的消费链路。</span></span><br><span class="line">            <span class="comment">// AckTimeout:      30 * time.Second,</span></span><br><span class="line">            <span class="comment">// AckTimeoutTimer: 1 * time.Second,</span></span><br><span class="line">        &#125;)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">            log.Printf(<span class="string">&quot;Consumer-%d 订阅失败: %v&quot;</span>, consumerID, err)</span><br><span class="line">            wg.Done()</span><br><span class="line">            <span class="keyword">continue</span></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">go</span> <span class="function"><span class="keyword">func</span><span class="params">(c pulsar.Consumer, id <span class="type">int</span>)</span></span> &#123;</span><br><span class="line">            <span class="keyword">defer</span> wg.Done()</span><br><span class="line">            <span class="keyword">defer</span> c.Close()</span><br><span class="line"></span><br><span class="line">            <span class="keyword">for</span> &#123;</span><br><span class="line">                ctx, cancel := context.WithTimeout(context.Background(), <span class="number">3</span>*time.Second)</span><br><span class="line">                msg, err := c.Receive(ctx)</span><br><span class="line">                cancel()</span><br><span class="line">                <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                    <span class="keyword">return</span></span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// msg.Key() 返回消息的路由 Key</span></span><br><span class="line">                <span class="comment">// 关键观察：同一个 Key（如 user-A）始终由同一个 Consumer 处理</span></span><br><span class="line">                fmt.Printf(<span class="string">&quot;[Consumer-%d] Key=%-10s  Value=%-6s  ← 同Key消息在此Consumer内严格有序\n&quot;</span>,</span><br><span class="line">                    id, msg.Key(), <span class="type">string</span>(msg.Payload()))</span><br><span class="line"></span><br><span class="line">                time.Sleep(<span class="number">50</span> * time.Millisecond) <span class="comment">// 模拟业务处理</span></span><br><span class="line"></span><br><span class="line">                <span class="comment">// Ack 之后，Broker 才会将同 Key 的下一条消息投递过来</span></span><br><span class="line">                c.Ack(msg)</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;(consumer, consumerID)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    time.Sleep(<span class="number">300</span> * time.Millisecond)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 生产三个用户的订单事件（模拟乱序到达的现实场景）</span></span><br><span class="line">    <span class="comment">// 预期：每个用户的事件在其对应 Consumer 内严格按序处理</span></span><br><span class="line">    produceMessagesWithKey(client, topic, []<span class="keyword">struct</span>&#123; key, value <span class="type">string</span> &#125;&#123;</span><br><span class="line">        &#123;<span class="string">&quot;user-A&quot;</span>, <span class="string">&quot;下单&quot;</span>&#125;,</span><br><span class="line">        &#123;<span class="string">&quot;user-B&quot;</span>, <span class="string">&quot;下单&quot;</span>&#125;,</span><br><span class="line">        &#123;<span class="string">&quot;user-A&quot;</span>, <span class="string">&quot;支付&quot;</span>&#125;,  <span class="comment">// user-A：必须在 下单 之后处理</span></span><br><span class="line">        &#123;<span class="string">&quot;user-C&quot;</span>, <span class="string">&quot;下单&quot;</span>&#125;,</span><br><span class="line">        &#123;<span class="string">&quot;user-B&quot;</span>, <span class="string">&quot;支付&quot;</span>&#125;,</span><br><span class="line">        &#123;<span class="string">&quot;user-A&quot;</span>, <span class="string">&quot;发货&quot;</span>&#125;,  <span class="comment">// user-A：必须在 支付 之后处理</span></span><br><span class="line">        &#123;<span class="string">&quot;user-C&quot;</span>, <span class="string">&quot;支付&quot;</span>&#125;,</span><br><span class="line">        &#123;<span class="string">&quot;user-B&quot;</span>, <span class="string">&quot;发货&quot;</span>&#125;,</span><br><span class="line">        &#123;<span class="string">&quot;user-C&quot;</span>, <span class="string">&quot;发货&quot;</span>&#125;,</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    wg.Wait()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>与 Kafka 分区方案的对比：</strong></p>
+<table><thead><tr><th>维度</th><th>Kafka 分区</th><th>Pulsar Key_Shared</th></tr></thead><tbody><tr><td>同 Key 有序</td><td>✅</td><td>✅</td></tr><tr><td>并行消费</td><td>✅（受分区数限制）</td><td>✅（不受限）</td></tr><tr><td>扩容方式</td><td>增加分区 → Rebalance（有停顿）</td><td>增加 Consumer → 自动重路由（无停顿）</td></tr><tr><td>Consumer 数 &gt; 分区数</td><td>❌ 有 Consumer 空闲</td><td>✅ 所有 Consumer 均可工作</td></tr></tbody></table>
+
+<hr>
+<h2 id="六、Ack-机制深度解析"><a href="#六、Ack-机制深度解析" class="headerlink" title="六、Ack 机制深度解析"></a>六、Ack 机制深度解析</h2><h3 id="6-1-三种-Ack-操作"><a href="#6-1-三种-Ack-操作" class="headerlink" title="6.1 三种 Ack 操作"></a>6.1 三种 Ack 操作</h3><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// ✅ 正常 Ack：业务成功，消息处理完毕，Cursor 推进</span></span><br><span class="line">consumer.Ack(msg)</span><br><span class="line"></span><br><span class="line"><span class="comment">// ❌ Negative Ack：业务失败，主动要求重新投递</span></span><br><span class="line"><span class="comment">// Broker 在 negativeAckRedeliveryDelay 后重新投递（默认 1 分钟）</span></span><br><span class="line">consumer.NegativeAcknowledge(msg)</span><br><span class="line"></span><br><span class="line"><span class="comment">// ⏱️ Ack 超时兜底：若超过 ackTimeout 未 Ack，Broker 自动重新投递</span></span><br><span class="line"><span class="comment">// 在 ConsumerOptions 中配置：</span></span><br><span class="line"><span class="comment">// AckTimeout: 30 * time.Second,</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-Ack-的黄金法则"><a href="#6-2-Ack-的黄金法则" class="headerlink" title="6.2 Ack 的黄金法则"></a>6.2 Ack 的黄金法则</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">❌ 错误顺序（先 Ack 再处理）：</span><br><span class="line">   Receive → Ack → 业务逻辑失败 → 消息永久丢失（无法找回）</span><br><span class="line"></span><br><span class="line">✅ 正确顺序（先处理再 Ack）：</span><br><span class="line">   Receive → 业务逻辑 → 成功 → Ack</span><br><span class="line">                       → 失败 → NegativeAcknowledge（触发重投）</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-3-Pulsar-Cursor-vs-Kafka-Offset"><a href="#6-3-Pulsar-Cursor-vs-Kafka-Offset" class="headerlink" title="6.3 Pulsar Cursor vs Kafka Offset"></a>6.3 Pulsar Cursor vs Kafka Offset</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Kafka（线性 Offset）：</span><br><span class="line">  [✅1][✅2][❌3][✅4][✅5]</span><br><span class="line">              ↑</span><br><span class="line">  Offset 卡在 3，重启后从 3 开始重放</span><br><span class="line">  4 和 5 被重复消费 → At-Least-Once 在这里很痛</span><br><span class="line"></span><br><span class="line">Pulsar（位图 Cursor）：</span><br><span class="line">  [✅1][✅2][❌3][✅4][✅5]</span><br><span class="line">              ↑</span><br><span class="line">  只记录 3 未确认，重启后只重投 3</span><br><span class="line">  4 和 5 不受影响 → 更精准的 At-Least-Once</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="七、异步消费：解决业务阻塞问题"><a href="#七、异步消费：解决业务阻塞问题" class="headerlink" title="七、异步消费：解决业务阻塞问题"></a>七、异步消费：解决业务阻塞问题</h2><h3 id="7-1-问题：同步消费的吞吐量瓶颈"><a href="#7-1-问题：同步消费的吞吐量瓶颈" class="headerlink" title="7.1 问题：同步消费的吞吐量瓶颈"></a>7.1 问题：同步消费的吞吐量瓶颈</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">同步消费（单线程）：</span><br><span class="line"></span><br><span class="line">Consumer 线程</span><br><span class="line">  ├─ Receive msg-1</span><br><span class="line">  ├─ 业务逻辑（写 DB，耗时 2s）← 整个消费循环阻塞 2s</span><br><span class="line">  ├─ Ack msg-1</span><br><span class="line">  ├─ Receive msg-2</span><br><span class="line">  ├─ 业务逻辑（2s）</span><br><span class="line">  ├─ Ack msg-2</span><br><span class="line">  ...</span><br><span class="line"></span><br><span class="line">5 条消息串行处理：总耗时 = 5 × 2s = 10s</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-2-解决方案：Goroutine-池异步消费"><a href="#7-2-解决方案：Goroutine-池异步消费" class="headerlink" title="7.2 解决方案：Goroutine 池异步消费"></a>7.2 解决方案：Goroutine 池异步消费</h3><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">demoAsyncConsume</span><span class="params">()</span></span> &#123;</span><br><span class="line">    client := newClient()</span><br><span class="line">    <span class="keyword">defer</span> client.Close()</span><br><span class="line"></span><br><span class="line">    consumer, _ := client.Subscribe(pulsar.ConsumerOptions&#123;</span><br><span class="line">        Topic:            <span class="string">&quot;persistent://public/default/demo-async&quot;</span>,</span><br><span class="line">        SubscriptionName: <span class="string">&quot;async-sub&quot;</span>,</span><br><span class="line">        Type:             pulsar.Shared,</span><br><span class="line"></span><br><span class="line">        <span class="comment">// ReceiverQueueSize 设大：</span></span><br><span class="line">        <span class="comment">// 主循环 Receive() 从本地内存队列取消息（无网络 I/O，极快）</span></span><br><span class="line">        <span class="comment">// Goroutine 池满时主循环短暂阻塞，本地队列依然在接收 Broker 推送的消息</span></span><br><span class="line">        <span class="comment">// 避免 Broker 端因 Consumer 无响应而减少推送速率</span></span><br><span class="line">        ReceiverQueueSize: <span class="number">1000</span>,</span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="keyword">defer</span> consumer.Close()</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Semaphore Channel：Go 惯用的&quot;有界并发&quot;实现</span></span><br><span class="line">    <span class="comment">// 容量 = 最大并发 Goroutine 数（根据业务特性调整）</span></span><br><span class="line">    <span class="comment">// CPU 密集型任务：goroutine 数 ≈ CPU 核心数</span></span><br><span class="line">    <span class="comment">// IO 密集型任务：goroutine 数可设较大（如 50~200），让 CPU 在等待 IO 时处理其他任务</span></span><br><span class="line">    sem := <span class="built_in">make</span>(<span class="keyword">chan</span> <span class="keyword">struct</span>&#123;&#125;, <span class="number">10</span>)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">go</span> produceMessages(client, consumer.Topic(), []<span class="type">string</span>&#123;</span><br><span class="line">        <span class="string">&quot;task-1&quot;</span>, <span class="string">&quot;task-2&quot;</span>, <span class="string">&quot;task-3&quot;</span>, <span class="string">&quot;task-4&quot;</span>, <span class="string">&quot;task-5&quot;</span>,</span><br><span class="line">    &#125;)</span><br><span class="line">    time.Sleep(<span class="number">300</span> * time.Millisecond)</span><br><span class="line"></span><br><span class="line">    startTime := time.Now()</span><br><span class="line">    <span class="keyword">var</span> wg sync.WaitGroup</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> i := <span class="number">0</span>; i &lt; <span class="number">5</span>; i++ &#123;</span><br><span class="line">        ctx, cancel := context.WithTimeout(context.Background(), <span class="number">3</span>*time.Second)</span><br><span class="line">        msg, err := consumer.Receive(ctx) <span class="comment">// 主循环：只取消息，极快</span></span><br><span class="line">        cancel()</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">            <span class="keyword">break</span></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        wg.Add(<span class="number">1</span>)</span><br><span class="line">        sem &lt;- <span class="keyword">struct</span>&#123;&#125;&#123;&#125; <span class="comment">// 占槽；若 10 个 Goroutine 都在运行，这里短暂阻塞（自然背压）</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 立刻启动 Goroutine，主循环不等待，马上 Receive() 下一条</span></span><br><span class="line">        <span class="keyword">go</span> <span class="function"><span class="keyword">func</span><span class="params">(m pulsar.Message)</span></span> &#123;</span><br><span class="line">            <span class="keyword">defer</span> wg.Done()</span><br><span class="line">            <span class="keyword">defer</span> <span class="function"><span class="keyword">func</span><span class="params">()</span></span> &#123; &lt;-sem &#125;() <span class="comment">// 释放槽，让主循环可以继续</span></span><br><span class="line"></span><br><span class="line">            fmt.Printf(<span class="string">&quot;[Goroutine] 开始处理: %s  (t=%s)\n&quot;</span>,</span><br><span class="line">                <span class="type">string</span>(m.Payload()), time.Since(startTime).Round(time.Millisecond))</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 耗时业务逻辑（调外部接口、写 DB 等）</span></span><br><span class="line">            <span class="comment">// 这 2 秒内，主循环已经在取下一条消息并启动新 Goroutine 了</span></span><br><span class="line">            time.Sleep(<span class="number">2</span> * time.Second)</span><br><span class="line"></span><br><span class="line">            <span class="comment">// ✅ 业务成功 → Ack</span></span><br><span class="line">            consumer.Ack(m)</span><br><span class="line"></span><br><span class="line">            <span class="comment">// ❌ 业务失败时改为：</span></span><br><span class="line">            <span class="comment">// consumer.NegativeAcknowledge(m)</span></span><br><span class="line"></span><br><span class="line">            fmt.Printf(<span class="string">&quot;[Goroutine] Ack 完成: %s  (t=%s)\n&quot;</span>,</span><br><span class="line">                <span class="type">string</span>(m.Payload()), time.Since(startTime).Round(time.Millisecond))</span><br><span class="line">        &#125;(msg)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    wg.Wait()</span><br><span class="line">    fmt.Printf(<span class="string">&quot;全部完成，总耗时: %s（同步需 ~10s）\n&quot;</span>,</span><br><span class="line">        time.Since(startTime).Round(time.Millisecond))</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>效果对比（5条消息，每条业务耗时 2 秒）：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">同步消费：msg-1(2s) → msg-2(2s) → msg-3(2s) → msg-4(2s) → msg-5(2s) = 10s</span><br><span class="line"></span><br><span class="line">异步消费：</span><br><span class="line">  t=0ms   → 取 msg-1，启动 Goroutine-1</span><br><span class="line">  t=1ms   → 取 msg-2，启动 Goroutine-2</span><br><span class="line">  t=2ms   → 取 msg-3，启动 Goroutine-3</span><br><span class="line">  t=3ms   → 取 msg-4，启动 Goroutine-4</span><br><span class="line">  t=4ms   → 取 msg-5，启动 Goroutine-5</span><br><span class="line">  t=2004ms → 所有 Goroutine 完成 ≈ 2s ✅</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="八、各模式横向对比"><a href="#八、各模式横向对比" class="headerlink" title="八、各模式横向对比"></a>八、各模式横向对比</h2><table><thead><tr><th>维度</th><th>Exclusive</th><th>Failover</th><th>Shared</th><th>Key_Shared</th></tr></thead><tbody><tr><td>并发 Consumer 数</td><td>1</td><td>多（主+备）</td><td>多</td><td>多</td></tr><tr><td>全局消息顺序</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td></tr><tr><td>Key 内消息顺序</td><td>✅</td><td>✅</td><td>❌</td><td>✅</td></tr><tr><td>自动故障转移</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td></tr><tr><td>水平扩展</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td></tr><tr><td>吞吐量</td><td>低</td><td>低</td><td>最高</td><td>高</td></tr><tr><td>典型场景</td><td>测试/简单消费</td><td>金融账务</td><td>日志/任务队列</td><td>订单/用户流</td></tr></tbody></table>
+
+<hr>
+<h2 id="九、选型决策树"><a href="#九、选型决策树" class="headerlink" title="九、选型决策树"></a>九、选型决策树</h2><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">需要消费者高可用（故障自动切换）？</span><br><span class="line">├─ 否 → Exclusive（简单场景/测试）</span><br><span class="line">└─ 是</span><br><span class="line">    └─ 需要严格全局顺序？</span><br><span class="line">        ├─ 是 → Failover（金融账务、配置变更）</span><br><span class="line">        └─ 否</span><br><span class="line">            └─ 需要 per-Key 顺序（同一实体的消息有序）？</span><br><span class="line">                ├─ 是 → Key_Shared ⭐（订单、用户行为、IoT 设备）</span><br><span class="line">                └─ 否 → Shared（日志、告警、幂等任务队列）</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="十、生产环境配置建议"><a href="#十、生产环境配置建议" class="headerlink" title="十、生产环境配置建议"></a>十、生产环境配置建议</h2><h3 id="Consumer-关键参数"><a href="#Consumer-关键参数" class="headerlink" title="Consumer 关键参数"></a>Consumer 关键参数</h3><figure class="highlight go"><table><tr><td class="code"><pre><span class="line">consumer, _ := client.Subscribe(pulsar.ConsumerOptions&#123;</span><br><span class="line">    Topic:            <span class="string">&quot;persistent://tenant/ns/topic&quot;</span>,</span><br><span class="line">    SubscriptionName: <span class="string">&quot;prod-sub&quot;</span>,</span><br><span class="line">    Type:             pulsar.KeyShared,</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 预拉取队列：根据业务处理速度调整</span></span><br><span class="line">    <span class="comment">// 处理快（&lt;5ms）：设 5000+；处理慢（&gt;100ms）：设 100~500</span></span><br><span class="line">    ReceiverQueueSize: <span class="number">1000</span>,</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Ack 超时：防止 Consumer 卡死导致消息积压</span></span><br><span class="line">    <span class="comment">// Key_Shared 模式下尤其重要</span></span><br><span class="line">    AckTimeout:      <span class="number">30</span> * time.Second,</span><br><span class="line">    AckTimeoutTimer: <span class="number">1</span> * time.Second,</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Negative Ack 重投延迟：失败后多久重试（默认 1 分钟）</span></span><br><span class="line">    <span class="comment">// 防止频繁重试打爆下游服务</span></span><br><span class="line">    NackRedeliveryDelay: <span class="number">5</span> * time.Second,</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 死信队列：消息重试超过次数后发送到 DLQ，避免阻塞正常消费</span></span><br><span class="line">    DLQ: &amp;pulsar.DLQPolicy&#123;</span><br><span class="line">        MaxDeliveries:   <span class="number">3</span>,                  <span class="comment">// 最多重试 3 次</span></span><br><span class="line">        DeadLetterTopic: <span class="string">&quot;my-topic-DLQ&quot;</span>,     <span class="comment">// 死信 Topic</span></span><br><span class="line">    &#125;,</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+
+<h3 id="Producer-关键参数"><a href="#Producer-关键参数" class="headerlink" title="Producer 关键参数"></a>Producer 关键参数</h3><figure class="highlight go"><table><tr><td class="code"><pre><span class="line">producer, _ := client.CreateProducer(pulsar.ProducerOptions&#123;</span><br><span class="line">    Topic:           <span class="string">&quot;persistent://tenant/ns/topic&quot;</span>,</span><br><span class="line">    CompressionType: pulsar.LZ4,             <span class="comment">// 开启压缩</span></span><br><span class="line">    BatchingMaxPublishDelay: <span class="number">10</span> * time.Millisecond, <span class="comment">// 批量发送窗口</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 开启幂等发送（防止网络重试导致重复写入）</span></span><br><span class="line">    <span class="comment">// 结合事务 API 可实现端到端 Exactly-Once</span></span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>Pulsar 订阅模式的设计哲学是：<strong>把”顺序”和”吞吐”的权衡暴露给开发者，而不是在系统内部做妥协。</strong></p>
+<ul>
+<li><strong>需要有序</strong>：Exclusive 或 Failover，系统保证全局顺序</li>
+<li><strong>需要吞吐</strong>：Shared，牺牲顺序换取最大并发</li>
+<li><strong>两者都要</strong>：Key_Shared，在 Key 粒度上有序，跨 Key 并行</li>
+</ul>
+<p>消费模型上，<strong>同步消费适合入门，异步消费（Goroutine 池）才是生产标准</strong>。Ack 必须在业务逻辑成功后发出，这是 At-Least-Once 语义的基石。</p>
+<hr>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul>
+<li><a href="https://pulsar.apache.org/docs/concepts-messaging/#subscription-types">Apache Pulsar 官方文档 - 订阅模式</a></li>
+<li><a href="https://pkg.go.dev/github.com/apache/pulsar-client-go/pulsar">Pulsar Go Client 文档</a></li>
+<li><a href="https://pulsar.apache.org/docs/transactions/">Pulsar 事务 API</a></li>
+<li><a href="https://bookkeeper.apache.org/docs/latest/getting-started/concepts/">BookKeeper 原理</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/855.html">https://leon-book.github.io/blog/index.php/archives/855.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/golang/">golang</a></div><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/856.html" title="行式、列式、向量数据库怎么选?一篇写给工程师的选型指南"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">行式、列式、向量数据库怎么选?一篇写给工程师的选型指南</div></div><div class="info-2"><div class="info-item-1">   面向有经验的后端&#x2F;数据&#x2F;平台工程师。本文不堆术语,只讲清楚三类数据库各自擅长什么、在什么场景下会踩坑,以及真实业务里怎么组合使用。原理部分点到为止,深入链接放在文末。  数据库选型这件事,八成的争论其实源于一个误会:把”存储模型”当成了”产品好坏”来比。行式、列式、向量,本质是三种不同的数据组织方式,各自为一类访问模式做了极致优化。选错的代价不是”慢一点”,而是整个架构跑偏。 下面按”它怎么存 → 适合什么 → 什么时候别用 → 真实案例”的结构,逐个拆开。  一、行式数据库:为”一次操作一条记录”而生它怎么存行式数据库把一整条记录的所有字段连续存放在磁盘上: Block 1: [1, 张三, 25, 北京] [2, 李四, 30, 上海]Block 2: [3, 王五, 28, 广州] [4, 赵六, 35, 深圳]  读一条完整记录,一次磁盘 IO 就能拿全所有字段。  📊 建议配图:行式存储 vs 列式存储的磁盘布局对比图(可搜索 “row vs columnar storage layout”)  适合什么场景行式数据库的统治区是 OLTP(在...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/852.html" title="Redis 二级缓存在撮合引擎中的落地方案"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Redis 二级缓存在撮合引擎中的落地方案</div></div><div class="info-2"><div class="info-item-1">   场景：撮合引擎多 Pod 部署，每个 Pod 维护本地 L1 内存深度数据，如何通过 Redis L2 实现跨 Pod 无损同步？   一、背景与问题定义撮合引擎（Matching Engine）是交易系统的核心，订单簿（Order Book）的买卖深度数据有以下特点：  写频率极高：每秒数千次挂单、撤单、成交 读频率更高：行情推送、风控查询、前端展示 强一致性要求：深度数据不能乱序、不能丢失 延迟敏感：毫秒级响应，不能每次都走 Redis  因此，撮合引擎不会把深度数据持续维护在 Redis，而是： L1（JVM 堆内存）= 单一真相来源（Source of Truth）L2（Redis）     = 跨 Pod 同步介质 + 故障恢复快照  核心问题就变成：如何让 L1 的变更，通过 L2，无差别地同步到其他 Pod 的 L1？  二、整体架构┌─────────────────────────┐      ┌─────────────────────────┐│       Pod A             │      │       Pod B         ...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/index.php/archives/416.html" title="在 Mac 上升级到 Go 1.18 的步骤"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2019-10-16</div><div class="info-item-2">在 Mac 上升级到 Go 1.18 的步骤</div></div><div class="info-2"><div class="info-item-1">  如果您希望在 Mac 上升级到 Go 1.18，可以按照以下步骤进行操作： 1. 检查当前 Go 版本在终端中运行以下命令，检查当前安装的 Go 版本： go version  2. 卸载旧版本（可选）如果您是通过 Homebrew 或直接下载的方式安装的 Go，建议先卸载旧版本。 使用 Homebrew 卸载如果您是通过 Homebrew 安装的，可以使用以下命令卸载： brew uninstall go  手动卸载如果您是手动安装的，您可以删除 Go 目录（通常在 /usr/local/go）： sudo rm -rf /usr/local/go  3. 下载 Go 1.18前往 Go 的官方网站下载 Go 1.18 的安装包： Go Downloads 选择适合 macOS 的版本（通常为 .pkg 文件）。 4. 安装 Go 1.18 双击下载的 .pkg 文件，按照提示完成安装。  5. 验证安装安装完成后，在终端中运行以下命令，确认 Go 已成功升级： go version  您应该看到输出类似于： go version go1.18 darwin/amd64  ...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/870.html" title="Go 垃圾回收机制科普 + 实战调优"><img class="cover" src="/blog/assets/migrated/328c7f7b819f598b63ff.png" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-08-10</div><div class="info-item-2">Go 垃圾回收机制科普 + 实战调优</div></div><div class="info-2"><div class="info-item-1">  Go 的垃圾回收到底在忙什么 一篇讲人话的 GC 入门。文中所有 gctrace、基准测试、逃逸分析的输出，都是在 Go 1.26.3 &#x2F; darwin-arm64 &#x2F; Apple M4 上真实跑出来的，不是手写示意。  你大概率没写过一行跟 GC 有关的代码，但它一直在你的程序里干活。这篇文章想把三件事讲清楚：  Go 的 GC 是怎么判断一个对象还有没有用的； 程序在跑、指针在变，它怎么保证不误杀； 什么时候你需要动手调它，怎么调。   1. 先问一句：为什么需要 GC在 C 里，内存要自己还： char *buf = malloc(1024);// ... 用 buf ...free(buf);  这行 free 写错位置，就是两类经典事故：  忘了写 → 内存泄漏。进程越跑越胖，最后被 OOM Killer 干掉。 写了两次，或者释放后还在用 → 野指针 &#x2F; use-after-free。轻则数据错乱，重则可被利用成安全漏洞。  麻烦在于，一块内存”还有没有人用”，往往不是写 free 的那个函数能单独决定的——它可能被塞进了某个全局缓存...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/417.html" title="Go 语言中的下划线（ &#96;_&#96;）"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2019-10-20</div><div class="info-item-2">Go 语言中的下划线（ &#96;_&#96;）</div></div><div class="info-2"><div class="info-item-1">  在 Go 语言中，下划线（_）具有特殊的含义和用途。它被称为“空白标识符”，主要用于丢弃不需要的值。以下是一些常见的用法和示例。 1. 丢弃不需要的值在接收多个返回值的函数中，如果您只关心某些返回值，可以使用下划线来丢弃不需要的值。 示例package mainimport (    &quot;fmt&quot;)func getValues() (int, int) &#123;    return 42, 99&#125;func main() &#123;    a, _ := getValues() // 丢弃第二个返回值    fmt.Println(a)      // 输出：42&#125;  2. 忽略导入的包在导入包时，如果您只想执行包中的初始化代码，而不使用包中的任何标识符，可以使用下划线。 示例package mainimport (    _ &quot;github.com/lib/pq&quot; // 导入但不使用)func main() &#123;    // 这里可以使用 pq 包的初始化代码&#125;  3. 作为占位符在某些情况下，...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/872.html" title="Go 服务为什么“像会自动扩协程”，以及真正的风险点"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-08-12</div><div class="info-item-2">Go 服务为什么“像会自动扩协程”，以及真正的风险点</div></div><div class="info-2"><div class="info-item-1">   结合 Kratos + net/http + gRPC-Go + database/sql 连接池，说明请求高峰时 goroutine 如何增长、什么在限制它、以及线上真正该盯什么。  一句话结论不是框架实现了“按 QPS 动态调协程池”，而是 Go 默认模型：一个并发请求（连接&#x2F;流）对应一个 handler goroutine，请求结束就退出。所以并发上来时，goroutine 数会跟着涨；流量下去后，这些 handler 退出，数量自然回落。真正会“卡住上限”的，往往是 DB 连接池、超时、CPU（GOMAXPROCS）、以及有没有进程级并发保护，而不是“协程池满了”。  1. 先分清三个词：QPS、并发、goroutine很多人把“请求量上来 → 自动扩协程”理解成： QPS 翻倍 ⇒ 协程池 size 翻倍  更准确的公式是： 并发量 ≈ QPS × 平均耗时  例子： QPS平均耗时大约同时在跑的 handler100020ms~2010002s~2000  所以：  QPS 高但很快返回 → goroutine 未必很多 QPS 一般但接口变慢 → g...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/543.html" title="Go 语言指针符号 * 和 &amp;"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2022-06-07</div><div class="info-item-2">Go 语言指针符号 * 和 &amp;</div></div><div class="info-2"><div class="info-item-1">  符号 &amp; 的意思是对变量取地址如：变量a的地址是&amp;a 符号 * 的意思是对指针取值，如:*&amp;a，就是a变量所在地址的值，当然也就是a的值了 先看一段代码，人工运行一下，看看自己能做对几题？ package mainimport &quot;fmt&quot;func main() &#123;    var a int = 1     var b *int = &amp;a    var c **int = &amp;b    var x int = *b    fmt.Println(&quot;a = &quot;,a)    fmt.Println(&quot;&amp;a = &quot;,&amp;a)    fmt.Println(&quot;*&amp;a = &quot;,*&amp;a)    fmt.Println(&quot;b = &quot;,b)    fmt.Println(&quot;&amp;b = &quot;,&amp;b)    fmt.Println(&quot;*&amp;b = &quot;,*&amp;b...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/825.html" title="# Go Wire 依次依赖注入原理与 Demo"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-01-23</div><div class="info-item-2"># Go Wire 依次依赖注入原理与 Demo</div></div><div class="info-2"><div class="info-item-1">   本文通过一个完整 Demo，系统整理 Go Wire 的“依次 &#x2F; 链式依赖注入”机制：上一个 Provider 的 return 值，如何自动作为下一个 Provider 的参数。   一、什么是 Wire 的「依次依赖注入」一句话概括：  Wire 会根据“返回值类型 → 参数类型”的匹配关系，自动把多个构造函数串成一条调用链，并在编译期生成代码。  它不是：  运行时容器 反射注入 黑盒魔法  而是：  构建依赖图（Dependency Graph） 排序依赖 生成明确的 Go 构造代码   二、一个最典型的依赖链假设我们有如下对象层级： App └── UserService      └── UserRepo           └── *sql.DB  对应的构造函数： func NewDB() *sql.DBfunc NewUserRepo(db *sql.DB) *UserRepofunc NewUserService(repo *UserRepo) *UserServicefunc NewApp(svc *UserService) *App  这...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%8E%AF%E5%A2%83%E5%87%86%E5%A4%87"><span class="toc-number">1.</span> <span class="toc-text">环境准备</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E5%9F%BA%E7%A1%80%E6%A6%82%E5%BF%B5%EF%BC%9A%E8%AE%A2%E9%98%85%E6%A8%A1%E5%BC%8F%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="toc-number">2.</span> <span class="toc-text">一、基础概念：订阅模式是什么？</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81Topic-%E5%91%BD%E5%90%8D%E8%A7%84%E5%88%99"><span class="toc-number">3.</span> <span class="toc-text">二、Topic 命名规则</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%88%9B%E5%BB%BA%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%BF%9E%E6%8E%A5"><span class="toc-number">4.</span> <span class="toc-text">三、创建客户端连接</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81Producer%EF%BC%9A%E5%8F%91%E9%80%81%E6%B6%88%E6%81%AF"><span class="toc-number">5.</span> <span class="toc-text">四、Producer：发送消息</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E6%99%AE%E9%80%9A%E6%B6%88%E6%81%AF%EF%BC%88%E6%97%A0-Key%EF%BC%89"><span class="toc-number">5.1.</span> <span class="toc-text">4.1 普通消息（无 Key）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%B8%A6-Key-%E7%9A%84%E6%B6%88%E6%81%AF%EF%BC%88Key-Shared-%E6%A8%A1%E5%BC%8F%E4%B8%93%E7%94%A8%EF%BC%89"><span class="toc-number">5.2.</span> <span class="toc-text">4.2 带 Key 的消息（Key_Shared 模式专用）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E5%9B%9B%E7%A7%8D%E8%AE%A2%E9%98%85%E6%A8%A1%E5%BC%8F%E8%AF%A6%E8%A7%A3"><span class="toc-number">6.</span> <span class="toc-text">五、四种订阅模式详解</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-Exclusive-%E2%80%94%E2%80%94-%E7%8B%AC%E5%8D%A0%E8%AE%A2%E9%98%85"><span class="toc-number">6.1.</span> <span class="toc-text">5.1 Exclusive —— 独占订阅</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-Failover-%E2%80%94%E2%80%94-%E4%B8%BB%E5%A4%87%E8%AE%A2%E9%98%85"><span class="toc-number">6.2.</span> <span class="toc-text">5.2 Failover —— 主备订阅</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-Shared-%E2%80%94%E2%80%94-%E5%85%B1%E4%BA%AB%E8%AE%A2%E9%98%85"><span class="toc-number">6.3.</span> <span class="toc-text">5.3 Shared —— 共享订阅</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-Key-Shared-%E2%80%94%E2%80%94-Key-%E8%B7%AF%E7%94%B1%E8%AE%A2%E9%98%85-%E2%AD%90-%E7%94%9F%E4%BA%A7%E6%9C%80%E6%8E%A8%E8%8D%90"><span class="toc-number">6.4.</span> <span class="toc-text">5.4 Key_Shared —— Key 路由订阅 ⭐ 生产最推荐</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81Ack-%E6%9C%BA%E5%88%B6%E6%B7%B1%E5%BA%A6%E8%A7%A3%E6%9E%90"><span class="toc-number">7.</span> <span class="toc-text">六、Ack 机制深度解析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E4%B8%89%E7%A7%8D-Ack-%E6%93%8D%E4%BD%9C"><span class="toc-number">7.1.</span> <span class="toc-text">6.1 三种 Ack 操作</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-Ack-%E7%9A%84%E9%BB%84%E9%87%91%E6%B3%95%E5%88%99"><span class="toc-number">7.2.</span> <span class="toc-text">6.2 Ack 的黄金法则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-Pulsar-Cursor-vs-Kafka-Offset"><span class="toc-number">7.3.</span> <span class="toc-text">6.3 Pulsar Cursor vs Kafka Offset</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E5%BC%82%E6%AD%A5%E6%B6%88%E8%B4%B9%EF%BC%9A%E8%A7%A3%E5%86%B3%E4%B8%9A%E5%8A%A1%E9%98%BB%E5%A1%9E%E9%97%AE%E9%A2%98"><span class="toc-number">8.</span> <span class="toc-text">七、异步消费：解决业务阻塞问题</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E9%97%AE%E9%A2%98%EF%BC%9A%E5%90%8C%E6%AD%A5%E6%B6%88%E8%B4%B9%E7%9A%84%E5%90%9E%E5%90%90%E9%87%8F%E7%93%B6%E9%A2%88"><span class="toc-number">8.1.</span> <span class="toc-text">7.1 问题：同步消费的吞吐量瓶颈</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88%EF%BC%9AGoroutine-%E6%B1%A0%E5%BC%82%E6%AD%A5%E6%B6%88%E8%B4%B9"><span class="toc-number">8.2.</span> <span class="toc-text">7.2 解决方案：Goroutine 池异步消费</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E5%90%84%E6%A8%A1%E5%BC%8F%E6%A8%AA%E5%90%91%E5%AF%B9%E6%AF%94"><span class="toc-number">9.</span> <span class="toc-text">八、各模式横向对比</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%9D%E3%80%81%E9%80%89%E5%9E%8B%E5%86%B3%E7%AD%96%E6%A0%91"><span class="toc-number">10.</span> <span class="toc-text">九、选型决策树</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E3%80%81%E7%94%9F%E4%BA%A7%E7%8E%AF%E5%A2%83%E9%85%8D%E7%BD%AE%E5%BB%BA%E8%AE%AE"><span class="toc-number">11.</span> <span class="toc-text">十、生产环境配置建议</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Consumer-%E5%85%B3%E9%94%AE%E5%8F%82%E6%95%B0"><span class="toc-number">11.1.</span> <span class="toc-text">Consumer 关键参数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Producer-%E5%85%B3%E9%94%AE%E5%8F%82%E6%95%B0"><span class="toc-number">11.2.</span> <span class="toc-text">Producer 关键参数</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">12.</span> <span class="toc-text">总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">13.</span> <span class="toc-text">参考资料</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

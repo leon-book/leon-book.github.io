@@ -1,0 +1,1315 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>ClickHouse 原理、应用场景与 MergeTree 引擎详解 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="前言ClickHouse 是一款面向大数据分析场景的列式数据库，尤其适合日志分析、行为统计、实时指标计算和多维度报表等 OLAP 场景。 本文将从以下几个方面介绍 ClickHouse：  ClickHouse 是什么 ClickHouse 的底层数据结构 ClickHouse 为什么查询速度快 ClickHouse 的适用场景 ClickHouse 开发规范与注意事项 常见 MergeTre">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ClickHouse 原理、应用场景与 MergeTree 引擎详解">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/868.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="前言ClickHouse 是一款面向大数据分析场景的列式数据库，尤其适合日志分析、行为统计、实时指标计算和多维度报表等 OLAP 场景。 本文将从以下几个方面介绍 ClickHouse：  ClickHouse 是什么 ClickHouse 的底层数据结构 ClickHouse 为什么查询速度快 ClickHouse 的适用场景 ClickHouse 开发规范与注意事项 常见 MergeTre">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2026-08-05T08:22:40.000Z">
+<meta property="article:modified_time" content="2026-08-05T08:22:40.000Z">
+<meta property="article:author" content="leon">
+<meta property="article:tag" content="ClickHouse">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "ClickHouse 原理、应用场景与 MergeTree 引擎详解",
+  "url": "https://leon-book.github.io/blog/index.php/archives/868.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2026-08-05T08:22:40.000Z",
+  "dateModified": "2026-08-05T08:22:40.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/868.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'ClickHouse 原理、应用场景与 MergeTree 引擎详解',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">ClickHouse 原理、应用场景与 MergeTree 引擎详解</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">ClickHouse 原理、应用场景与 MergeTree 引擎详解</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-08-05T08:22:40.000Z" title="发表于 2026-08-05 17:22:40">2026-08-05</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-08-05T08:22:40.000Z" title="更新于 2026-08-05 17:22:40">2026-08-05</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/868.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>ClickHouse 是一款面向大数据分析场景的列式数据库，尤其适合日志分析、行为统计、实时指标计算和多维度报表等 OLAP 场景。</p>
+<p>本文将从以下几个方面介绍 ClickHouse：</p>
+<ul>
+<li>ClickHouse 是什么</li>
+<li>ClickHouse 的底层数据结构</li>
+<li>ClickHouse 为什么查询速度快</li>
+<li>ClickHouse 的适用场景</li>
+<li>ClickHouse 开发规范与注意事项</li>
+<li>常见 MergeTree 系列存储引擎</li>
+<li>ClickHouse、MySQL 与 TiDB 的区别</li>
+</ul>
+<hr>
+<h2 id="一、什么是-ClickHouse"><a href="#一、什么是-ClickHouse" class="headerlink" title="一、什么是 ClickHouse"></a>一、什么是 ClickHouse</h2><p>ClickHouse 是由 Yandex 开发并开源的一款高性能、分布式、面向分析场景的列式数据库。</p>
+<p>它能够对大规模数据进行快速搜索、聚合、过滤、排序和统计，主要应用于 OLAP，即联机分析处理场景。</p>
+<h3 id="ClickHouse-的核心特点"><a href="#ClickHouse-的核心特点" class="headerlink" title="ClickHouse 的核心特点"></a>ClickHouse 的核心特点</h3><h4 id="1-列式存储"><a href="#1-列式存储" class="headerlink" title="1. 列式存储"></a>1. 列式存储</h4><p>ClickHouse 按列存储数据，而不是像 MySQL InnoDB 一样按行存储。</p>
+<p>查询时只读取需要使用的列，可以有效减少磁盘 I&#x2F;O 和内存消耗。</p>
+<h4 id="2-聚合性能高"><a href="#2-聚合性能高" class="headerlink" title="2. 聚合性能高"></a>2. 聚合性能高</h4><p>ClickHouse 非常擅长执行以下统计和聚合操作：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="built_in">COUNT</span>()</span><br><span class="line"><span class="built_in">MAX</span>()</span><br><span class="line"><span class="built_in">MIN</span>()</span><br><span class="line"><span class="built_in">SUM</span>()</span><br><span class="line"><span class="built_in">AVG</span>()</span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span></span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span></span><br></pre></td></tr></table></figure>
+
+<p>它可以在海量数据中快速完成分组、汇总和排序。</p>
+<h4 id="3-适合大规模数据分析"><a href="#3-适合大规模数据分析" class="headerlink" title="3. 适合大规模数据分析"></a>3. 适合大规模数据分析</h4><p>ClickHouse 常用于处理：</p>
+<ul>
+<li>大规模日志</li>
+<li>时间序列数据</li>
+<li>用户行为数据</li>
+<li>监控指标</li>
+<li>IoT 数据</li>
+<li>广告统计</li>
+<li>交易流水</li>
+<li>BI 报表</li>
+</ul>
+<h4 id="4-SQL-学习成本较低"><a href="#4-SQL-学习成本较低" class="headerlink" title="4. SQL 学习成本较低"></a>4. SQL 学习成本较低</h4><p>ClickHouse 使用类似传统关系型数据库的 SQL 语法。</p>
+<p>相比 Hadoop、Spark、InfluxDB 等生态，开发人员通常可以更快上手。</p>
+<hr>
+<h2 id="二、ClickHouse-底层数据结构"><a href="#二、ClickHouse-底层数据结构" class="headerlink" title="二、ClickHouse 底层数据结构"></a>二、ClickHouse 底层数据结构</h2><h2 id="2-1-核心存储引擎：MergeTree"><a href="#2-1-核心存储引擎：MergeTree" class="headerlink" title="2.1 核心存储引擎：MergeTree"></a>2.1 核心存储引擎：MergeTree</h2><p><code>MergeTree</code> 是 ClickHouse 最核心、最常用的存储引擎。</p>
+<p>它采用以下设计：</p>
+<ul>
+<li>顺序批量写入</li>
+<li>数据按列存储</li>
+<li>数据按排序键排列</li>
+<li>后台异步合并</li>
+<li>按分区管理数据</li>
+<li>使用稀疏索引跳过无关数据</li>
+</ul>
+<p>MergeTree 在部分设计思想上与 LSM Tree 类似，例如批量写入和后台合并，但它并不是传统意义上的 LSM Tree。</p>
+<p>在实际开发中，大多数 ClickHouse 表都会直接或间接使用 MergeTree 系列引擎。</p>
+<hr>
+<h2 id="2-2-数据结构分层"><a href="#2-2-数据结构分层" class="headerlink" title="2.2 数据结构分层"></a>2.2 数据结构分层</h2><p>ClickHouse 中 MergeTree 表的数据结构，可以抽象为：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Table</span><br><span class="line">└── Partition</span><br><span class="line">    └── Part</span><br><span class="line">        ├── Column Files</span><br><span class="line">        │   ├── column1.bin</span><br><span class="line">        │   ├── column2.bin</span><br><span class="line">        │   └── ...</span><br><span class="line">        ├── Mark Files</span><br><span class="line">        │   ├── column1.mrk3</span><br><span class="line">        │   ├── column2.mrk3</span><br><span class="line">        │   └── ...</span><br><span class="line">        └── Primary Index</span><br></pre></td></tr></table></figure>
+
+<p>各层含义如下。</p>
+<h3 id="Table"><a href="#Table" class="headerlink" title="Table"></a>Table</h3><p>ClickHouse 中的一张逻辑表。</p>
+<h3 id="Partition"><a href="#Partition" class="headerlink" title="Partition"></a>Partition</h3><p>分区是数据管理单位，通常按照日期、月份或业务维度进行划分。</p>
+<p>例如：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">PARTITION</span> <span class="keyword">BY</span> toYYYYMM(create_time)</span><br></pre></td></tr></table></figure>
+
+<p>表示按月份进行分区。</p>
+<h3 id="Part"><a href="#Part" class="headerlink" title="Part"></a>Part</h3><p>每次批量写入 ClickHouse 后，通常会在对应分区中生成一个新的数据 Part。</p>
+<p>每个 Part 都是一组独立的数据文件和索引文件。</p>
+<h3 id="Column-Files"><a href="#Column-Files" class="headerlink" title="Column Files"></a>Column Files</h3><p>每一列的数据会分别存储。</p>
+<p>常见文件包括：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">column1.bin</span><br><span class="line">column1.mrk3</span><br></pre></td></tr></table></figure>
+
+<p>其中：</p>
+<ul>
+<li><code>.bin</code> 文件存储经过压缩后的列数据</li>
+<li><code>.mrk3</code> 文件存储数据块对应的标记信息，用于快速定位数据位置</li>
+</ul>
+<hr>
+<h2 id="2-3-数据写入流程"><a href="#2-3-数据写入流程" class="headerlink" title="2.3 数据写入流程"></a>2.3 数据写入流程</h2><p>ClickHouse 的典型写入流程如下：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">客户端批量 INSERT</span><br><span class="line">        ↓</span><br><span class="line">数据排序并生成新的 Part</span><br><span class="line">        ↓</span><br><span class="line">Part 写入磁盘</span><br><span class="line">        ↓</span><br><span class="line">后台 Merge 线程选择多个小 Part</span><br><span class="line">        ↓</span><br><span class="line">合并成更大的 Part</span><br><span class="line">        ↓</span><br><span class="line">旧 Part 被删除</span><br></pre></td></tr></table></figure>
+
+<p>具体来说：</p>
+<ol>
+<li>客户端批量提交数据。</li>
+<li>ClickHouse 根据表的排序键对数据进行排序。</li>
+<li>数据被写入一个新的 Part。</li>
+<li>每个 Part 包含独立的列文件、标记文件和索引。</li>
+<li>后台任务会异步合并多个小 Part。</li>
+<li>最终生成更大、更紧凑的数据 Part。</li>
+</ol>
+<p>因此，ClickHouse 更适合批量写入，不适合高频率地逐行写入。</p>
+<hr>
+<h2 id="2-4-索引机制"><a href="#2-4-索引机制" class="headerlink" title="2.4 索引机制"></a>2.4 索引机制</h2><p>ClickHouse 的索引设计与 MySQL 的 B+Tree 索引存在明显区别。</p>
+<p>ClickHouse 的主要目标不是快速定位某一行数据，而是快速跳过大量不相关的数据块。</p>
+<h3 id="1-主键稀疏索引"><a href="#1-主键稀疏索引" class="headerlink" title="1. 主键稀疏索引"></a>1. 主键稀疏索引</h3><p>MergeTree 表中的主键索引通常是稀疏索引。</p>
+<p>它不会为每一行数据建立索引，而是按照一定的数据粒度保存索引标记。</p>
+<p>默认索引粒度通常为：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">8192 行</span><br></pre></td></tr></table></figure>
+
+<p>这意味着 ClickHouse 会以 Granule 为单位读取和过滤数据。</p>
+<p>需要注意，实际读取粒度还可能受到 <code>index_granularity_bytes</code> 等配置影响，并不一定永远严格对应 8192 行。</p>
+<h3 id="2-Mark-文件"><a href="#2-Mark-文件" class="headerlink" title="2. Mark 文件"></a>2. Mark 文件</h3><p><code>.mrk3</code> 文件记录列数据中每个 Granule 对应的物理位置。</p>
+<p>查询时，ClickHouse 可以根据索引快速定位到相关的数据范围，而不需要从头扫描整个列文件。</p>
+<h3 id="3-Min-Max-索引"><a href="#3-Min-Max-索引" class="headerlink" title="3. Min-Max 索引"></a>3. Min-Max 索引</h3><p>ClickHouse 会为分区或数据块维护最小值和最大值信息。</p>
+<p>例如某个数据块中的时间范围是：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">2026-08-01 00:00:00</span><br><span class="line">~</span><br><span class="line">2026-08-01 01:00:00</span><br></pre></td></tr></table></figure>
+
+<p>当查询条件是：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">WHERE</span> create_time <span class="operator">&gt;=</span> <span class="string">&#x27;2026-08-02 00:00:00&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<p>该数据块就可以直接被跳过。</p>
+<h3 id="4-Data-Skipping-Index"><a href="#4-Data-Skipping-Index" class="headerlink" title="4. Data Skipping Index"></a>4. Data Skipping Index</h3><p>ClickHouse 支持可选的跳数索引，例如：</p>
+<ul>
+<li><code>minmax</code></li>
+<li><code>set</code></li>
+<li><code>bloom_filter</code></li>
+<li><code>tokenbf_v1</code></li>
+<li><code>ngrambf_v1</code></li>
+</ul>
+<p>例如：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">INDEX idx_user_id user_id TYPE bloom_filter GRANULARITY <span class="number">4</span></span><br></pre></td></tr></table></figure>
+
+<p>跳数索引的作用是帮助 ClickHouse 判断某个数据块是否可能包含目标数据。</p>
+<p>它并不是传统数据库中的精确二级索引。</p>
+<h3 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h3><p>ClickHouse 很适合根据排序键、分区键以及跳数索引字段进行范围筛选。</p>
+<p>但它不像 MySQL 一样擅长通过 B+Tree 索引进行单行点查。</p>
+<hr>
+<h2 id="2-5-后台合并机制"><a href="#2-5-后台合并机制" class="headerlink" title="2.5 后台合并机制"></a>2.5 后台合并机制</h2><p>MergeTree 会在后台自动对 Part 进行合并。</p>
+<p>合并过程中可能完成：</p>
+<ul>
+<li>多个小 Part 合并</li>
+<li>数据重新排序</li>
+<li>数据压缩</li>
+<li>TTL 数据清理</li>
+<li>ReplacingMergeTree 去重</li>
+<li>SummingMergeTree 求和</li>
+<li>AggregatingMergeTree 聚合状态合并</li>
+<li>CollapsingMergeTree 正负记录折叠</li>
+</ul>
+<p>需要注意：</p>
+<p>ClickHouse 的后台 Merge 并不意味着完全“无锁”，更准确地说，它通过不可变 Part、后台异步合并和原子切换等机制，尽量降低对前台查询和写入的影响。</p>
+<hr>
+<h2 id="三、ClickHouse-为什么快"><a href="#三、ClickHouse-为什么快" class="headerlink" title="三、ClickHouse 为什么快"></a>三、ClickHouse 为什么快</h2><h2 id="3-1-列式存储"><a href="#3-1-列式存储" class="headerlink" title="3.1 列式存储"></a>3.1 列式存储</h2><p>ClickHouse 每一列单独存储。</p>
+<p>例如下面的查询：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span></span><br><span class="line">    user_id,</span><br><span class="line">    <span class="built_in">SUM</span>(amount)</span><br><span class="line"><span class="keyword">FROM</span> trade_records</span><br><span class="line"><span class="keyword">WHERE</span> create_time <span class="operator">&gt;=</span> <span class="string">&#x27;2026-08-01&#x27;</span></span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span> user_id;</span><br></pre></td></tr></table></figure>
+
+<p>查询只需要读取：</p>
+<ul>
+<li><code>user_id</code></li>
+<li><code>amount</code></li>
+<li><code>create_time</code></li>
+</ul>
+<p>其他列不会被读取。</p>
+<p>这样可以：</p>
+<ul>
+<li>减少磁盘读取</li>
+<li>减少网络传输</li>
+<li>减少内存使用</li>
+<li>提高 CPU 缓存命中率</li>
+</ul>
+<p>这非常适合从宽表中读取少量字段进行分析。</p>
+<hr>
+<h2 id="3-2-高压缩率"><a href="#3-2-高压缩率" class="headerlink" title="3.2 高压缩率"></a>3.2 高压缩率</h2><p>同一列中的数据类型通常相同，并且数据分布相似。</p>
+<p>例如：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">1001</span><br><span class="line">1002</span><br><span class="line">1003</span><br><span class="line">1004</span><br></pre></td></tr></table></figure>
+
+<p>或者：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">2026-08-01 10:00:01</span><br><span class="line">2026-08-01 10:00:02</span><br><span class="line">2026-08-01 10:00:03</span><br></pre></td></tr></table></figure>
+
+<p>这类数据更容易被压缩。</p>
+<p>ClickHouse 常用的压缩算法包括：</p>
+<ul>
+<li>LZ4</li>
+<li>ZSTD</li>
+</ul>
+<p>列式存储配合压缩，可以显著减少磁盘空间和磁盘 I&#x2F;O。</p>
+<hr>
+<h2 id="3-3-SIMD-与向量化执行"><a href="#3-3-SIMD-与向量化执行" class="headerlink" title="3.3 SIMD 与向量化执行"></a>3.3 SIMD 与向量化执行</h2><p>ClickHouse 会以数据块为单位进行批量处理，而不是一行一行执行。</p>
+<p>例如在计算：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="built_in">SUM</span>(amount) <span class="keyword">FROM</span> trade_records;</span><br></pre></td></tr></table></figure>
+
+<p>ClickHouse 会一次读取一批数据，并使用向量化方式进行计算。</p>
+<p>这能够：</p>
+<ul>
+<li>减少函数调用开销</li>
+<li>减少循环判断</li>
+<li>提高 CPU 指令执行效率</li>
+<li>更好地利用 SIMD 指令集</li>
+</ul>
+<p>相比逐行处理，批量计算的吞吐量更高。</p>
+<hr>
+<h2 id="3-4-多级数据跳过机制"><a href="#3-4-多级数据跳过机制" class="headerlink" title="3.4 多级数据跳过机制"></a>3.4 多级数据跳过机制</h2><p>ClickHouse 查询时会尝试跳过无关数据。</p>
+<p>常见的数据过滤层级包括：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">分区裁剪</span><br><span class="line">    ↓</span><br><span class="line">主键稀疏索引</span><br><span class="line">    ↓</span><br><span class="line">Data Skipping Index</span><br><span class="line">    ↓</span><br><span class="line">读取相关 Granule</span><br><span class="line">    ↓</span><br><span class="line">执行 WHERE 条件</span><br></pre></td></tr></table></figure>
+
+<p>例如：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span></span><br><span class="line"><span class="keyword">FROM</span> trade_records</span><br><span class="line"><span class="keyword">WHERE</span> create_time <span class="operator">&gt;=</span> <span class="string">&#x27;2026-08-01&#x27;</span></span><br><span class="line">  <span class="keyword">AND</span> user_id <span class="operator">=</span> <span class="number">10001</span>;</span><br></pre></td></tr></table></figure>
+
+<p>ClickHouse 可能依次进行：</p>
+<ol>
+<li>通过分区键排除无关月份。</li>
+<li>通过排序键范围排除无关 Granule。</li>
+<li>通过跳数索引进一步过滤。</li>
+<li>只读取可能包含目标数据的数据块。</li>
+</ol>
+<p>这也是 ClickHouse 查询速度快的重要原因。</p>
+<hr>
+<h2 id="3-5-MergeTree-的顺序写入机制"><a href="#3-5-MergeTree-的顺序写入机制" class="headerlink" title="3.5 MergeTree 的顺序写入机制"></a>3.5 MergeTree 的顺序写入机制</h2><p>MergeTree 写入数据时，一般不会直接修改历史 Part。</p>
+<p>新的数据会写入新的 Part，旧数据保持不变。</p>
+<p>这种不可变数据文件设计具有以下优点：</p>
+<ul>
+<li>写入过程简单</li>
+<li>适合批量写入</li>
+<li>减少随机磁盘写</li>
+<li>前台查询与后台合并可以并行</li>
+<li>数据文件更容易压缩</li>
+</ul>
+<p>后台任务再逐步将多个小 Part 合并成大 Part。</p>
+<hr>
+<h2 id="3-6-并行查询能力"><a href="#3-6-并行查询能力" class="headerlink" title="3.6 并行查询能力"></a>3.6 并行查询能力</h2><p>ClickHouse 可以充分利用服务器的多核 CPU。</p>
+<p>一次查询通常可以并行执行：</p>
+<ul>
+<li>多个 Part 并行扫描</li>
+<li>多个列并行读取</li>
+<li>多线程聚合</li>
+<li>多线程排序</li>
+<li>多线程解压缩</li>
+<li>分布式节点并行查询</li>
+</ul>
+<p>因此，ClickHouse 更关注整体吞吐量，而不是单行查询延迟。</p>
+<hr>
+<h2 id="3-7-查询优化机制"><a href="#3-7-查询优化机制" class="headerlink" title="3.7 查询优化机制"></a>3.7 查询优化机制</h2><p>ClickHouse 支持多种查询优化：</p>
+<ul>
+<li>分区裁剪</li>
+<li>主键条件下推</li>
+<li>PREWHERE</li>
+<li>投影裁剪</li>
+<li>表达式计算优化</li>
+<li>聚合并行化</li>
+<li>JOIN 算法选择</li>
+<li>数据跳过索引</li>
+<li>Projection</li>
+<li>物化视图</li>
+</ul>
+<p>ClickHouse 的优化重点主要面向大规模扫描、过滤和聚合。</p>
+<hr>
+<h2 id="四、ClickHouse-的适用场景"><a href="#四、ClickHouse-的适用场景" class="headerlink" title="四、ClickHouse 的适用场景"></a>四、ClickHouse 的适用场景</h2><h2 id="4-1-适合的场景"><a href="#4-1-适合的场景" class="headerlink" title="4.1 适合的场景"></a>4.1 适合的场景</h2><h3 id="1-大数据-OLAP-分析"><a href="#1-大数据-OLAP-分析" class="headerlink" title="1. 大数据 OLAP 分析"></a>1. 大数据 OLAP 分析</h3><p>例如：</p>
+<ul>
+<li>订单统计</li>
+<li>交易金额统计</li>
+<li>用户行为分析</li>
+<li>平均值、最大值、最小值计算</li>
+<li>多维度分组</li>
+<li>实时报表</li>
+</ul>
+<h3 id="2-时间序列分析"><a href="#2-时间序列分析" class="headerlink" title="2. 时间序列分析"></a>2. 时间序列分析</h3><p>例如：</p>
+<ul>
+<li>服务器监控</li>
+<li>应用指标</li>
+<li>IoT 数据</li>
+<li>系统埋点</li>
+<li>业务指标</li>
+<li>交易行情</li>
+</ul>
+<h3 id="3-日志分析"><a href="#3-日志分析" class="headerlink" title="3. 日志分析"></a>3. 日志分析</h3><p>例如：</p>
+<ul>
+<li>Nginx 日志</li>
+<li>网关访问日志</li>
+<li>应用错误日志</li>
+<li>审计日志</li>
+<li>链路追踪数据</li>
+<li>安全分析日志</li>
+</ul>
+<h3 id="4-用户行为分析"><a href="#4-用户行为分析" class="headerlink" title="4. 用户行为分析"></a>4. 用户行为分析</h3><p>例如：</p>
+<ul>
+<li>页面访问量</li>
+<li>用户点击</li>
+<li>用户留存</li>
+<li>转化漏斗</li>
+<li>用户路径</li>
+<li>广告曝光和点击</li>
+</ul>
+<h3 id="5-BI-报表"><a href="#5-BI-报表" class="headerlink" title="5. BI 报表"></a>5. BI 报表</h3><p>例如：</p>
+<ul>
+<li>数据看板</li>
+<li>运营报表</li>
+<li>财务统计</li>
+<li>交易报表</li>
+<li>风控报表</li>
+<li>实时排行榜</li>
+</ul>
+<hr>
+<h2 id="4-2-不适合的场景"><a href="#4-2-不适合的场景" class="headerlink" title="4.2 不适合的场景"></a>4.2 不适合的场景</h2><h3 id="1-高频-OLTP-事务"><a href="#1-高频-OLTP-事务" class="headerlink" title="1. 高频 OLTP 事务"></a>1. 高频 OLTP 事务</h3><p>ClickHouse 不适合作为订单主库、账户主库或支付核心账务数据库。</p>
+<p>它不擅长：</p>
+<ul>
+<li>高频单行写入</li>
+<li>高频单行更新</li>
+<li>高频单行删除</li>
+<li>强事务操作</li>
+<li>复杂行级锁</li>
+<li>极低延迟点查</li>
+</ul>
+<h3 id="2-强一致性事务"><a href="#2-强一致性事务" class="headerlink" title="2. 强一致性事务"></a>2. 强一致性事务</h3><p>ClickHouse 支持部分事务相关能力，但并不等同于 MySQL InnoDB 的完整 OLTP 事务模型。</p>
+<p>不建议依赖 ClickHouse 实现：</p>
+<ul>
+<li>多表强一致事务</li>
+<li>资金扣减</li>
+<li>库存扣减</li>
+<li>账户余额更新</li>
+<li>订单状态机</li>
+<li>核心账务一致性</li>
+</ul>
+<h3 id="3-高频点查"><a href="#3-高频点查" class="headerlink" title="3. 高频点查"></a>3. 高频点查</h3><p>例如：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span></span><br><span class="line"><span class="keyword">FROM</span> users</span><br><span class="line"><span class="keyword">WHERE</span> user_id <span class="operator">=</span> <span class="number">10001</span>;</span><br></pre></td></tr></table></figure>
+
+<p>如果业务需要每秒大量执行这种单条记录查询，MySQL、PostgreSQL、Redis 或其他 KV 数据库通常更适合。</p>
+<h3 id="4-高频-UPDATE-和-DELETE"><a href="#4-高频-UPDATE-和-DELETE" class="headerlink" title="4. 高频 UPDATE 和 DELETE"></a>4. 高频 UPDATE 和 DELETE</h3><p>ClickHouse 支持 Mutation，例如：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">ALTER TABLE</span> users</span><br><span class="line"><span class="keyword">UPDATE</span> status <span class="operator">=</span> <span class="number">2</span></span><br><span class="line"><span class="keyword">WHERE</span> user_id <span class="operator">=</span> <span class="number">10001</span>;</span><br></pre></td></tr></table></figure>
+
+<p>以及：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">ALTER TABLE</span> users</span><br><span class="line"><span class="keyword">DELETE</span></span><br><span class="line"><span class="keyword">WHERE</span> user_id <span class="operator">=</span> <span class="number">10001</span>;</span><br></pre></td></tr></table></figure>
+
+<p>但 Mutation 通常需要重写数据 Part，成本较高。</p>
+<p>因此应该尽量避免频繁使用。</p>
+<h3 id="5-复杂多表事务-JOIN"><a href="#5-复杂多表事务-JOIN" class="headerlink" title="5. 复杂多表事务 JOIN"></a>5. 复杂多表事务 JOIN</h3><p>ClickHouse 支持 JOIN，并且近年来 JOIN 能力不断增强。</p>
+<p>但对于大量复杂、多层、频繁变化的关系型 JOIN 业务，传统关系型数据库通常更合适。</p>
+<hr>
+<h2 id="五、ClickHouse-开发注意事项"><a href="#五、ClickHouse-开发注意事项" class="headerlink" title="五、ClickHouse 开发注意事项"></a>五、ClickHouse 开发注意事项</h2><h2 id="5-1-合理设计分区键"><a href="#5-1-合理设计分区键" class="headerlink" title="5.1 合理设计分区键"></a>5.1 合理设计分区键</h2><p>分区键主要影响：</p>
+<ul>
+<li>数据生命周期管理</li>
+<li>分区裁剪</li>
+<li>数据删除</li>
+<li>后台合并范围</li>
+<li>数据维护成本</li>
+</ul>
+<p>常见设计：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">PARTITION</span> <span class="keyword">BY</span> toYYYYMM(create_time)</span><br></pre></td></tr></table></figure>
+
+<p>不要将用户 ID、订单 ID 等高基数字段直接作为分区键，否则可能产生大量小分区。</p>
+<p>通常建议：</p>
+<ul>
+<li>按月分区</li>
+<li>按天分区</li>
+<li>按业务类型和日期组合分区</li>
+</ul>
+<p>具体粒度需要根据数据规模和数据生命周期决定。</p>
+<hr>
+<h2 id="5-2-合理设计-ORDER-BY"><a href="#5-2-合理设计-ORDER-BY" class="headerlink" title="5.2 合理设计 ORDER BY"></a>5.2 合理设计 ORDER BY</h2><p>在 MergeTree 中，<code>ORDER BY</code> 是最重要的表结构设计之一。</p>
+<p>它决定：</p>
+<ul>
+<li>数据在磁盘上的排序方式</li>
+<li>主键稀疏索引的组织方式</li>
+<li>查询能够跳过多少数据</li>
+<li>相同维度的数据是否相邻</li>
+<li>后台合并效率</li>
+</ul>
+<p>例如：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> (user_id, create_time)</span><br></pre></td></tr></table></figure>
+
+<p>适合经常根据用户和时间范围进行查询的场景。</p>
+<p>设计原则：</p>
+<ol>
+<li>优先放置最常用的过滤字段。</li>
+<li>优先考虑等值过滤和范围过滤组合。</li>
+<li>注意字段顺序。</li>
+<li>不要盲目追求最高区分度。</li>
+<li>需要结合实际查询条件设计。</li>
+</ol>
+<p>例如：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> (symbol, create_time, user_id)</span><br></pre></td></tr></table></figure>
+
+<p>通常比：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> (order_id, create_time)</span><br></pre></td></tr></table></figure>
+
+<p>更适合按照交易对和时间范围统计的场景。</p>
+<hr>
+<h2 id="5-3-PRIMARY-KEY-不等于唯一键"><a href="#5-3-PRIMARY-KEY-不等于唯一键" class="headerlink" title="5.3 PRIMARY KEY 不等于唯一键"></a>5.3 PRIMARY KEY 不等于唯一键</h2><p>ClickHouse 中的主键不会自动保证唯一性。</p>
+<p>例如：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">PRIMARY KEY</span> (user_id)</span><br></pre></td></tr></table></figure>
+
+<p>并不意味着 <code>user_id</code> 不能重复。</p>
+<p>ClickHouse 的主键主要用于创建稀疏索引，帮助跳过无关数据。</p>
+<p>此外，<code>PRIMARY KEY</code> 和 <code>ORDER BY</code> 也并不完全等价：</p>
+<ul>
+<li>如果不单独指定 <code>PRIMARY KEY</code>，通常会使用 <code>ORDER BY</code> 表达式作为主键。</li>
+<li>可以显式指定一个作为 <code>ORDER BY</code> 前缀的 <code>PRIMARY KEY</code>。</li>
+</ul>
+<p>例如：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">ENGINE <span class="operator">=</span> MergeTree</span><br><span class="line"><span class="keyword">PRIMARY KEY</span> (user_id)</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> (user_id, create_time)</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="5-4-避免小批量-INSERT"><a href="#5-4-避免小批量-INSERT" class="headerlink" title="5.4 避免小批量 INSERT"></a>5.4 避免小批量 INSERT</h2><p>ClickHouse 每次 INSERT 都可能产生新的 Part。</p>
+<p>如果频繁执行：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">INSERT INTO</span> logs <span class="keyword">VALUES</span> (...);</span><br></pre></td></tr></table></figure>
+
+<p>可能生成大量小 Part，导致：</p>
+<ul>
+<li>后台 Merge 压力增大</li>
+<li>文件数量增加</li>
+<li>磁盘 I&#x2F;O 增加</li>
+<li>查询性能下降</li>
+<li>出现 <code>Too many parts</code> 错误</li>
+</ul>
+<p>建议使用批量写入。</p>
+<p>例如：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">每批 1,000 条以上</span><br></pre></td></tr></table></figure>
+
+<p>实际生产环境中，通常会使用更大的批次，例如：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">10,000 ～ 100,000 条</span><br></pre></td></tr></table></figure>
+
+<p>具体大小需要根据单行数据大小、写入延迟要求和服务器资源综合判断。</p>
+<hr>
+<h2 id="5-5-避免-SELECT"><a href="#5-5-避免-SELECT" class="headerlink" title="5.5 避免 SELECT *"></a>5.5 避免 SELECT *</h2><p>不推荐：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span></span><br><span class="line"><span class="keyword">FROM</span> trade_records;</span><br></pre></td></tr></table></figure>
+
+<p>推荐：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span></span><br><span class="line">    user_id,</span><br><span class="line">    symbol,</span><br><span class="line">    amount,</span><br><span class="line">    create_time</span><br><span class="line"><span class="keyword">FROM</span> trade_records;</span><br></pre></td></tr></table></figure>
+
+<p>列式数据库只读取需要的列。</p>
+<p>使用 <code>SELECT *</code> 会导致额外的磁盘读取、解压缩和网络传输。</p>
+<hr>
+<h2 id="5-6-尽量避免频繁-UPDATE-和-DELETE"><a href="#5-6-尽量避免频繁-UPDATE-和-DELETE" class="headerlink" title="5.6 尽量避免频繁 UPDATE 和 DELETE"></a>5.6 尽量避免频繁 UPDATE 和 DELETE</h2><p>对于状态变更，可以考虑采用追加写入模式。</p>
+<p>例如，不直接修改旧记录，而是写入新版本：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">order_id = 1001, status = 1, version = 1</span><br><span class="line">order_id = 1001, status = 2, version = 2</span><br><span class="line">order_id = 1001, status = 3, version = 3</span><br></pre></td></tr></table></figure>
+
+<p>然后使用：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">ReplacingMergeTree(version)</span><br></pre></td></tr></table></figure>
+
+<p>保留较新的版本。</p>
+<hr>
+<h2 id="5-7-减少运行时复杂-JOIN"><a href="#5-7-减少运行时复杂-JOIN" class="headerlink" title="5.7 减少运行时复杂 JOIN"></a>5.7 减少运行时复杂 JOIN</h2><p>可以考虑：</p>
+<ul>
+<li>宽表</li>
+<li>字典表</li>
+<li>物化视图</li>
+<li>Projection</li>
+<li>预聚合表</li>
+<li>ETL 预处理</li>
+<li>在写入阶段完成维度补充</li>
+</ul>
+<p>ClickHouse 并不是完全不能 JOIN，而是应该避免让高频分析查询依赖复杂的多层 JOIN。</p>
+<hr>
+<h2 id="5-8-ClickHouse-应主要承担分析职责"><a href="#5-8-ClickHouse-应主要承担分析职责" class="headerlink" title="5.8 ClickHouse 应主要承担分析职责"></a>5.8 ClickHouse 应主要承担分析职责</h2><p>推荐架构：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">MySQL / PostgreSQL</span><br><span class="line">        ↓</span><br><span class="line">Kafka / Pulsar</span><br><span class="line">        ↓</span><br><span class="line">Flink / ETL</span><br><span class="line">        ↓</span><br><span class="line">ClickHouse</span><br><span class="line">        ↓</span><br><span class="line">BI / 报表 / 风控分析 / 数据查询</span><br></pre></td></tr></table></figure>
+
+<p>在该架构中：</p>
+<ul>
+<li>MySQL 或 PostgreSQL 承担 OLTP 业务</li>
+<li>Kafka 或 Pulsar 承担数据传输</li>
+<li>Flink 或 ETL 任务负责清洗和转换</li>
+<li>ClickHouse 承担 OLAP 查询</li>
+</ul>
+<hr>
+<h2 id="六、MergeTree-系列存储引擎"><a href="#六、MergeTree-系列存储引擎" class="headerlink" title="六、MergeTree 系列存储引擎"></a>六、MergeTree 系列存储引擎</h2><h2 id="6-1-MergeTree"><a href="#6-1-MergeTree" class="headerlink" title="6.1 MergeTree"></a>6.1 MergeTree</h2><h3 id="说明"><a href="#说明" class="headerlink" title="说明"></a>说明</h3><p><code>MergeTree</code> 是最基础、最通用的 MergeTree 系列引擎。</p>
+<p>它支持：</p>
+<ul>
+<li>分区</li>
+<li>排序键</li>
+<li>主键稀疏索引</li>
+<li>TTL</li>
+<li>数据压缩</li>
+<li>跳数索引</li>
+<li>后台合并</li>
+</ul>
+<h3 id="适用场景"><a href="#适用场景" class="headerlink" title="适用场景"></a>适用场景</h3><p>适用于大多数明细数据分析：</p>
+<ul>
+<li>日志采集</li>
+<li>用户行为</li>
+<li>交易流水</li>
+<li>监控指标</li>
+<li>埋点数据</li>
+<li>IoT 数据</li>
+</ul>
+<h3 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h3><figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">CREATE TABLE</span> access_logs</span><br><span class="line">(</span><br><span class="line">    event_time DateTime,</span><br><span class="line">    user_id UInt64,</span><br><span class="line">    path String,</span><br><span class="line">    status_code UInt16</span><br><span class="line">)</span><br><span class="line">ENGINE <span class="operator">=</span> MergeTree</span><br><span class="line"><span class="keyword">PARTITION</span> <span class="keyword">BY</span> toYYYYMM(event_time)</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> (event_time, user_id);</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="6-2-ReplacingMergeTree"><a href="#6-2-ReplacingMergeTree" class="headerlink" title="6.2 ReplacingMergeTree"></a>6.2 ReplacingMergeTree</h2><h3 id="说明-1"><a href="#说明-1" class="headerlink" title="说明"></a>说明</h3><p><code>ReplacingMergeTree</code> 用于在后台合并阶段删除排序键相同的重复记录。</p>
+<p>可以指定版本字段：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">ReplacingMergeTree(version)</span><br></pre></td></tr></table></figure>
+
+<p>当存在多条相同排序键的数据时，通常会保留版本较大的记录。</p>
+<h3 id="注意事项"><a href="#注意事项" class="headerlink" title="注意事项"></a>注意事项</h3><p>ReplacingMergeTree 的去重具有以下特点：</p>
+<ul>
+<li>去重发生在后台 Merge 阶段</li>
+<li>不能保证写入后立即完成去重</li>
+<li>不同分区之间不会相互合并</li>
+<li>查询时可能暂时看到重复数据</li>
+<li>使用 <code>FINAL</code> 可以在查询阶段强制合并逻辑，但成本较高</li>
+</ul>
+<p>因此，它不是严格意义上的唯一键约束。</p>
+<h3 id="适用场景-1"><a href="#适用场景-1" class="headerlink" title="适用场景"></a>适用场景</h3><ul>
+<li>数据可能重复写入</li>
+<li>用户画像</li>
+<li>资产快照</li>
+<li>订单状态快照</li>
+<li>CDC 数据同步</li>
+<li>保留最新版本的数据</li>
+</ul>
+<h3 id="示例-1"><a href="#示例-1" class="headerlink" title="示例"></a>示例</h3><figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">CREATE TABLE</span> user_profile</span><br><span class="line">(</span><br><span class="line">    user_id UInt64,</span><br><span class="line">    nickname String,</span><br><span class="line">    level UInt32,</span><br><span class="line">    version UInt64,</span><br><span class="line">    update_time DateTime</span><br><span class="line">)</span><br><span class="line">ENGINE <span class="operator">=</span> ReplacingMergeTree(version)</span><br><span class="line"><span class="keyword">PARTITION</span> <span class="keyword">BY</span> toYYYYMM(update_time)</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> user_id;</span><br></pre></td></tr></table></figure>
+
+<p>查询最新结果时：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span></span><br><span class="line"><span class="keyword">FROM</span> user_profile <span class="keyword">FINAL</span>;</span><br></pre></td></tr></table></figure>
+
+<p>在大表上应谨慎使用 <code>FINAL</code>。</p>
+<hr>
+<h2 id="6-3-SummingMergeTree"><a href="#6-3-SummingMergeTree" class="headerlink" title="6.3 SummingMergeTree"></a>6.3 SummingMergeTree</h2><h3 id="说明-2"><a href="#说明-2" class="headerlink" title="说明"></a>说明</h3><p><code>SummingMergeTree</code> 会在后台合并阶段，对排序键相同记录中的数值字段进行求和。</p>
+<p>它类似预先执行：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span> ... <span class="built_in">SUM</span>(...)</span><br></pre></td></tr></table></figure>
+
+<p>但求和过程主要发生在 Part 合并阶段。</p>
+<h3 id="适用场景-2"><a href="#适用场景-2" class="headerlink" title="适用场景"></a>适用场景</h3><p>适用于明细写入量大，但最终只关心累计值的场景：</p>
+<ul>
+<li>页面访问量</li>
+<li>点击量</li>
+<li>广告收入</li>
+<li>交易金额</li>
+<li>订单数量</li>
+<li>流量统计</li>
+</ul>
+<h3 id="示例-2"><a href="#示例-2" class="headerlink" title="示例"></a>示例</h3><figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">CREATE TABLE</span> page_view_stats</span><br><span class="line">(</span><br><span class="line">    page_id UInt32,</span><br><span class="line">    dt <span class="type">Date</span>,</span><br><span class="line">    sum_views UInt64</span><br><span class="line">)</span><br><span class="line">ENGINE <span class="operator">=</span> SummingMergeTree(sum_views)</span><br><span class="line"><span class="keyword">PARTITION</span> <span class="keyword">BY</span> toYYYYMM(dt)</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> (dt, page_id);</span><br></pre></td></tr></table></figure>
+
+<p>写入数据：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">INSERT INTO</span> page_view_stats <span class="keyword">VALUES</span></span><br><span class="line">(<span class="number">1001</span>, <span class="string">&#x27;2026-08-01&#x27;</span>, <span class="number">10</span>),</span><br><span class="line">(<span class="number">1001</span>, <span class="string">&#x27;2026-08-01&#x27;</span>, <span class="number">20</span>);</span><br></pre></td></tr></table></figure>
+
+<p>后台合并后，相同排序键的数据可能被合并为：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">page_id = 1001</span><br><span class="line">dt = 2026-08-01</span><br><span class="line">sum_views = 30</span><br></pre></td></tr></table></figure>
+
+<h3 id="注意事项-1"><a href="#注意事项-1" class="headerlink" title="注意事项"></a>注意事项</h3><p>后台合并是异步的，因此查询时仍然应该使用 <code>SUM()</code>。</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span></span><br><span class="line">    page_id,</span><br><span class="line">    <span class="built_in">SUM</span>(sum_views) <span class="keyword">AS</span> total_views</span><br><span class="line"><span class="keyword">FROM</span> page_view_stats</span><br><span class="line"><span class="keyword">WHERE</span> dt <span class="operator">=</span> <span class="string">&#x27;2026-08-01&#x27;</span></span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span> page_id;</span><br></pre></td></tr></table></figure>
+
+<p>不要假设磁盘上已经只剩一条记录。</p>
+<hr>
+<h2 id="6-4-CollapsingMergeTree"><a href="#6-4-CollapsingMergeTree" class="headerlink" title="6.4 CollapsingMergeTree"></a>6.4 CollapsingMergeTree</h2><h3 id="说明-3"><a href="#说明-3" class="headerlink" title="说明"></a>说明</h3><p><code>CollapsingMergeTree</code> 适用于“插入一条记录，再插入一条反向记录进行撤销”的场景。</p>
+<p>它通过一个 <code>Sign</code> 字段标记数据状态：</p>
+<ul>
+<li><code>1</code>：正向记录</li>
+<li><code>-1</code>：撤销记录</li>
+</ul>
+<p>当排序键相同的正负记录在后台合并时，可能被折叠消除。</p>
+<h3 id="适用场景-3"><a href="#适用场景-3" class="headerlink" title="适用场景"></a>适用场景</h3><ul>
+<li>订单状态撤销</li>
+<li>事务日志补偿</li>
+<li>状态变更记录</li>
+<li>数据修正</li>
+<li>事件抵消</li>
+</ul>
+<h3 id="示例-3"><a href="#示例-3" class="headerlink" title="示例"></a>示例</h3><figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">CREATE TABLE</span> user_orders</span><br><span class="line">(</span><br><span class="line">    order_id UInt64,</span><br><span class="line">    user_id UInt64,</span><br><span class="line">    amount <span class="type">Decimal</span>(<span class="number">20</span>, <span class="number">8</span>),</span><br><span class="line">    event_time DateTime,</span><br><span class="line">    Sign Int8</span><br><span class="line">)</span><br><span class="line">ENGINE <span class="operator">=</span> CollapsingMergeTree(Sign)</span><br><span class="line"><span class="keyword">PARTITION</span> <span class="keyword">BY</span> toYYYYMM(event_time)</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> order_id;</span><br></pre></td></tr></table></figure>
+
+<p>插入订单：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">INSERT INTO</span> user_orders <span class="keyword">VALUES</span></span><br><span class="line">(<span class="number">10001</span>, <span class="number">20001</span>, <span class="number">100.00</span>, now(), <span class="number">1</span>);</span><br></pre></td></tr></table></figure>
+
+<p>撤销订单：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">INSERT INTO</span> user_orders <span class="keyword">VALUES</span></span><br><span class="line">(<span class="number">10001</span>, <span class="number">20001</span>, <span class="number">100.00</span>, now(), <span class="number">-1</span>);</span><br></pre></td></tr></table></figure>
+
+<h3 id="注意事项-2"><a href="#注意事项-2" class="headerlink" title="注意事项"></a>注意事项</h3><p>CollapsingMergeTree 对数据写入顺序、排序键和正负记录的配对要求较高。</p>
+<p>设计不当可能出现：</p>
+<ul>
+<li>状态不一致</li>
+<li>正负记录无法抵消</li>
+<li>查询结果重复</li>
+<li>分布式写入顺序问题</li>
+</ul>
+<p>因此在使用前需要充分理解其折叠规则。</p>
+<hr>
+<h2 id="6-5-VersionedCollapsingMergeTree"><a href="#6-5-VersionedCollapsingMergeTree" class="headerlink" title="6.5 VersionedCollapsingMergeTree"></a>6.5 VersionedCollapsingMergeTree</h2><p><code>VersionedCollapsingMergeTree</code> 是 CollapsingMergeTree 的扩展版本。</p>
+<p>它增加了版本字段，可以更好地处理乱序写入。</p>
+<p>示例：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">CREATE TABLE</span> order_status</span><br><span class="line">(</span><br><span class="line">    order_id UInt64,</span><br><span class="line">    status UInt8,</span><br><span class="line">    version UInt64,</span><br><span class="line">    Sign Int8</span><br><span class="line">)</span><br><span class="line">ENGINE <span class="operator">=</span> VersionedCollapsingMergeTree(Sign, version)</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> order_id;</span><br></pre></td></tr></table></figure>
+
+<p>它适合数据可能乱序到达的状态更新场景。</p>
+<hr>
+<h2 id="6-6-AggregatingMergeTree"><a href="#6-6-AggregatingMergeTree" class="headerlink" title="6.6 AggregatingMergeTree"></a>6.6 AggregatingMergeTree</h2><h3 id="说明-4"><a href="#说明-4" class="headerlink" title="说明"></a>说明</h3><p><code>AggregatingMergeTree</code> 用于存储聚合函数的中间状态。</p>
+<p>它不是直接存储最终的求和结果，而是存储：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">sumState()</span><br><span class="line">avgState()</span><br><span class="line">uniqState()</span><br><span class="line">quantileState()</span><br></pre></td></tr></table></figure>
+
+<p>等聚合状态。</p>
+<p>在后台合并时，ClickHouse 会合并这些中间状态。</p>
+<h3 id="适用场景-4"><a href="#适用场景-4" class="headerlink" title="适用场景"></a>适用场景</h3><ul>
+<li>每小时订单聚合</li>
+<li>每日销售额聚合</li>
+<li>多维度报表</li>
+<li>用户行为统计</li>
+<li>去重用户数</li>
+<li>分位数统计</li>
+<li>预聚合计算</li>
+</ul>
+<p>这样可以避免每次查询都扫描和聚合原始明细表。</p>
+<h3 id="创建聚合表"><a href="#创建聚合表" class="headerlink" title="创建聚合表"></a>创建聚合表</h3><p>字段类型必须使用 <code>AggregateFunction</code> 或 <code>SimpleAggregateFunction</code>。</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">CREATE TABLE</span> daily_sales_agg</span><br><span class="line">(</span><br><span class="line">    shop_id UInt64,</span><br><span class="line">    dt <span class="type">Date</span>,</span><br><span class="line">    sales_state AggregateFunction(sum, <span class="type">Decimal</span>(<span class="number">20</span>, <span class="number">8</span>))</span><br><span class="line">)</span><br><span class="line">ENGINE <span class="operator">=</span> AggregatingMergeTree</span><br><span class="line"><span class="keyword">PARTITION</span> <span class="keyword">BY</span> toYYYYMM(dt)</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> (dt, shop_id);</span><br></pre></td></tr></table></figure>
+
+<h3 id="写入聚合状态"><a href="#写入聚合状态" class="headerlink" title="写入聚合状态"></a>写入聚合状态</h3><p>插入时需要使用 <code>sumState()</code>：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">INSERT INTO</span> daily_sales_agg</span><br><span class="line"><span class="keyword">SELECT</span></span><br><span class="line">    shop_id,</span><br><span class="line">    dt,</span><br><span class="line">    sumState(sales_amount) <span class="keyword">AS</span> sales_state</span><br><span class="line"><span class="keyword">FROM</span> raw_sales_data</span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span></span><br><span class="line">    shop_id,</span><br><span class="line">    dt;</span><br></pre></td></tr></table></figure>
+
+<h3 id="查询最终结果"><a href="#查询最终结果" class="headerlink" title="查询最终结果"></a>查询最终结果</h3><p>查询时应使用对应的 <code>sumMerge()</code>：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span></span><br><span class="line">    shop_id,</span><br><span class="line">    sumMerge(sales_state) <span class="keyword">AS</span> total_sales</span><br><span class="line"><span class="keyword">FROM</span> daily_sales_agg</span><br><span class="line"><span class="keyword">WHERE</span> dt <span class="operator">=</span> <span class="string">&#x27;2026-08-01&#x27;</span></span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span> shop_id;</span><br></pre></td></tr></table></figure>
+
+<p>需要注意：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">merge</span>(sales_state)</span><br></pre></td></tr></table></figure>
+
+<p>不是标准的聚合函数调用方式。</p>
+<p>不同状态需要使用对应的 Merge 函数：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">sumMerge()</span><br><span class="line">avgMerge()</span><br><span class="line">uniqMerge()</span><br><span class="line">quantileMerge()</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="七、ClickHouse-物化视图"><a href="#七、ClickHouse-物化视图" class="headerlink" title="七、ClickHouse 物化视图"></a>七、ClickHouse 物化视图</h2><p>ClickHouse 的物化视图通常用于在数据写入时自动转换或聚合数据。</p>
+<p>例如原始订单表：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">CREATE TABLE</span> raw_orders</span><br><span class="line">(</span><br><span class="line">    order_id UInt64,</span><br><span class="line">    shop_id UInt64,</span><br><span class="line">    amount <span class="type">Decimal</span>(<span class="number">20</span>, <span class="number">8</span>),</span><br><span class="line">    create_time DateTime</span><br><span class="line">)</span><br><span class="line">ENGINE <span class="operator">=</span> MergeTree</span><br><span class="line"><span class="keyword">PARTITION</span> <span class="keyword">BY</span> toYYYYMM(create_time)</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> (create_time, shop_id);</span><br></pre></td></tr></table></figure>
+
+<p>创建聚合目标表：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">CREATE TABLE</span> daily_order_stats</span><br><span class="line">(</span><br><span class="line">    dt <span class="type">Date</span>,</span><br><span class="line">    shop_id UInt64,</span><br><span class="line">    order_count UInt64,</span><br><span class="line">    total_amount <span class="type">Decimal</span>(<span class="number">20</span>, <span class="number">8</span>)</span><br><span class="line">)</span><br><span class="line">ENGINE <span class="operator">=</span> SummingMergeTree</span><br><span class="line"><span class="keyword">PARTITION</span> <span class="keyword">BY</span> toYYYYMM(dt)</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> (dt, shop_id);</span><br></pre></td></tr></table></figure>
+
+<p>创建物化视图：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">CREATE</span> MATERIALIZED <span class="keyword">VIEW</span> daily_order_stats_mv</span><br><span class="line"><span class="keyword">TO</span> daily_order_stats</span><br><span class="line"><span class="keyword">AS</span></span><br><span class="line"><span class="keyword">SELECT</span></span><br><span class="line">    toDate(create_time) <span class="keyword">AS</span> dt,</span><br><span class="line">    shop_id,</span><br><span class="line">    <span class="built_in">count</span>() <span class="keyword">AS</span> order_count,</span><br><span class="line">    <span class="built_in">sum</span>(amount) <span class="keyword">AS</span> total_amount</span><br><span class="line"><span class="keyword">FROM</span> raw_orders</span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span></span><br><span class="line">    dt,</span><br><span class="line">    shop_id;</span><br></pre></td></tr></table></figure>
+
+<p>之后向 <code>raw_orders</code> 写入数据时，物化视图会自动将聚合结果写入 <code>daily_order_stats</code>。</p>
+<hr>
+<h2 id="八、ClickHouse、MySQL-与-TiDB-对比"><a href="#八、ClickHouse、MySQL-与-TiDB-对比" class="headerlink" title="八、ClickHouse、MySQL 与 TiDB 对比"></a>八、ClickHouse、MySQL 与 TiDB 对比</h2><table><thead><tr><th>系统</th><th>主要定位</th><th>存储方式</th><th>主要索引或组织方式</th><th>适合场景</th><th>主要短板</th></tr></thead><tbody><tr><td>ClickHouse</td><td>OLAP</td><td>列式存储、Partition、Part</td><td>排序键、稀疏主键索引、Min-Max、跳数索引</td><td>日志分析、分组统计、实时报表、大规模聚合</td><td>单行更新成本高，不适合核心 OLTP 和高频点查</td></tr><tr><td>MySQL</td><td>OLTP</td><td>InnoDB 行式存储</td><td>B+Tree 聚簇索引、二级索引</td><td>高频点查、事务、订单、账户、业务系统</td><td>大规模扫描和复杂聚合性能相对较弱</td></tr><tr><td>TiDB</td><td>分布式 HTAP</td><td>TiKV 行存 + TiFlash 列存</td><td>TiKV 基于 RocksDB，TiFlash 使用列式副本</td><td>分布式事务、水平扩展、同时承担部分 OLTP 与 OLAP</td><td>架构和运维复杂，资源成本较高，存在分布式开销</td></tr></tbody></table>
+
+<hr>
+<h2 id="九、ClickHouse-与-MySQL-的核心差异"><a href="#九、ClickHouse-与-MySQL-的核心差异" class="headerlink" title="九、ClickHouse 与 MySQL 的核心差异"></a>九、ClickHouse 与 MySQL 的核心差异</h2><h3 id="MySQL-查询思路"><a href="#MySQL-查询思路" class="headerlink" title="MySQL 查询思路"></a>MySQL 查询思路</h3><p>MySQL 通常通过 B+Tree 索引快速定位具体记录：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">索引查找</span><br><span class="line">    ↓</span><br><span class="line">定位主键</span><br><span class="line">    ↓</span><br><span class="line">回表</span><br><span class="line">    ↓</span><br><span class="line">读取一行或少量行</span><br></pre></td></tr></table></figure>
+
+<p>适合：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span></span><br><span class="line"><span class="keyword">FROM</span> orders</span><br><span class="line"><span class="keyword">WHERE</span> order_id <span class="operator">=</span> <span class="number">10001</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="ClickHouse-查询思路"><a href="#ClickHouse-查询思路" class="headerlink" title="ClickHouse 查询思路"></a>ClickHouse 查询思路</h3><p>ClickHouse 通常通过分区和稀疏索引排除大量数据块：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">分区裁剪</span><br><span class="line">    ↓</span><br><span class="line">索引范围判断</span><br><span class="line">    ↓</span><br><span class="line">跳过无关 Granule</span><br><span class="line">    ↓</span><br><span class="line">批量读取相关列</span><br><span class="line">    ↓</span><br><span class="line">向量化计算</span><br></pre></td></tr></table></figure>
+
+<p>适合：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span></span><br><span class="line">    symbol,</span><br><span class="line">    <span class="built_in">SUM</span>(amount)</span><br><span class="line"><span class="keyword">FROM</span> orders</span><br><span class="line"><span class="keyword">WHERE</span> create_time <span class="operator">&gt;=</span> <span class="string">&#x27;2026-08-01&#x27;</span></span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span> symbol;</span><br></pre></td></tr></table></figure>
+
+<p>可以简单理解为：</p>
+<blockquote>
+<p>MySQL 擅长快速找到某几行数据，ClickHouse 擅长快速扫描和计算大量数据。</p>
+</blockquote>
+<hr>
+<h2 id="十、常见表结构示例"><a href="#十、常见表结构示例" class="headerlink" title="十、常见表结构示例"></a>十、常见表结构示例</h2><p>下面是一张交易流水 ClickHouse 表：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">CREATE TABLE</span> trade_records</span><br><span class="line">(</span><br><span class="line">    trade_id UInt64,</span><br><span class="line">    order_id UInt64,</span><br><span class="line">    user_id UInt64,</span><br><span class="line">    symbol LowCardinality(String),</span><br><span class="line">    side Enum8(</span><br><span class="line">        <span class="string">&#x27;buy&#x27;</span> <span class="operator">=</span> <span class="number">1</span>,</span><br><span class="line">        <span class="string">&#x27;sell&#x27;</span> <span class="operator">=</span> <span class="number">2</span></span><br><span class="line">    ),</span><br><span class="line">    price <span class="type">Decimal</span>(<span class="number">30</span>, <span class="number">10</span>),</span><br><span class="line">    quantity <span class="type">Decimal</span>(<span class="number">30</span>, <span class="number">10</span>),</span><br><span class="line">    amount <span class="type">Decimal</span>(<span class="number">30</span>, <span class="number">10</span>),</span><br><span class="line">    fee <span class="type">Decimal</span>(<span class="number">30</span>, <span class="number">10</span>),</span><br><span class="line">    create_time DateTime64(<span class="number">3</span>)</span><br><span class="line">)</span><br><span class="line">ENGINE <span class="operator">=</span> MergeTree</span><br><span class="line"><span class="keyword">PARTITION</span> <span class="keyword">BY</span> toYYYYMM(create_time)</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span></span><br><span class="line">(</span><br><span class="line">    symbol,</span><br><span class="line">    create_time,</span><br><span class="line">    user_id,</span><br><span class="line">    trade_id</span><br><span class="line">)</span><br><span class="line">TTL toDateTime(create_time) <span class="operator">+</span> <span class="type">INTERVAL</span> <span class="number">3</span> <span class="keyword">YEAR</span></span><br><span class="line">SETTINGS index_granularity <span class="operator">=</span> <span class="number">8192</span>;</span><br></pre></td></tr></table></figure>
+
+<p>该表适合以下查询：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span></span><br><span class="line">    symbol,</span><br><span class="line">    side,</span><br><span class="line">    <span class="built_in">count</span>() <span class="keyword">AS</span> trade_count,</span><br><span class="line">    <span class="built_in">sum</span>(quantity) <span class="keyword">AS</span> total_quantity,</span><br><span class="line">    <span class="built_in">sum</span>(amount) <span class="keyword">AS</span> total_amount</span><br><span class="line"><span class="keyword">FROM</span> trade_records</span><br><span class="line"><span class="keyword">WHERE</span> create_time <span class="operator">&gt;=</span> now() <span class="operator">-</span> <span class="type">INTERVAL</span> <span class="number">1</span> <span class="keyword">DAY</span></span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span></span><br><span class="line">    symbol,</span><br><span class="line">    side</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> total_amount <span class="keyword">DESC</span>;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="十一、开发规范总结"><a href="#十一、开发规范总结" class="headerlink" title="十一、开发规范总结"></a>十一、开发规范总结</h2><h3 id="表结构设计"><a href="#表结构设计" class="headerlink" title="表结构设计"></a>表结构设计</h3><ul>
+<li>合理选择分区键。</li>
+<li>根据高频查询条件设计 <code>ORDER BY</code>。</li>
+<li>不要把 PRIMARY KEY 当作唯一约束。</li>
+<li>避免创建过多分区。</li>
+<li>合理使用 LowCardinality、Enum、Decimal 等数据类型。</li>
+<li>时间字段尽量使用 Date、DateTime 或 DateTime64。</li>
+<li>金额字段不要使用 Float，优先使用 Decimal。</li>
+</ul>
+<h3 id="数据写入"><a href="#数据写入" class="headerlink" title="数据写入"></a>数据写入</h3><ul>
+<li>使用批量 INSERT。</li>
+<li>避免一条数据执行一次 INSERT。</li>
+<li>控制 Part 数量。</li>
+<li>大规模写入可以通过 Kafka、Pulsar、Flink 或 ClickHouse Kafka Engine 接入。</li>
+<li>数据去重应尽量在上游完成。</li>
+</ul>
+<h3 id="数据查询"><a href="#数据查询" class="headerlink" title="数据查询"></a>数据查询</h3><ul>
+<li>避免 <code>SELECT *</code>。</li>
+<li>查询条件尽量包含分区键或排序键。</li>
+<li>避免无条件扫描全表。</li>
+<li>谨慎使用 <code>FINAL</code>。</li>
+<li>谨慎执行大规模 JOIN。</li>
+<li>查询前先通过 <code>EXPLAIN</code> 分析执行计划。</li>
+</ul>
+<h3 id="数据更新"><a href="#数据更新" class="headerlink" title="数据更新"></a>数据更新</h3><ul>
+<li>尽量采用追加写入。</li>
+<li>高频状态变更可以使用版本字段。</li>
+<li>避免频繁 Mutation。</li>
+<li>删除历史数据优先使用 Partition 删除或 TTL。</li>
+</ul>
+<h3 id="系统定位"><a href="#系统定位" class="headerlink" title="系统定位"></a>系统定位</h3><ul>
+<li>ClickHouse 主要负责分析，不负责核心业务事务。</li>
+<li>MySQL、PostgreSQL 负责业务真值数据。</li>
+<li>ClickHouse 负责统计、聚合、日志和报表。</li>
+<li>不要将 ClickHouse 当作 MySQL 的直接替代品。</li>
+</ul>
+<hr>
+<h2 id="十二、总结"><a href="#十二、总结" class="headerlink" title="十二、总结"></a>十二、总结</h2><p>ClickHouse 的高性能主要来自以下几个方面：</p>
+<ol>
+<li>列式存储，只读取需要的字段。</li>
+<li>高效压缩，减少磁盘 I&#x2F;O。</li>
+<li>稀疏索引和跳数索引，快速跳过无关数据。</li>
+<li>向量化执行，批量利用 CPU。</li>
+<li>多线程和分布式并行查询。</li>
+<li>MergeTree 顺序写入与后台异步合并。</li>
+<li>针对聚合、过滤、排序等 OLAP 操作进行优化。</li>
+</ol>
+<p>在实际系统中，ClickHouse 最合适的定位通常是：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">业务数据库负责交易和事务</span><br><span class="line">          +</span><br><span class="line">ClickHouse 负责分析和统计</span><br></pre></td></tr></table></figure>
+
+<p>一句话概括：</p>
+<blockquote>
+<p>ClickHouse 不是为了快速修改某一行数据，而是为了快速分析数十亿行数据。</p>
+</blockquote>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/868.html">https://leon-book.github.io/blog/index.php/archives/868.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/ClickHouse/">ClickHouse</a></div><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/869.html" title="代码质量与安全防护利器：SonarQube 实战指南与主流竞品横评"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">代码质量与安全防护利器：SonarQube 实战指南与主流竞品横评</div></div><div class="info-2"><div class="info-item-1">   摘要：在日常软件开发与团队协作中，如何保证代码规范、减少潜在 Bug，并在构建阶段及早拦截安全漏洞？本文将带你全面了解代码质量扫描利器 SonarQube 的核心功能、支持语言及落地实战，并与 GitHub CodeQL、Snyk、Semgrep 等主流竞品进行深度横向对比，帮助你和团队挑选最适合的代码静态分析方案。   一、 为什么我们需要代码扫描工具？随着项目规模的扩大和团队人数的增加，代码质量的管控变得日益困难：  人工 Code Review 成本高且容易遗漏：重复的规范问题（如命名、空指针风险、未关闭的流）耗费大量审核精力。 技术债务（Technical Debt）难以量化：项目中到底有多少死代码、重复代码、过时 API？ 安全漏洞滞后暴露：SQL 注入、XSS、敏感信息硬编码等问题往往到了测试阶段甚至上线后才被发现。  静态代码分析工具（Static Application Security Testing, SAST） 可以在不运行代码的前提下，通过解析语法树（AST）和数据流分析，自动扫描出代码中的缺陷与安全隐患。  二、 认识 SonarQube：功能与语...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/867.html" title="Protobuf 语法通关教程：写给后端开发者的实战指南（PHP / Go 双视角）"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Protobuf 语法通关教程：写给后端开发者的实战指南（PHP / Go 双视角）</div></div><div class="info-2"><div class="info-item-1">   适合人群：会一门后端语言（PHP &#x2F; Go &#x2F; Java 都行），听说过 gRPC 但被 .proto 文件劝退过的人。读完你能得到：看懂任意 proto 文件、能自己写服务契约、知道怎么改 schema 不把生产搞挂。   目录 Protobuf 是什么：三分钟版 环境准备与第一个 .proto 文件骨架五个关键字（syntax &#x2F; package &#x2F; import &#x2F; option &#x2F; extend） 类型系统：标量、字段编号与默认值 复合结构：repeated &#x2F; map &#x2F; oneof &#x2F; 嵌套 枚举 enum：规则与坑 import 进阶与 Well-Known Types service 与 rpc：四种调用模式 google.api.http：一份契约同时暴露 gRPC 和 REST Schema 演进规则：怎么改不把生产搞挂 proto2 vs proto3 速览 工程化：用 Buf 管理 proto 踩坑清单 10 条 参考资源   1. Protobuf 是什么：三...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/index.php/archives/636.html" title="列式存储数据库 ClickHouse介绍"><img class="cover" src="/blog/assets/migrated/4580d416e2741a600fa6.png" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2024-01-10</div><div class="info-item-2">列式存储数据库 ClickHouse介绍</div></div><div class="info-2"><div class="info-item-1">  ClickHouse介绍一、clickhouse简介ClickHouse 是俄罗斯的 Yandex 于 2016 年开源的用于在线分析处理查询（OLAP :Online Analytical Processing）MPP架构的列式存储数据库（DBMS：Database Management System），能够使用 SQL 查询实时生成分析数据报告。ClickHouse的全称是Click Stream，Data WareHouse。 clickhouse可以做用户行为分析，流批一体 线性扩展和可靠性保障能够原生支持 shard + replication clickhouse没有走hadoop生态，采用 Local attached storage 作为存储 二、clickhouse特点1、列式存储：行式存储的好处：  想查找某个人所有的属性时，可以通过一次磁盘查找加顺序读取就可以；但是当想查所有人的年龄时，需要不停的查找，或者全表扫描才行，遍历的很多数据都是不需要的。  列式存储的好处  对于列的聚合、计数、求和等统计操作优于行式存储 由于某一列的数据类型都是相同的，针对于...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/691.html" title="ClickHouse写入常见问题: Too many parts (300)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2024-07-14</div><div class="info-item-2">ClickHouse写入常见问题: Too many parts (300)</div></div><div class="info-2"><div class="info-item-1">  ClickHouse写入常见问题: Too many parts (300)介绍ClickHouse是一个高性能、可伸缩的列式数据库管理系统，广泛应用于大规模数据存储和分析场景。然而，在使用ClickHouse进行写入操作时，有时会遇到一个常见的错误：Too many parts (300)。本篇技术博客将解释这个错误的原因，并提供解决方案。 错误原因当出现 “Too many parts (300)” 错误时，它通常表示ClickHouse中的表已经拥有了超过300个分区。分区是ClickHouse中数据组织和存储的基本单位，它允许对数据进行水平切分和并行处理。然而，过多的分区会导致ClickHouse在执行写入操作时产生过多的元数据和管理开销，从而影响性能。 解决方案以下是一些解决 “Too many parts (300)” 错误的方法： 1. 合并分区通过合并过多的分区来减少分区数量。可以使用 OPTIMIZE TABLE 命令来合并分区。例如： OPTIMIZE TABLE your_table_name FINAL;  这将合并表中的所有分区，最终生成一个新的分区...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/690.html" title="ClickHouse 查看数据库和表的容量大小"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2024-07-10</div><div class="info-item-2">ClickHouse 查看数据库和表的容量大小</div></div><div class="info-2"><div class="info-item-1">  当涉及到大规模数据处理和分析时，ClickHouse是一个强大而高效的开源列式数据库管理系统。在管理和监控数据库和表的容量大小方面，ClickHouse提供了一些有用的工具和技术。本篇技术博客将介绍如何使用ClickHouse来查看数据库和表的容量大小。 ClickHouse：查看数据库和表的容量大小介绍ClickHouse是一个面向分析的列式数据库管理系统，旨在处理大规模的数据集。它以其出色的性能和高伸缩性而闻名，适用于各种数据分析和报表需求。在开展数据分析工作时，了解数据库和表的容量大小对于管理和优化存储资源至关重要。 查看数据库的容量大小要获取ClickHouse数据库的容量大小信息，可以使用系统表 system.parts 和 system.tables。下面是一些基本的查询示例： -- 查询所有数据库的容量大小SELECT database, formatReadableSize(sum(bytes)) AS total_sizeFROM system.partsGROUP BY databaseORDER BY total_size DESC;-- 查询特定数据库...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%89%8D%E8%A8%80"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E4%BB%80%E4%B9%88%E6%98%AF-ClickHouse"><span class="toc-number">2.</span> <span class="toc-text">一、什么是 ClickHouse</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#ClickHouse-%E7%9A%84%E6%A0%B8%E5%BF%83%E7%89%B9%E7%82%B9"><span class="toc-number">2.1.</span> <span class="toc-text">ClickHouse 的核心特点</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-%E5%88%97%E5%BC%8F%E5%AD%98%E5%82%A8"><span class="toc-number">2.1.1.</span> <span class="toc-text">1. 列式存储</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-%E8%81%9A%E5%90%88%E6%80%A7%E8%83%BD%E9%AB%98"><span class="toc-number">2.1.2.</span> <span class="toc-text">2. 聚合性能高</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-%E9%80%82%E5%90%88%E5%A4%A7%E8%A7%84%E6%A8%A1%E6%95%B0%E6%8D%AE%E5%88%86%E6%9E%90"><span class="toc-number">2.1.3.</span> <span class="toc-text">3. 适合大规模数据分析</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-SQL-%E5%AD%A6%E4%B9%A0%E6%88%90%E6%9C%AC%E8%BE%83%E4%BD%8E"><span class="toc-number">2.1.4.</span> <span class="toc-text">4. SQL 学习成本较低</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81ClickHouse-%E5%BA%95%E5%B1%82%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="toc-number">3.</span> <span class="toc-text">二、ClickHouse 底层数据结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-1-%E6%A0%B8%E5%BF%83%E5%AD%98%E5%82%A8%E5%BC%95%E6%93%8E%EF%BC%9AMergeTree"><span class="toc-number">4.</span> <span class="toc-text">2.1 核心存储引擎：MergeTree</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-2-%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%88%86%E5%B1%82"><span class="toc-number">5.</span> <span class="toc-text">2.2 数据结构分层</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Table"><span class="toc-number">5.1.</span> <span class="toc-text">Table</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Partition"><span class="toc-number">5.2.</span> <span class="toc-text">Partition</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Part"><span class="toc-number">5.3.</span> <span class="toc-text">Part</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Column-Files"><span class="toc-number">5.4.</span> <span class="toc-text">Column Files</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-3-%E6%95%B0%E6%8D%AE%E5%86%99%E5%85%A5%E6%B5%81%E7%A8%8B"><span class="toc-number">6.</span> <span class="toc-text">2.3 数据写入流程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-4-%E7%B4%A2%E5%BC%95%E6%9C%BA%E5%88%B6"><span class="toc-number">7.</span> <span class="toc-text">2.4 索引机制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E4%B8%BB%E9%94%AE%E7%A8%80%E7%96%8F%E7%B4%A2%E5%BC%95"><span class="toc-number">7.1.</span> <span class="toc-text">1. 主键稀疏索引</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-Mark-%E6%96%87%E4%BB%B6"><span class="toc-number">7.2.</span> <span class="toc-text">2. Mark 文件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-Min-Max-%E7%B4%A2%E5%BC%95"><span class="toc-number">7.3.</span> <span class="toc-text">3. Min-Max 索引</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-Data-Skipping-Index"><span class="toc-number">7.4.</span> <span class="toc-text">4. Data Skipping Index</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B0%8F%E7%BB%93"><span class="toc-number">7.5.</span> <span class="toc-text">小结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-5-%E5%90%8E%E5%8F%B0%E5%90%88%E5%B9%B6%E6%9C%BA%E5%88%B6"><span class="toc-number">8.</span> <span class="toc-text">2.5 后台合并机制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81ClickHouse-%E4%B8%BA%E4%BB%80%E4%B9%88%E5%BF%AB"><span class="toc-number">9.</span> <span class="toc-text">三、ClickHouse 为什么快</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-1-%E5%88%97%E5%BC%8F%E5%AD%98%E5%82%A8"><span class="toc-number">10.</span> <span class="toc-text">3.1 列式存储</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-2-%E9%AB%98%E5%8E%8B%E7%BC%A9%E7%8E%87"><span class="toc-number">11.</span> <span class="toc-text">3.2 高压缩率</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-3-SIMD-%E4%B8%8E%E5%90%91%E9%87%8F%E5%8C%96%E6%89%A7%E8%A1%8C"><span class="toc-number">12.</span> <span class="toc-text">3.3 SIMD 与向量化执行</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-4-%E5%A4%9A%E7%BA%A7%E6%95%B0%E6%8D%AE%E8%B7%B3%E8%BF%87%E6%9C%BA%E5%88%B6"><span class="toc-number">13.</span> <span class="toc-text">3.4 多级数据跳过机制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-5-MergeTree-%E7%9A%84%E9%A1%BA%E5%BA%8F%E5%86%99%E5%85%A5%E6%9C%BA%E5%88%B6"><span class="toc-number">14.</span> <span class="toc-text">3.5 MergeTree 的顺序写入机制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-6-%E5%B9%B6%E8%A1%8C%E6%9F%A5%E8%AF%A2%E8%83%BD%E5%8A%9B"><span class="toc-number">15.</span> <span class="toc-text">3.6 并行查询能力</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-7-%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E6%9C%BA%E5%88%B6"><span class="toc-number">16.</span> <span class="toc-text">3.7 查询优化机制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81ClickHouse-%E7%9A%84%E9%80%82%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">17.</span> <span class="toc-text">四、ClickHouse 的适用场景</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-1-%E9%80%82%E5%90%88%E7%9A%84%E5%9C%BA%E6%99%AF"><span class="toc-number">18.</span> <span class="toc-text">4.1 适合的场景</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E5%A4%A7%E6%95%B0%E6%8D%AE-OLAP-%E5%88%86%E6%9E%90"><span class="toc-number">18.1.</span> <span class="toc-text">1. 大数据 OLAP 分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E6%97%B6%E9%97%B4%E5%BA%8F%E5%88%97%E5%88%86%E6%9E%90"><span class="toc-number">18.2.</span> <span class="toc-text">2. 时间序列分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E6%97%A5%E5%BF%97%E5%88%86%E6%9E%90"><span class="toc-number">18.3.</span> <span class="toc-text">3. 日志分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E7%94%A8%E6%88%B7%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90"><span class="toc-number">18.4.</span> <span class="toc-text">4. 用户行为分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-BI-%E6%8A%A5%E8%A1%A8"><span class="toc-number">18.5.</span> <span class="toc-text">5. BI 报表</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-2-%E4%B8%8D%E9%80%82%E5%90%88%E7%9A%84%E5%9C%BA%E6%99%AF"><span class="toc-number">19.</span> <span class="toc-text">4.2 不适合的场景</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E9%AB%98%E9%A2%91-OLTP-%E4%BA%8B%E5%8A%A1"><span class="toc-number">19.1.</span> <span class="toc-text">1. 高频 OLTP 事务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%BC%BA%E4%B8%80%E8%87%B4%E6%80%A7%E4%BA%8B%E5%8A%A1"><span class="toc-number">19.2.</span> <span class="toc-text">2. 强一致性事务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E9%AB%98%E9%A2%91%E7%82%B9%E6%9F%A5"><span class="toc-number">19.3.</span> <span class="toc-text">3. 高频点查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E9%AB%98%E9%A2%91-UPDATE-%E5%92%8C-DELETE"><span class="toc-number">19.4.</span> <span class="toc-text">4. 高频 UPDATE 和 DELETE</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-%E5%A4%8D%E6%9D%82%E5%A4%9A%E8%A1%A8%E4%BA%8B%E5%8A%A1-JOIN"><span class="toc-number">19.5.</span> <span class="toc-text">5. 复杂多表事务 JOIN</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81ClickHouse-%E5%BC%80%E5%8F%91%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-number">20.</span> <span class="toc-text">五、ClickHouse 开发注意事项</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-1-%E5%90%88%E7%90%86%E8%AE%BE%E8%AE%A1%E5%88%86%E5%8C%BA%E9%94%AE"><span class="toc-number">21.</span> <span class="toc-text">5.1 合理设计分区键</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-2-%E5%90%88%E7%90%86%E8%AE%BE%E8%AE%A1-ORDER-BY"><span class="toc-number">22.</span> <span class="toc-text">5.2 合理设计 ORDER BY</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-3-PRIMARY-KEY-%E4%B8%8D%E7%AD%89%E4%BA%8E%E5%94%AF%E4%B8%80%E9%94%AE"><span class="toc-number">23.</span> <span class="toc-text">5.3 PRIMARY KEY 不等于唯一键</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-4-%E9%81%BF%E5%85%8D%E5%B0%8F%E6%89%B9%E9%87%8F-INSERT"><span class="toc-number">24.</span> <span class="toc-text">5.4 避免小批量 INSERT</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-5-%E9%81%BF%E5%85%8D-SELECT"><span class="toc-number">25.</span> <span class="toc-text">5.5 避免 SELECT *</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-6-%E5%B0%BD%E9%87%8F%E9%81%BF%E5%85%8D%E9%A2%91%E7%B9%81-UPDATE-%E5%92%8C-DELETE"><span class="toc-number">26.</span> <span class="toc-text">5.6 尽量避免频繁 UPDATE 和 DELETE</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-7-%E5%87%8F%E5%B0%91%E8%BF%90%E8%A1%8C%E6%97%B6%E5%A4%8D%E6%9D%82-JOIN"><span class="toc-number">27.</span> <span class="toc-text">5.7 减少运行时复杂 JOIN</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-8-ClickHouse-%E5%BA%94%E4%B8%BB%E8%A6%81%E6%89%BF%E6%8B%85%E5%88%86%E6%9E%90%E8%81%8C%E8%B4%A3"><span class="toc-number">28.</span> <span class="toc-text">5.8 ClickHouse 应主要承担分析职责</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81MergeTree-%E7%B3%BB%E5%88%97%E5%AD%98%E5%82%A8%E5%BC%95%E6%93%8E"><span class="toc-number">29.</span> <span class="toc-text">六、MergeTree 系列存储引擎</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-1-MergeTree"><span class="toc-number">30.</span> <span class="toc-text">6.1 MergeTree</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AF%B4%E6%98%8E"><span class="toc-number">30.1.</span> <span class="toc-text">说明</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%82%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">30.2.</span> <span class="toc-text">适用场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B"><span class="toc-number">30.3.</span> <span class="toc-text">示例</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-2-ReplacingMergeTree"><span class="toc-number">31.</span> <span class="toc-text">6.2 ReplacingMergeTree</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AF%B4%E6%98%8E-1"><span class="toc-number">31.1.</span> <span class="toc-text">说明</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-number">31.2.</span> <span class="toc-text">注意事项</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%82%E7%94%A8%E5%9C%BA%E6%99%AF-1"><span class="toc-number">31.3.</span> <span class="toc-text">适用场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B-1"><span class="toc-number">31.4.</span> <span class="toc-text">示例</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-3-SummingMergeTree"><span class="toc-number">32.</span> <span class="toc-text">6.3 SummingMergeTree</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AF%B4%E6%98%8E-2"><span class="toc-number">32.1.</span> <span class="toc-text">说明</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%82%E7%94%A8%E5%9C%BA%E6%99%AF-2"><span class="toc-number">32.2.</span> <span class="toc-text">适用场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B-2"><span class="toc-number">32.3.</span> <span class="toc-text">示例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9-1"><span class="toc-number">32.4.</span> <span class="toc-text">注意事项</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-4-CollapsingMergeTree"><span class="toc-number">33.</span> <span class="toc-text">6.4 CollapsingMergeTree</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AF%B4%E6%98%8E-3"><span class="toc-number">33.1.</span> <span class="toc-text">说明</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%82%E7%94%A8%E5%9C%BA%E6%99%AF-3"><span class="toc-number">33.2.</span> <span class="toc-text">适用场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B-3"><span class="toc-number">33.3.</span> <span class="toc-text">示例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9-2"><span class="toc-number">33.4.</span> <span class="toc-text">注意事项</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-5-VersionedCollapsingMergeTree"><span class="toc-number">34.</span> <span class="toc-text">6.5 VersionedCollapsingMergeTree</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-6-AggregatingMergeTree"><span class="toc-number">35.</span> <span class="toc-text">6.6 AggregatingMergeTree</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AF%B4%E6%98%8E-4"><span class="toc-number">35.1.</span> <span class="toc-text">说明</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%82%E7%94%A8%E5%9C%BA%E6%99%AF-4"><span class="toc-number">35.2.</span> <span class="toc-text">适用场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%9B%E5%BB%BA%E8%81%9A%E5%90%88%E8%A1%A8"><span class="toc-number">35.3.</span> <span class="toc-text">创建聚合表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%99%E5%85%A5%E8%81%9A%E5%90%88%E7%8A%B6%E6%80%81"><span class="toc-number">35.4.</span> <span class="toc-text">写入聚合状态</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9F%A5%E8%AF%A2%E6%9C%80%E7%BB%88%E7%BB%93%E6%9E%9C"><span class="toc-number">35.5.</span> <span class="toc-text">查询最终结果</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81ClickHouse-%E7%89%A9%E5%8C%96%E8%A7%86%E5%9B%BE"><span class="toc-number">36.</span> <span class="toc-text">七、ClickHouse 物化视图</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81ClickHouse%E3%80%81MySQL-%E4%B8%8E-TiDB-%E5%AF%B9%E6%AF%94"><span class="toc-number">37.</span> <span class="toc-text">八、ClickHouse、MySQL 与 TiDB 对比</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%9D%E3%80%81ClickHouse-%E4%B8%8E-MySQL-%E7%9A%84%E6%A0%B8%E5%BF%83%E5%B7%AE%E5%BC%82"><span class="toc-number">38.</span> <span class="toc-text">九、ClickHouse 与 MySQL 的核心差异</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#MySQL-%E6%9F%A5%E8%AF%A2%E6%80%9D%E8%B7%AF"><span class="toc-number">38.1.</span> <span class="toc-text">MySQL 查询思路</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ClickHouse-%E6%9F%A5%E8%AF%A2%E6%80%9D%E8%B7%AF"><span class="toc-number">38.2.</span> <span class="toc-text">ClickHouse 查询思路</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E3%80%81%E5%B8%B8%E8%A7%81%E8%A1%A8%E7%BB%93%E6%9E%84%E7%A4%BA%E4%BE%8B"><span class="toc-number">39.</span> <span class="toc-text">十、常见表结构示例</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E4%B8%80%E3%80%81%E5%BC%80%E5%8F%91%E8%A7%84%E8%8C%83%E6%80%BB%E7%BB%93"><span class="toc-number">40.</span> <span class="toc-text">十一、开发规范总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A1%A8%E7%BB%93%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="toc-number">40.1.</span> <span class="toc-text">表结构设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E5%86%99%E5%85%A5"><span class="toc-number">40.2.</span> <span class="toc-text">数据写入</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E6%9F%A5%E8%AF%A2"><span class="toc-number">40.3.</span> <span class="toc-text">数据查询</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E6%9B%B4%E6%96%B0"><span class="toc-number">40.4.</span> <span class="toc-text">数据更新</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B3%BB%E7%BB%9F%E5%AE%9A%E4%BD%8D"><span class="toc-number">40.5.</span> <span class="toc-text">系统定位</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E4%BA%8C%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">41.</span> <span class="toc-text">十二、总结</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

@@ -1,0 +1,729 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>PHP团队代码规范 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="今天看同事的代码非常闹心, 也许是我个人问题吧. 我认为 团队开发前一定要制订一份 开发规范. 在国外可以挽救你的生命, 百度了一份看上去不错的规范 自己改了一些 . 一、基本约定1、源文件（1）纯PHP代码源文件只使用  ； （2）源文件中PHP代码的编码格式必须是无BOM的UTF-8格式； （3）使用 Unix LF(换行符)作为行结束符； （4）一个源文件只做一种类型的声明，即，这个文件">
+<meta property="og:type" content="article">
+<meta property="og:title" content="PHP团队代码规范">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/361.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="今天看同事的代码非常闹心, 也许是我个人问题吧. 我认为 团队开发前一定要制订一份 开发规范. 在国外可以挽救你的生命, 百度了一份看上去不错的规范 自己改了一些 . 一、基本约定1、源文件（1）纯PHP代码源文件只使用  ； （2）源文件中PHP代码的编码格式必须是无BOM的UTF-8格式； （3）使用 Unix LF(换行符)作为行结束符； （4）一个源文件只做一种类型的声明，即，这个文件">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2019-03-19T03:23:00.000Z">
+<meta property="article:modified_time" content="2019-03-19T03:23:00.000Z">
+<meta property="article:author" content="leon">
+<meta property="article:tag" content="php">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "PHP团队代码规范",
+  "url": "https://leon-book.github.io/blog/index.php/archives/361.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2019-03-19T03:23:00.000Z",
+  "dateModified": "2019-03-19T03:23:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/361.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'PHP团队代码规范',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">PHP团队代码规范</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">PHP团队代码规范</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2019-03-19T03:23:00.000Z" title="发表于 2019-03-19 12:23:00">2019-03-19</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2019-03-19T03:23:00.000Z" title="更新于 2019-03-19 12:23:00">2019-03-19</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/">编程语言</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/361.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<p>今天看同事的代码非常闹心, 也许是我个人问题吧. 我认为 团队开发前一定要制订一份 开发规范. 在国外可以挽救你的生命, 百度了一份看上去不错的规范 自己改了一些 .</p>
+<h1 id="一、基本约定"><a href="#一、基本约定" class="headerlink" title="一、基本约定"></a>一、基本约定</h1><h2 id="1、源文件"><a href="#1、源文件" class="headerlink" title="1、源文件"></a>1、源文件</h2><p>（1）纯PHP代码源文件只使用 <?php 标签，省略关闭标签 ?> ；</p>
+<p>（2）源文件中PHP代码的编码格式必须是无BOM的UTF-8格式；</p>
+<p>（3）使用 Unix LF(换行符)作为行结束符；</p>
+<p>（4）一个源文件只做一种类型的声明，即，这个文件专门用来声明Class, 那个文件专门用来设置配置信息，别混在一起写；</p>
+<h2 id="2、缩进"><a href="#2、缩进" class="headerlink" title="2、缩进"></a>2、缩进</h2><p>使用Tab键来缩进，每个Tab键长度设置为4个空格；</p>
+<h2 id="3、行"><a href="#3、行" class="headerlink" title="3、行"></a>3、行</h2><p>一行推荐的是最多写120个字符，多于这个字符就应该换行了，一般的编辑器是可以设置的。</p>
+<h2 id="4、关键字-和-True-False-Null"><a href="#4、关键字-和-True-False-Null" class="headerlink" title="4、关键字 和 True&#x2F;False&#x2F;Null"></a>4、关键字 和 <code>True</code>&#x2F;<code>False</code>&#x2F;<code>Null</code></h2><p>PHP的关键字，必须小写，boolean值：<code>true</code>，<code>false</code>，<code>null</code> 也必须小写。</p>
+<p>下面是PHP的“关键字”，必须小写：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="string">&#x27;__halt_compiler&#x27;</span>, <span class="string">&#x27;abstract&#x27;</span>, <span class="string">&#x27;and&#x27;</span>, <span class="string">&#x27;array&#x27;</span>, <span class="string">&#x27;as&#x27;</span>, <span class="string">&#x27;break&#x27;</span>, <span class="string">&#x27;callable&#x27;</span>, <span class="string">&#x27;case&#x27;</span>, <span class="string">&#x27;catch&#x27;</span>, <span class="string">&#x27;class&#x27;</span>, <span class="string">&#x27;clone&#x27;</span>, <span class="string">&#x27;const&#x27;</span>, <span class="string">&#x27;continue&#x27;</span>, <span class="string">&#x27;declare&#x27;</span>, <span class="string">&#x27;default&#x27;</span>, <span class="string">&#x27;die&#x27;</span>, <span class="string">&#x27;do&#x27;</span>, <span class="string">&#x27;echo&#x27;</span>, <span class="string">&#x27;else&#x27;</span>, <span class="string">&#x27;elseif&#x27;</span>, <span class="string">&#x27;empty&#x27;</span>, <span class="string">&#x27;enddeclare&#x27;</span>, <span class="string">&#x27;endfor&#x27;</span>, <span class="string">&#x27;endforeach&#x27;</span>, <span class="string">&#x27;endif&#x27;</span>, <span class="string">&#x27;endswitch&#x27;</span>, <span class="string">&#x27;endwhile&#x27;</span>, <span class="string">&#x27;eval&#x27;</span>, <span class="string">&#x27;exit&#x27;</span>, <span class="string">&#x27;extends&#x27;</span>, <span class="string">&#x27;final&#x27;</span>, <span class="string">&#x27;for&#x27;</span>, <span class="string">&#x27;foreach&#x27;</span>, <span class="string">&#x27;function&#x27;</span>, <span class="string">&#x27;global&#x27;</span>, <span class="string">&#x27;goto&#x27;</span>, <span class="string">&#x27;if&#x27;</span>, <span class="string">&#x27;implements&#x27;</span>, <span class="string">&#x27;include&#x27;</span>, <span class="string">&#x27;include_once&#x27;</span>, <span class="string">&#x27;instanceof&#x27;</span>, <span class="string">&#x27;insteadof&#x27;</span>, <span class="string">&#x27;interface&#x27;</span>, <span class="string">&#x27;isset&#x27;</span>, <span class="string">&#x27;list&#x27;</span>, <span class="string">&#x27;namespace&#x27;</span>, <span class="string">&#x27;new&#x27;</span>, <span class="string">&#x27;or&#x27;</span>, <span class="string">&#x27;print&#x27;</span>, <span class="string">&#x27;private&#x27;</span>, <span class="string">&#x27;protected&#x27;</span>, <span class="string">&#x27;public&#x27;</span>, <span class="string">&#x27;require&#x27;</span>, <span class="string">&#x27;require_once&#x27;</span>, <span class="string">&#x27;return&#x27;</span>, <span class="string">&#x27;static&#x27;</span>, <span class="string">&#x27;switch&#x27;</span>, <span class="string">&#x27;throw&#x27;</span>, <span class="string">&#x27;trait&#x27;</span>, <span class="string">&#x27;try&#x27;</span>, <span class="string">&#x27;unset&#x27;</span>, <span class="string">&#x27;use&#x27;</span>, <span class="string">&#x27;var&#x27;</span>, <span class="string">&#x27;while&#x27;</span>, <span class="string">&#x27;xor&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="5、命名"><a href="#5、命名" class="headerlink" title="5、命名"></a>5、命名</h2><p>（1）类名 使用大驼峰式（StudlyCaps）写法；</p>
+<p>（2）(类的）方法名 使用小驼峰（cameCase）写法；</p>
+<p>（3）函数名使用小驼峰写法，如 function httpSendPost()；</p>
+<p>（4）变量名 使用小驼峰写法，如 $userName；</p>
+<h2 id="6、代码注释标签"><a href="#6、代码注释标签" class="headerlink" title="6、代码注释标签"></a>6、代码注释标签</h2><p>如 函数注释、变量注释等，常用标签有 @package、@var、@param、@return、@author、@todo、@throws</p>
+<h2 id="7、业务模块"><a href="#7、业务模块" class="headerlink" title="7、业务模块"></a>7、业务模块</h2><p>（1）涉及到多个数据表 更新&#x2F;添加 操作时，最外层要用事务，保证数据库操作的原子性；</p>
+<p>（2）Model层，只做简单的数据表的查询；</p>
+<p>（3) 业务逻辑统一封装到 Logic层；</p>
+<p>（4）控制器只做URL路由，不要当作 业务方法 调用；</p>
+<p>（5）、控制器层不能出现SQL操作语句，如 ThinkPHP框架的 where()、order() 等模型方法，</p>
+<p>即，控制器中，不要出现类似这样的SQL语句：<code>D(&#39;XXX&#39;)-&gt;where()-&gt;order()-&gt;limit()-&gt;find();</code></p>
+<p><code>where()</code>、<code>order()</code>、<code>limit()</code> 等SQL方法只能出现在 Model层、业务层！</p>
+<h1 id="二、代码样式风格"><a href="#二、代码样式风格" class="headerlink" title="二、代码样式风格"></a>二、代码样式风格</h1><h2 id="1、命名空间-Namespace-和-导入-Use-声明"><a href="#1、命名空间-Namespace-和-导入-Use-声明" class="headerlink" title="1、命名空间(Namespace) 和 导入(Use)声明"></a>1、命名空间(Namespace) 和 导入(Use)声明</h2><p>先简单文字描述下：</p>
+<p>命名空间(namespace)的声明后面必须有一行空行；<br>所有的导入(use)声明必须放在命名空间(namespace)声明的下面；<br>一句声明中，必须只有一个导入(use)关键字；<br>在导入(use)声明代码块后面必须有一行空行；<br>用代码来说明下：</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="keyword">namespace</span> <span class="title class_">Lib</span>\<span class="title class_">Databases</span>; <span class="comment">// 下面必须空格一行</span></span><br><span class="line"> </span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Mysql</span> </span>&#123;</span><br><span class="line"> </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>namespace下空一行，才能使用use，再空一行，才能声明class</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="keyword">namespace</span> <span class="title class_">Lib</span>\<span class="title class_">Databases</span>; <span class="comment">// 下面必须空格一行</span></span><br><span class="line"> </span><br><span class="line"><span class="keyword">use</span> <span class="title">FooInterface</span>; <span class="comment">// use 必须在namespace 后面声明</span></span><br><span class="line"><span class="keyword">use</span> <span class="title">BarClass</span> <span class="keyword">as</span> <span class="title">Bar</span>;</span><br><span class="line"><span class="keyword">use</span> <span class="title">OtherVendor</span>\<span class="title">OtherPackage</span>\<span class="title">BazClass</span>; <span class="comment">// 下面必须空格一行</span></span><br><span class="line"> </span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Mysql</span> </span>&#123;</span><br><span class="line"> </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="2、类-class-，属性-property-和方法-method"><a href="#2、类-class-，属性-property-和方法-method" class="headerlink" title="2、类(class)，属性(property)和方法(method)"></a>2、类(class)，属性(property)和方法(method)</h2><p>（1）继承(<code>extends</code>) 和实现(<code>implement</code>) 必须和 <code>class name</code> 写在一行。</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="keyword">namespace</span> <span class="title class_">Lib</span>\<span class="title class_">Databaes</span>;</span><br><span class="line"> </span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Mysql</span> <span class="keyword">extends</span> <span class="title">ParentClass</span> <span class="keyword">implements</span> \<span class="title">PDO</span>, \<span class="title">DB</span> </span>&#123; <span class="comment">// 写一行</span></span><br><span class="line"> </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>（2）属性(<code>property</code>)必须声明其可见性，到底是 <code>public</code> 还是 <code>protected</code> 还是 <code>private</code>，不能省略，也不能使用var, var是php老版本中的什么方式，等用于public。</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="keyword">namespace</span> <span class="title class_">Lib</span>\<span class="title class_">Databaes</span>;</span><br><span class="line"> </span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Mysql</span> <span class="keyword">extends</span> <span class="title">ParentClass</span> <span class="keyword">implements</span> \<span class="title">PDO</span>, \<span class="title">DB</span> </span>&#123; <span class="comment">// 写一行</span></span><br><span class="line">    <span class="comment">// 空一行</span></span><br><span class="line">    <span class="keyword">public</span> <span class="variable">$foo</span> = <span class="literal">null</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="variable">$name</span> = <span class="string">&#x27;yangyi&#x27;</span>;</span><br><span class="line">    <span class="keyword">protected</span> <span class="variable">$age</span> = <span class="string">&#x27;17&#x27;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>（3）方法(method)，必须 声明其可见性，到底是 public 还是 protected 还是 private，不能省略。如果有多个参数，第一个参数后紧接“,” ，再加一个空格：function_name ([Math Processing Error]<br>par2, $pa3), 如果参数有默认值，“&#x3D;”左右各有一个空格分开。</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="keyword">namespace</span> <span class="title class_">Lib</span>\<span class="title class_">Databaes</span>;</span><br><span class="line"> </span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Mysql</span> <span class="keyword">extends</span> <span class="title">ParentClass</span> <span class="keyword">implements</span> \<span class="title">PDO</span>, \<span class="title">DB</span> </span>&#123; <span class="comment">// 写一行</span></span><br><span class="line">    <span class="comment">// 空一行</span></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_ invoke__">getInfo</span>(<span class="variable">$name</span>, <span class="variable">$age</span>, <span class="variable">$gender</span> = <span class="number">1</span>)  <span class="comment">// 参数之间有一个空格。默认参数的“=”左右各有一个空格，) 与 &#123; 之间有一个空格</span></span><br><span class="line">    &#123;</span><br><span class="line"> </span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>（4）当用到抽象(<code>abstract</code>)和终结(<code>final</code>)来做类声明时，它们必须放在可见性声明 （<code>public</code> 还是<code>protected</code>还是<code>private</code>）的前面。而当用到静态(<code>static</code>)来做类声明时，则必须放在可见性声明的后面。</p>
+<p>直接上代码：</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="keyword">namespace</span> <span class="title class_">Vendor</span>\<span class="title class_">Package</span>;</span><br><span class="line"> </span><br><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">ClassName</span> </span>&#123;</span><br><span class="line">    <span class="keyword">protected</span> <span class="built_in">static</span> <span class="variable">$foo</span>; <span class="comment">// static放后面</span></span><br><span class="line">    <span class="keyword">abstract</span> <span class="keyword">protected</span> <span class="function"><span class="keyword">function</span> <span class="title">zim</span>(<span class="params"></span>)</span>; <span class="comment">// abstract放前面</span></span><br><span class="line"> </span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">public</span> <span class="built_in">static</span> <span class="function"><span class="keyword">function</span> <span class="title">bar</span>(<span class="params"></span>) // <span class="title">final</span>放前面，<span class="title">static</span>放最后。</span></span><br><span class="line"><span class="function">    </span>&#123; </span><br><span class="line">        <span class="comment">// 方法主体部分</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="3、控制结构"><a href="#3、控制结构" class="headerlink" title="3、控制结构"></a>3、控制结构</h2><p>控制接口，就是 <code>if</code> <code>else</code> <code>while</code> <code>switch</code>等。这一类的写法规范也是经常容易出现问题的，也要规范一下。</p>
+<p>（1）<code>if</code>，<code>elseif</code>，<code>else</code>写法，直接上规范代码吧：</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="keyword">if</span> (<span class="variable">$expr1</span>) &#123; <span class="comment">// if 与 ( 之间有一个空格，) 与 &#123; 之间有一个空格</span></span><br><span class="line"> </span><br><span class="line">&#125; <span class="keyword">elseif</span> (<span class="variable">$expr2</span>) &#123; <span class="comment">// elesif 连着写，与 ( 之间有一个空格，) 与 &#123; 之间有一个空格</span></span><br><span class="line"> </span><br><span class="line">&#125; <span class="keyword">else</span> &#123; <span class="comment">// else 左右各一个空格</span></span><br><span class="line"> </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>（2）<code>switch</code>，<code>case</code> 注意空格和换行，还是直接上规范代码：</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="keyword">switch</span> (<span class="variable">$expr</span>) &#123; <span class="comment">// switch 与 ( 之间有一个空格，) 与 &#123; 之间有一个空格</span></span><br><span class="line">    <span class="keyword">case</span> <span class="number">0</span>:</span><br><span class="line">        <span class="keyword">echo</span> <span class="string">&#x27;First case, with a break&#x27;</span>; <span class="comment">// 对齐</span></span><br><span class="line">        <span class="keyword">break</span>; <span class="comment">// 换行写break，也对齐。</span></span><br><span class="line">    <span class="keyword">case</span> <span class="number">1</span>:</span><br><span class="line">        <span class="keyword">echo</span> <span class="string">&#x27;Second case, which falls through&#x27;</span>;</span><br><span class="line">        <span class="comment">// no break</span></span><br><span class="line">    <span class="keyword">case</span> <span class="number">2</span>:</span><br><span class="line">    <span class="keyword">case</span> <span class="number">3</span>:</span><br><span class="line">    <span class="keyword">case</span> <span class="number">4</span>:</span><br><span class="line">        <span class="keyword">echo</span> <span class="string">&#x27;Third case, return instead of break&#x27;</span>;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    <span class="keyword">default</span>:</span><br><span class="line">        <span class="keyword">echo</span> <span class="string">&#x27;Default case&#x27;</span>;</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>（3）<code>while</code>，<code>do while</code> 的写法也是类似，上代码：</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="keyword">while</span> (<span class="variable">$expr</span>) &#123; <span class="comment">// while 与 ( 之间有一个空格， ) 与 &#123; 之间有一个空格</span></span><br><span class="line"> </span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line"><span class="keyword">do</span> &#123; <span class="comment">// do 与 &#123; 之间有一个空格</span></span><br><span class="line"> </span><br><span class="line">&#125; <span class="keyword">while</span> (<span class="variable">$expr</span>); <span class="comment">// while 左右各有一个空格</span></span><br></pre></td></tr></table></figure>
+
+<p>（4）for的写法</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="keyword">for</span> (<span class="variable">$i</span> = <span class="number">0</span>; <span class="variable">$i</span> &lt; <span class="number">10</span>; <span class="variable">$i</span>++) &#123; <span class="comment">// for 与 ( 之间有一个空格，二元操作符 &quot;=&quot;、&quot;&lt;&quot; 左右各有一个空格，) 与 &#123; 之间有一个空格</span></span><br><span class="line"> </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>（5）foreach的写法</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="keyword">foreach</span> (<span class="variable">$iterable</span> <span class="keyword">as</span> <span class="variable">$key</span> =&gt; <span class="variable">$value</span>) &#123; <span class="comment">// foreach 与 ( 之间有一个空格，&quot;=&gt;&quot; 左右各有一个空格，) 与 &#123; 之间有一个空格</span></span><br><span class="line"> </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>（6）try catch的写法</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="keyword">try</span> &#123; <span class="comment">// try 右边有一个空格</span></span><br><span class="line"> </span><br><span class="line">&#125; <span class="keyword">catch</span> (FirstExceptionType <span class="variable">$e</span>) &#123; <span class="comment">// catch 与 ( 之间有一个空格，) 与 &#123; 之间有一个空格</span></span><br><span class="line"> </span><br><span class="line">&#125; <span class="keyword">catch</span> (OtherExceptionType <span class="variable">$e</span>) &#123; <span class="comment">// catch 与 ( 之间有一个空格，) 与 &#123; 之间有一个空格</span></span><br><span class="line"> </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="4、注释"><a href="#4、注释" class="headerlink" title="4、注释"></a>4、注释</h2><p>（1）行注释</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">// 后面需要加一个空格；</span><br></pre></td></tr></table></figure>
+
+<p>如果 &#x2F;&#x2F; 前面有非空字符，则 &#x2F;&#x2F; 前面需要加一个空格；</p>
+<p>（2）函数注释</p>
+<p>参数名、属性名、标签的文本 上下要对齐；</p>
+<p>在第一个标签前加一个空行；</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * This is a sample function to illustrate additional PHP</span></span><br><span class="line"><span class="comment"> * formatter options.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span>        $one   The first parameter</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> int    $two   The second parameter</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> string $three The third parameter with a longer</span></span><br><span class="line"><span class="comment"> *                      comment to illustrate wrapping.</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@return</span> void</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span>  52php.cnblogs.com</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@license</span> GPL</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">foo</span>(<span class="params"><span class="variable">$one</span>, <span class="variable">$two</span> = <span class="number">0</span>, <span class="variable">$three</span> = <span class="string">&quot;String&quot;</span></span>) </span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line"> </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="5、空格"><a href="#5、空格" class="headerlink" title="5、空格"></a>5、空格</h2><p>（1）赋值操作符（&#x3D;，+&#x3D; 等）、逻辑操作符（&amp;&amp;，||）、等号操作符（&#x3D;&#x3D;，!&#x3D;）、关系运算符（&lt;，&gt;，&lt;&#x3D;，&gt;&#x3D;）、按位操作符（&amp;，|，^）、连接符（.） 左右各有一个空格；</p>
+<p>（2）<code>if</code>，<code>else</code>，<code>elseif</code>，<code>while</code>，<code>do</code>，<code>switch</code>，<code>for</code>，<code>foreach</code>，<code>try</code>，<code>catch</code>，<code>finally</code> 等 与 紧挨的左括号“(”之间有一个空格；</p>
+<p>（3）函数、方法的各个参数之间，逗号（”,”）后面有一个空格；</p>
+<h2 id="6、空行"><a href="#6、空行" class="headerlink" title="6、空行"></a>6、空行</h2><p>（1）所有左花括号 { 都不换行，并且 ｛ 紧挨着的下方，一定不是空行；</p>
+<p>（2）同级代码（缩进相同）的 注释（行注释&#x2F;块注释）前面，必须有一个空行；</p>
+<p>（3）各个方法&#x2F;函数 之间有一个空行；</p>
+<p>（4）<code>namespace</code>语句、<code>use</code>语句、<code>clase</code>语句 之间有一个空行；</p>
+<p>（5）return语句</p>
+<p>如果 return 语句之前有代码，return 语句之前加一个空行；</p>
+<p>（6）if，while，switch，for，foreach、try 等代码块之间 以及 与其他代码之间有一个空行；</p>
+<h2 id="7、数组-的书写格式"><a href="#7、数组-的书写格式" class="headerlink" title="7、数组 的书写格式"></a>7、数组 的书写格式</h2><p>只有一个键值对时，就写成一行：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">$where = <span class="built_in">array</span>(<span class="string">&#x27;id&#x27;</span> =&gt; <span class="number">789</span>);</span><br></pre></td></tr></table></figure>
+
+<p>有多个（二个或二个以上）键值对时，就换行：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">$where = <span class="built_in">array</span>(</span><br><span class="line">    <span class="string">&#x27;id&#x27;</span> =&gt; <span class="number">789</span>,</span><br><span class="line">    <span class="string">&#x27;user_name&#x27;</span> =&gt; <span class="string">&#x27;52php&#x27;</span></span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<p>【参考示例 汇总】</p>
+<p>参考1：</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="keyword">namespace</span> <span class="title class_">Lib</span>\<span class="title class_">Databaes</span>;</span><br><span class="line"> </span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Mysql</span> <span class="keyword">extends</span> <span class="title">ParentClass</span> <span class="keyword">implements</span> \<span class="title">PDO</span>, \<span class="title">DB</span> </span>&#123; <span class="comment">// 写一行</span></span><br><span class="line">        </span><br><span class="line">    <span class="keyword">public</span> <span class="title function_ invoke__">getInfo</span>(<span class="variable">$name</span>, <span class="variable">$age</span>, <span class="variable">$gender</span> = <span class="number">1</span>) <span class="comment">// 参数之间有一个空格。默认参数的“=”左右各有一个空格，) 与 &#123; 之间有一个空格</span></span><br><span class="line">    &#123; </span><br><span class="line"> </span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>参考2:</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="keyword">namespace</span> <span class="title class_">Vendor</span>\<span class="title class_">Package</span>;</span><br><span class="line"> </span><br><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">ClassName</span> </span>&#123;</span><br><span class="line">    <span class="keyword">protected</span> <span class="built_in">static</span> <span class="variable">$foo</span>; <span class="comment">// static放后面</span></span><br><span class="line">    <span class="keyword">abstract</span> <span class="keyword">protected</span> <span class="function"><span class="keyword">function</span> <span class="title">zim</span>(<span class="params"></span>)</span>; <span class="comment">// abstract放前面</span></span><br><span class="line"> </span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">public</span> <span class="built_in">static</span> <span class="function"><span class="keyword">function</span> <span class="title">bar</span>(<span class="params"></span>) // <span class="title">final</span>放前面，<span class="title">static</span>放最后。</span></span><br><span class="line"><span class="function">    </span>&#123; </span><br><span class="line">        <span class="comment">// 方法主体部分</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>参考3：</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="keyword">namespace</span> <span class="title class_">library</span>\<span class="title class_">Model</span>;</span><br><span class="line"> </span><br><span class="line"><span class="keyword">use</span> <span class="title">library</span>\<span class="title">Helper</span>\<span class="title">ImageHelper</span>;</span><br><span class="line"><span class="keyword">use</span> <span class="title">library</span>\<span class="title">Logic</span>\<span class="title">UserMainLogic</span>;</span><br><span class="line"> </span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 用户表 数据模型</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@package</span> library\Model</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">UserMainModel</span> <span class="keyword">extends</span> <span class="title">BasicModel</span> </span>&#123;</span><br><span class="line">     <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 获得用户统计信息</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> int $userId 用户ID</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> array</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">getUserCard</span>(<span class="params"><span class="variable">$userId</span></span>) </span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="variable">$userId</span> = <span class="title function_ invoke__">intval</span>(<span class="variable">$userId</span>);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> <span class="title class_">UserMainLogic</span>::<span class="title function_ invoke__">instance</span>()-&gt;<span class="title function_ invoke__">getUserCard</span>(<span class="variable">$userId</span>);</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 根据Id 获取用户信息</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> int    $userId 用户Id</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> string $field  显示字段</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> array</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">getByUserId</span>(<span class="params"><span class="variable">$userId</span> = <span class="number">0</span>, <span class="variable">$field</span> = <span class="string">&#x27;*&#x27;</span></span>) </span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (<span class="keyword">empty</span>(<span class="variable">$userId</span>)) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">array</span>();</span><br><span class="line">        &#125;</span><br><span class="line"> </span><br><span class="line">        <span class="variable">$where</span> = <span class="keyword">array</span>(<span class="string">&#x27;id&#x27;</span> =&gt; <span class="variable">$userId</span>);</span><br><span class="line">        <span class="variable">$info</span> = <span class="variable language_">$this</span>-&gt;<span class="title function_ invoke__">field</span>(<span class="variable">$field</span>)-&gt;<span class="title function_ invoke__">where</span>(<span class="variable">$where</span>)-&gt;<span class="title function_ invoke__">find</span>();</span><br><span class="line"> </span><br><span class="line">        <span class="keyword">if</span> (<span class="keyword">isset</span>(<span class="variable">$info</span>[<span class="string">&#x27;image&#x27;</span>]) &amp;&amp; <span class="keyword">isset</span>(<span class="variable">$info</span>[<span class="string">&#x27;sex&#x27;</span>])) &#123;</span><br><span class="line">            <span class="variable">$info</span>[<span class="string">&#x27;image&#x27;</span>] = <span class="title class_">ImageHelper</span>::<span class="title function_ invoke__">GetImageUrl</span>(<span class="variable">$info</span>[<span class="string">&#x27;image&#x27;</span>], <span class="variable">$info</span>[<span class="string">&#x27;sex&#x27;</span>]);</span><br><span class="line">        &#125;</span><br><span class="line"> </span><br><span class="line">        <span class="keyword">return</span> <span class="variable">$info</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>书写原则：做到 代码紧凑 而又不失 小模块化 ！</p>
+<h2 id="PSR-4-规范"><a href="#PSR-4-规范" class="headerlink" title="PSR-4 规范"></a>PSR-4 规范</h2><p><code>PSR-4</code>规范是刚出没多久的一条新的规范，它也是规范 自动加载(autoload)的，是对PSR-0的修改，属于补充规范，</p>
+<p>我简单说下，主要是以下几点：</p>
+<p>废除了PSR-0中_就是目录分割符的写法，_下划线在完全限定类名中是没有特殊含义了。<br>类文件名要以 .php 结尾。<br>类名必须要和对应的文件名要一模一样，大小写也要一模一样。<br>方法参数不能超过7个参数<br>方法内有效代码行数不超过50行 (不包含注释)</p>
+<p>基本全是照抄而来 但也符合我个人代码规范 , 原文地址: <a href="https://www.cnblogs.com/52php/p/5841210.html">https://www.cnblogs.com/52php/p/5841210.html</a></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/361.html">https://leon-book.github.io/blog/index.php/archives/361.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/php/">php</a></div><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/362.html" title="Nginx 访问 IP 数量统计"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Nginx 访问 IP 数量统计</div></div><div class="info-2"><div class="info-item-1">  在 Nginx 中，您可以通过多种方式统计访问的 IP 数量。以下是几种常用的方法来实现这一目标。 1. 使用 Nginx 日志Nginx 通常会记录访问日志，您可以通过分析这些日志来统计访问的 IP 数量。 1.1 配置 Nginx 日志确保在您的 Nginx 配置文件中启用了访问日志。默认情况下，访问日志通常在 /var/log/nginx/access.log。配置示例如下： http &#123;    log_format main &#x27;$remote_addr - $remote_user [$time_local] &quot;$request&quot; &#x27;                   &#x27;$status $body_bytes_sent &quot;$http_referer&quot; &#x27;                   &#x27;&quot;$http_user_agent&quot; &quot;$http_x_forwarded_for&quot;&#x27;;    access_log /var/...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/360.html" title="Linux 快速复制大量小文件方法 nc+tar"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Linux 快速复制大量小文件方法 nc+tar</div></div><div class="info-2"><div class="info-item-1">  在 Linux 中，使用 nc（netcat）和 tar 可以高效地复制大量小文件。这种方法适用于网络传输和本地复制。以下是详细步骤和示例。 使用 nc 和 tar 复制小文件1. 准备工作确保目标系统上安装了 tar 和 netcat。大部分 Linux 发行版默认安装了这两个工具。 2. 在接收方（目标机器）上监听在目标机器上，使用 nc 监听一个端口，并通过 tar 解压接收到的数据。假设您使用的是端口 12345： nc -l -p 12345 | tar xvf -  3. 在发送方（源机器）上发送数据在源机器上，使用 tar 将要复制的文件打包并通过 nc 发送到目标机器的 IP 地址。假设您要复制的文件在 /path/to/files 目录： tar cf - -C /path/to/files . | nc &lt;目标机器的IP地址&gt; 12345  4. 示例步骤4.1 在目标机器上 打开终端，运行以下命令来监听端口： nc -l -p 12345 | tar xvf -  4.2 在源机器上 打开另一个终端，运行以下命令来发送文件： tar cf -...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/index.php/archives/91.html" title="PHP编译安装时常见错误解决办法"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2016-05-04</div><div class="info-item-2">PHP编译安装时常见错误解决办法</div></div><div class="info-2"><div class="info-item-1">  解决 PHP 编译安装常见错误在进行 PHP 的编译安装过程中，有时会遇到各种错误和问题。这些错误可能会导致编译失败或功能不完整。本篇博客将介绍一些常见的 PHP 编译安装错误，并提供相应的解决办法。 1. 缺少依赖库问题描述： 编译过程中报告缺少某些依赖库的错误。 解决办法： 检查错误信息中提到的缺失依赖库，并安装相应的库。在大多数 Linux 发行版中，可以使用包管理器来安装缺失的依赖库。例如，在 Ubuntu 上可以使用以下命令安装缺失的依赖库： sudo apt-get install libxml2-dev libssl-dev libcurl4-openssl-dev  2. 缺少必要的开发工具问题描述： 在编译过程中报告缺少必要的开发工具（如编译器、make 工具等）的错误。 解决办法： 确保系统中已经安装了必要的开发工具。在大多数 Linux 发行版中，可以使用包管理器来安装这些工具。例如，在 Ubuntu 上可以使用以下命令安装常用的开发工具： sudo apt-get install build-essential  3. 版本冲突问题描述： 编译过程中报...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/148.html" title="使用EasySwoole 1.2搭建Echo服务器"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2017-01-01</div><div class="info-item-2">使用EasySwoole 1.2搭建Echo服务器</div></div><div class="info-2"><div class="info-item-1">  使用EasySwoole 1.2搭建Echo服务器在本篇博客中，我们将介绍如何使用EasySwoole 1.2框架搭建一个简单的Echo服务器。EasySwoole是一个高性能的PHP框架，专注于异步、协程和高并发的开发。 准备工作在开始之前，确保你已经安装了PHP和Composer，并具备基本的PHP开发知识。 步骤一：创建项目首先，我们需要创建一个新的EasySwoole项目。在命令行中执行以下命令： composer create-project easyswoole/easyswoole=1.2.x-dev  这将创建一个名为easyswoole的项目，并安装所需的依赖项。 步骤二：配置服务器进入项目目录，并打开dev.php文件，配置服务器相关的设置。我们将使用Echo服务器作为示例。 // dev.phpreturn [    &#x27;SERVER_NAME&#x27; =&gt; &#x27;EasySwoole&#x27;,    &#x27;MAIN_SERVER&#x27; =&gt; [        &#x27;LISTEN_ADDRESS&#x2...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/440.html" title="PHP gzcompress 使用中的 坑"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2019-11-26</div><div class="info-item-2">PHP gzcompress 使用中的 坑</div></div><div class="info-2"><div class="info-item-1">  今天业务上需要对接 webscocket 接口 服务端推流是经过压缩的数据, 百度顺道发现一篇文章 gzcompress的坑 坑踩得比较实在 收藏一下 防止自己也踩坑 【一、效果】800k的数据压缩成100k多。效果还是不错。 【二、为什么要压缩】数据库存不下啊 数据库有个 max_allowed_packet限制数据大小。没有改mysql配置的权限，也不想劳烦其他人干脆自己动手。 【三、使用】失败的尝试千千万万，只说成功的路 &lt;?php//入库$src_data1  = file_get_contents(&#x27;bb.txt&#x27;);//先json,再压缩。如果顺序相反，json的结果是空。$desc_data1 = json_encode($src_data1,JSON_UNESCAPED_UNICODE);$desc_data2 = gzcompress($desc_data1);//上面两步如果简写成 gzcompress(json_encode(数组));得到的会是一顿乱码。//所以gzcompress()的参数只能是一个变量$desc_data3...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/592.html" title="PHP 事务中锁等待超时 读数据异常问题 for update"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2023-07-27</div><div class="info-item-2">PHP 事务中锁等待超时 读数据异常问题 for update</div></div><div class="info-2"><div class="info-item-1">  在PHP中，默认情况下，当一个事务因为锁等待超时而失败时，MySQL扩展不会抛出异常或错误，而是简单地返回一个空的结果集。这对于应用程序来说可能并不方便，因为无法区分是数据本身为空，还是因为锁等待超时导致读不到数据。 网上给的结局方案 都不是很靠谱 可能是场景不同吧.延长锁等待时间,治标不治本 innodb_lock_wait_timeout. 我的遇到的场景是允许抛错异常中断操作的. 并发场景下 我们需要锁定一条记录 for update 排他锁. 如果锁的久了其他请求会等待锁解开.默认锁等待50秒, 超时后PHP 并不会抛出异常. 找了很多方法 , 根本捕获不了 , 修改 innodb_rollback_on_timeout=ON也没有什么卵用. 最后自己的解决方案是: 通过记录响应时长 超过50秒则在代码中抛错. </div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/292.html" title="Swoole 日志 部分代码"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2018-08-23</div><div class="info-item-2">Swoole 日志 部分代码</div></div><div class="info-2"><div class="info-item-1">  /** * @desc work进程内日志 仅限work 进程内使用 * @author lbf * @param $msg * @param string $name *------------------------------------------------------ */public static function Wlog($msg, $name = Log::MATCH)&#123;    if (!Main::WRITE_DEBUG_LOG &amp;&amp; $name == Log::DEBUG) return;    $name = $name == Log::DEBUG ? Log::MATCH : $name;    $name = $name == Log::SQL ? Log::MATCH : $name;    $str = &#x27;&#x27;;    if (is_array($msg)) &#123;        foreach ($msg as $key =&gt; $val) &#123;            if (i...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/29.html" title="PHP 信号处理"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2015-10-19</div><div class="info-item-2">PHP 信号处理</div></div><div class="info-2"><div class="info-item-1">   PHP5.3.0起支持pcntl_signal系列进程控制函数可以对信号进行安装、分发等操作。  信号处理函数 pcntl_signal()：安装信号； pcntl_signal_dispatch()：分发信号； pcntl_sigwaitinfo()：等待信号；  信号类别 SIGTERM：信号触发命令：kill pid、kill -15 pid 、kill -SIGTERM等； SIGINT：程序终止(interrupt)信号，通常由ctrl+c触发； SIGKILL：触发命令：kill -9 pid； SIGHUP：挂断信号，通常父进程终止后向子进程组发送该信号； SIGALRM：定时器信号；  简单案例// 安装信号echo &quot;开始安装信号...\n&quot;;pcntl_signal(SIGHUP, function($signal) &#123;  echo &quot;信号被调用！\n&quot;;&#125;);// 发出信号echo &quot;发出信号...\n&quot;;posix_kill(posix_getpid(), SIGHUP)...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E5%9F%BA%E6%9C%AC%E7%BA%A6%E5%AE%9A"><span class="toc-number">1.</span> <span class="toc-text">一、基本约定</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1%E3%80%81%E6%BA%90%E6%96%87%E4%BB%B6"><span class="toc-number">1.1.</span> <span class="toc-text">1、源文件</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2%E3%80%81%E7%BC%A9%E8%BF%9B"><span class="toc-number">1.2.</span> <span class="toc-text">2、缩进</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3%E3%80%81%E8%A1%8C"><span class="toc-number">1.3.</span> <span class="toc-text">3、行</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4%E3%80%81%E5%85%B3%E9%94%AE%E5%AD%97-%E5%92%8C-True-False-Null"><span class="toc-number">1.4.</span> <span class="toc-text">4、关键字 和 True&#x2F;False&#x2F;Null</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5%E3%80%81%E5%91%BD%E5%90%8D"><span class="toc-number">1.5.</span> <span class="toc-text">5、命名</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6%E3%80%81%E4%BB%A3%E7%A0%81%E6%B3%A8%E9%87%8A%E6%A0%87%E7%AD%BE"><span class="toc-number">1.6.</span> <span class="toc-text">6、代码注释标签</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7%E3%80%81%E4%B8%9A%E5%8A%A1%E6%A8%A1%E5%9D%97"><span class="toc-number">1.7.</span> <span class="toc-text">7、业务模块</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E4%BB%A3%E7%A0%81%E6%A0%B7%E5%BC%8F%E9%A3%8E%E6%A0%BC"><span class="toc-number">2.</span> <span class="toc-text">二、代码样式风格</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1%E3%80%81%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4-Namespace-%E5%92%8C-%E5%AF%BC%E5%85%A5-Use-%E5%A3%B0%E6%98%8E"><span class="toc-number">2.1.</span> <span class="toc-text">1、命名空间(Namespace) 和 导入(Use)声明</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2%E3%80%81%E7%B1%BB-class-%EF%BC%8C%E5%B1%9E%E6%80%A7-property-%E5%92%8C%E6%96%B9%E6%B3%95-method"><span class="toc-number">2.2.</span> <span class="toc-text">2、类(class)，属性(property)和方法(method)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3%E3%80%81%E6%8E%A7%E5%88%B6%E7%BB%93%E6%9E%84"><span class="toc-number">2.3.</span> <span class="toc-text">3、控制结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4%E3%80%81%E6%B3%A8%E9%87%8A"><span class="toc-number">2.4.</span> <span class="toc-text">4、注释</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5%E3%80%81%E7%A9%BA%E6%A0%BC"><span class="toc-number">2.5.</span> <span class="toc-text">5、空格</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6%E3%80%81%E7%A9%BA%E8%A1%8C"><span class="toc-number">2.6.</span> <span class="toc-text">6、空行</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7%E3%80%81%E6%95%B0%E7%BB%84-%E7%9A%84%E4%B9%A6%E5%86%99%E6%A0%BC%E5%BC%8F"><span class="toc-number">2.7.</span> <span class="toc-text">7、数组 的书写格式</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#PSR-4-%E8%A7%84%E8%8C%83"><span class="toc-number">2.8.</span> <span class="toc-text">PSR-4 规范</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

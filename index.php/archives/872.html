@@ -1,0 +1,768 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Go 服务为什么“像会自动扩协程”，以及真正的风险点 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="结合 Kratos + net&#x2F;http + gRPC-Go + database&#x2F;sql 连接池，说明请求高峰时 goroutine 如何增长、什么在限制它、以及线上真正该盯什么。  一句话结论不是框架实现了“按 QPS 动态调协程池”，而是 Go 默认模型：一个并发请求（连接&#x2F;流）对应一个 handler goroutine，请求结束就退出。所以并发上来时，goroutine">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Go 服务为什么“像会自动扩协程”，以及真正的风险点">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/872.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="结合 Kratos + net&#x2F;http + gRPC-Go + database&#x2F;sql 连接池，说明请求高峰时 goroutine 如何增长、什么在限制它、以及线上真正该盯什么。  一句话结论不是框架实现了“按 QPS 动态调协程池”，而是 Go 默认模型：一个并发请求（连接&#x2F;流）对应一个 handler goroutine，请求结束就退出。所以并发上来时，goroutine">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2026-08-12T08:57:00.000Z">
+<meta property="article:modified_time" content="2026-08-12T08:57:00.000Z">
+<meta property="article:author" content="leon">
+<meta property="article:tag" content="golang">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Go 服务为什么“像会自动扩协程”，以及真正的风险点",
+  "url": "https://leon-book.github.io/blog/index.php/archives/872.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2026-08-12T08:57:00.000Z",
+  "dateModified": "2026-08-12T08:57:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/872.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Go 服务为什么“像会自动扩协程”，以及真正的风险点',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">Go 服务为什么“像会自动扩协程”，以及真正的风险点</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Go 服务为什么“像会自动扩协程”，以及真正的风险点</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-08-12T08:57:00.000Z" title="发表于 2026-08-12 17:57:00">2026-08-12</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-08-12T08:57:00.000Z" title="更新于 2026-08-12 17:57:00">2026-08-12</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/">编程语言</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/872.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<blockquote>
+<p>结合 Kratos + <code>net/http</code> + gRPC-Go + <code>database/sql</code> 连接池，说明请求高峰时 goroutine 如何增长、什么在限制它、以及线上真正该盯什么。</p>
+</blockquote>
+<h2 id="一句话结论"><a href="#一句话结论" class="headerlink" title="一句话结论"></a>一句话结论</h2><p><strong>不是框架实现了“按 QPS 动态调协程池”，而是 Go 默认模型：一个并发请求（连接&#x2F;流）对应一个 handler goroutine，请求结束就退出。</strong><br>所以并发上来时，goroutine 数会跟着涨；流量下去后，这些 handler 退出，数量自然回落。<br>真正会“卡住上限”的，往往是 <strong>DB 连接池、超时、CPU（GOMAXPROCS）、以及有没有进程级并发保护</strong>，而不是“协程池满了”。</p>
+<hr>
+<h2 id="1-先分清三个词：QPS、并发、goroutine"><a href="#1-先分清三个词：QPS、并发、goroutine" class="headerlink" title="1. 先分清三个词：QPS、并发、goroutine"></a>1. 先分清三个词：QPS、并发、goroutine</h2><p>很多人把“请求量上来 → 自动扩协程”理解成：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">QPS 翻倍 ⇒ 协程池 size 翻倍</span><br></pre></td></tr></table></figure>
+
+<p>更准确的公式是：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">并发量 ≈ QPS × 平均耗时</span><br></pre></td></tr></table></figure>
+
+<p>例子：</p>
+<table><thead><tr><th>QPS</th><th>平均耗时</th><th>大约同时在跑的 handler</th></tr></thead><tbody><tr><td>1000</td><td>20ms</td><td>~20</td></tr><tr><td>1000</td><td>2s</td><td>~2000</td></tr></tbody></table>
+
+<p>所以：</p>
+<ul>
+<li><strong>QPS 高但很快返回</strong> → goroutine 未必很多</li>
+<li><strong>QPS 一般但接口变慢</strong> → goroutine 会暴涨</li>
+</ul>
+<p>“自动扩容”扩的是 <strong>同时处理中的请求数对应的 goroutine</strong>，不是按 QPS 配一张表。</p>
+<hr>
+<h2 id="2-为什么能“自动扩”：HTTP-路径"><a href="#2-为什么能“自动扩”：HTTP-路径" class="headerlink" title="2. 为什么能“自动扩”：HTTP 路径"></a>2. 为什么能“自动扩”：HTTP 路径</h2><p>Kratos HTTP Server 底层包的是标准库 <code>net/http.Server</code>。</p>
+<p>核心行为（简化）：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Accept 一个连接</span><br><span class="line">  → go c.serve(...)     // 每个连接一条服务 goroutine</span><br><span class="line">  → 读请求、调用 Handler</span><br><span class="line">  → 请求结束，该 goroutine 生命周期结束（连接复用时继续读下一个请求）</span><br></pre></td></tr></table></figure>
+
+<p>HTTP&#x2F;1.1 keep-alive 下，常见是 <strong>每连接一条 goroutine</strong>，串行处理该连接上的请求。<br>HTTP&#x2F;2 下，同一连接上的多个 stream 可以并发处理，并发流多了，活跃 handler 也会更多。</p>
+<p>对本服务（earn）而言：</p>
+<ul>
+<li><code>internal/server/http.go</code> 用的是 Kratos <code>transport/http</code></li>
+<li>没有在业务侧挂“固定 N 个 worker 的协程池”</li>
+<li>也没有在 server 层看到进程级 <code>MaxConcurrency</code> &#x2F; semaphore</li>
+</ul>
+<p>因此：<strong>并发请求进来，runtime 就会为处理路径创建&#x2F;占用更多 goroutine；没有业务自定义的“先排队再进固定 worker”这一层。</strong></p>
+<hr>
+<h2 id="3-gRPC-路径也一样（当前配置下）"><a href="#3-gRPC-路径也一样（当前配置下）" class="headerlink" title="3. gRPC 路径也一样（当前配置下）"></a>3. gRPC 路径也一样（当前配置下）</h2><p>gRPC-Go 默认也是：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">每个 RPC stream → 起一个 handler goroutine</span><br></pre></td></tr></table></figure>
+
+<p>可选能力 <code>grpc.NumStreamWorkers(n)</code> 才会改成“固定 worker + channel 派发”。<br><code>n == 0</code>（默认）表示关闭 worker 池，仍然是 <strong>每 stream 一个 goroutine</strong>。</p>
+<p>本仓库 <code>internal/server/grpc.go</code> 目前只配了地址、超时、中间件，<strong>没有</strong>配置：</p>
+<ul>
+<li><code>NumStreamWorkers</code></li>
+<li><code>MaxConcurrentStreams</code>（业务显式限制）</li>
+</ul>
+<p>所以 gRPC 侧同样是：<strong>并发 RPC 上来 → handler goroutine 跟着涨</strong>。</p>
+<hr>
+<h2 id="4-automaxprocs-管的不是协程数"><a href="#4-automaxprocs-管的不是协程数" class="headerlink" title="4. automaxprocs 管的不是协程数"></a>4. <code>automaxprocs</code> 管的不是协程数</h2><p>项目入口有：</p>
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line">_ <span class="string">&quot;go.uber.org/automaxprocs&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>它做的是：根据容器 CPU 配额，把 <code>GOMAXPROCS</code> 设成合理值。</p>
+<p>这解决的是：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Pod 只分到 2 核，但宿主机 64 核时，</span><br><span class="line">默认 GOMAXPROCS=64 导致调度抖动 / 过度并行</span><br></pre></td></tr></table></figure>
+
+<p>它 <strong>不</strong> 做这些事：</p>
+<ul>
+<li>不限制 goroutine 数量</li>
+<li>不按 QPS 扩缩 worker</li>
+<li>不替代 HPA（水平扩 Pod）</li>
+</ul>
+<p>记住：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">GOMAXPROCS  ≈ 同时能跑 Go 代码的 OS 线程上限（CPU 并行度）</span><br><span class="line">goroutine 数 ≈ 逻辑并发任务数（可以远大于 GOMAXPROCS）</span><br></pre></td></tr></table></figure>
+
+<p>goroutine 再多，真正同时跑在 CPU 上的也就大约 <code>GOMAXPROCS</code> 条；其余在等 I&#x2F;O、锁、channel、调度。</p>
+<hr>
+<h2 id="5-和“DB-连接池自动扩”不要混为一谈"><a href="#5-和“DB-连接池自动扩”不要混为一谈" class="headerlink" title="5. 和“DB 连接池自动扩”不要混为一谈"></a>5. 和“DB 连接池自动扩”不要混为一谈</h2><p>业务读库常见路径：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">请求 goroutine</span><br><span class="line">  → r.db(ctx) 拿到 *gorm.DB（连接池句柄）</span><br><span class="line">  → Take / Find 真正执行 SQL</span><br><span class="line">  → database/sql 从池里借连接</span><br></pre></td></tr></table></figure>
+
+<p><code>database/sql</code> 的扩容逻辑是：</p>
+<ol>
+<li>有空闲连接 → 复用</li>
+<li>无空闲且 <code>numOpen &lt; MaxOpenConns</code> → <strong>新建一条物理连接</strong></li>
+<li>已达 <code>MaxOpenConns</code> → <strong>等待</strong>别人归还，或跟 context 超时一起失败</li>
+</ol>
+<p>本项目 PostgreSQL 默认大致是：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">MaxOpenConns = 10</span><br><span class="line">MaxIdleConns = 5</span><br><span class="line">ConnMaxLifetime = 30m</span><br></pre></td></tr></table></figure>
+
+<p>所以会出现这种错位：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">请求侧：几千个 goroutine 都在处理 Subscribe / GetByID</span><br><span class="line">DB 侧：最多 10 条连接在干活</span><br><span class="line">结果：大量 goroutine 堵在等连接，而不是“协程池自动扩到够用”</span><br></pre></td></tr></table></figure>
+
+<p><strong>请求并发可以无限涨；DB 并发被池子硬顶死。</strong><br>这往往是性能悬崖的真正原因。</p>
+<hr>
+<h2 id="6-风险点（比“会不会自动扩”更重要）"><a href="#6-风险点（比“会不会自动扩”更重要）" class="headerlink" title="6. 风险点（比“会不会自动扩”更重要）"></a>6. 风险点（比“会不会自动扩”更重要）</h2><h3 id="风险-1：无进程级并发上限-→-慢请求雪崩"><a href="#风险-1：无进程级并发上限-→-慢请求雪崩" class="headerlink" title="风险 1：无进程级并发上限 → 慢请求雪崩"></a>风险 1：无进程级并发上限 → 慢请求雪崩</h3><p>当前 HTTP&#x2F;gRPC 侧没有看到“同时最多 N 个业务请求”的闸门。</p>
+<p>一旦下游变慢（资产中台、PG、Redis）：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">耗时 ↑ → 并发 ↑ → goroutine ↑ → 内存 ↑ → 更慢 → 更多排队</span><br></pre></td></tr></table></figure>
+
+<p>超时（配置里 HTTP&#x2F;gRPC <code>timeout: 2s</code>）能砍掉一部分拖尾，但：</p>
+<ul>
+<li>超时前 goroutine 已经占着</li>
+<li>超时后如果下游仍在跑、或连接未及时释放，压力不会立刻归零</li>
+</ul>
+<h3 id="风险-2：DB-池太小，放大排队"><a href="#风险-2：DB-池太小，放大排队" class="headerlink" title="风险 2：DB 池太小，放大排队"></a>风险 2：DB 池太小，放大排队</h3><p>10 个 open connection 对 OLTP 常见，但要和：</p>
+<ul>
+<li>Pod 副本数</li>
+<li>单接口 SQL 次数（N+1）</li>
+<li>事务持有时间</li>
+</ul>
+<p>一起算。<br>多副本 × 每实例 10 连接，也会打满 PG <code>max_connections</code>。</p>
+<h3 id="风险-3：把“goroutine-变多”误当成“吞吐变高”"><a href="#风险-3：把“goroutine-变多”误当成“吞吐变高”" class="headerlink" title="风险 3：把“goroutine 变多”误当成“吞吐变高”"></a>风险 3：把“goroutine 变多”误当成“吞吐变高”</h3><p>goroutine 多只说明 <strong>在等的活多</strong>，不说明 <strong>每秒完成的活多</strong>。<br>吞吐真正受限于：</p>
+<ul>
+<li>CPU（<code>GOMAXPROCS</code>）</li>
+<li>DB &#x2F; Redis &#x2F; 外部 HTTP</li>
+<li>锁与串行段（例如按 uid 串行的写路径）</li>
+</ul>
+<h3 id="风险-4：业务里裸起的后台-goroutine-不会自动缩"><a href="#风险-4：业务里裸起的后台-goroutine-不会自动缩" class="headerlink" title="风险 4：业务里裸起的后台 goroutine 不会自动缩"></a>风险 4：业务里裸起的后台 goroutine 不会自动缩</h3><p>HTTP&#x2F;gRPC handler 的 goroutine 会随请求结束退出。<br>但若业务代码写了：</p>
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="keyword">go</span> <span class="function"><span class="keyword">func</span><span class="params">()</span></span> &#123; ... &#125;() <span class="comment">// 无退出条件、无 errgroup、无 ctx</span></span><br></pre></td></tr></table></figure>
+
+<p>那是泄漏，跟请求自动模型无关。团队铁律要求：goroutine 必须有退出机制（<code>context</code> &#x2F; <code>errgroup</code>）。</p>
+<h3 id="风险-5：水平扩容（Pod）不是这份代码自带的"><a href="#风险-5：水平扩容（Pod）不是这份代码自带的" class="headerlink" title="风险 5：水平扩容（Pod）不是这份代码自带的"></a>风险 5：水平扩容（Pod）不是这份代码自带的</h3><p>仓库内未见 HPA&#x2F;副本自动伸缩配置时，应明确：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">进程内：goroutine 随并发涨（无硬顶或硬顶很松）</span><br><span class="line">集群侧：Pod 数量是否自动扩，取决于 K8s/平台配置，不是 Go runtime</span><br></pre></td></tr></table></figure>
+
+<p>不要把“协程涨了”理解成“容量自动够了”。</p>
+<hr>
+<h2 id="7-一张对照表：谁在扩、扩到哪"><a href="#7-一张对照表：谁在扩、扩到哪" class="headerlink" title="7. 一张对照表：谁在扩、扩到哪"></a>7. 一张对照表：谁在扩、扩到哪</h2><table><thead><tr><th>层级</th><th>会不会随负载变</th><th>实际行为</th><th>本项目常见上限</th></tr></thead><tbody><tr><td>HTTP/gRPC handler goroutine</td><td>会</td><td>按并发请求增/减</td><td>基本无硬顶</td></tr><tr><td><code>GOMAXPROCS</code></td><td>启动时定</td><td>对齐容器 CPU</td><td>CPU 配额</td></tr><tr><td>PG 连接池</td><td>会（按需）</td><td>借不到就新建，到顶等待</td><td>MaxOpen=10</td></tr><tr><td>Redis 连接</td><td>客户端池策略</td><td>与请求并发解耦</td><td>配置/默认</td></tr><tr><td>Pod 副本</td><td>取决于平台</td><td>HPA/手动</td><td>本仓库未见</td></tr></tbody></table>
+
+<hr>
+<h2 id="8-线上建议盯什么指标"><a href="#8-线上建议盯什么指标" class="headerlink" title="8. 线上建议盯什么指标"></a>8. 线上建议盯什么指标</h2><p>优先看“排队”而不是只看 QPS：</p>
+<ol>
+<li><strong>延迟</strong>：P95&#x2F;P99、是否逼近 2s timeout</li>
+<li><strong>DB</strong>：<code>OpenConnections</code> &#x2F; <code>InUse</code> &#x2F; <code>WaitCount</code> &#x2F; <code>WaitDuration</code></li>
+<li><strong>goroutine 数</strong>：持续单调上涨要怀疑泄漏；随流量波浪式涨跌通常正常</li>
+<li><strong>错误码</strong>：超时、连接池等待导致的失败是否上升</li>
+<li><strong>下游</strong>：资产中台、Redis 的耗时与错误率</li>
+</ol>
+<p>经验法则：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">goroutine 跟着流量波浪 → 多半健康</span><br><span class="line">goroutine 只涨不跌 → 先查泄漏 / 慢调用未取消</span><br><span class="line">WaitCount、WaitDuration 飙升 → 先扩/调 DB 池，或降并发、减慢 SQL</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="9-如果真要“可控的自动扩”，该加什么"><a href="#9-如果真要“可控的自动扩”，该加什么" class="headerlink" title="9. 如果真要“可控的自动扩”，该加什么"></a>9. 如果真要“可控的自动扩”，该加什么</h2><p>按投入从低到高：</p>
+<ol>
+<li><strong>超时与取消</strong>：请求 ctx 贯穿 DB&#x2F;HTTP（已有方向，继续守住）</li>
+<li><strong>进程内限流 &#x2F; 并发闸门</strong>：例如同时最多 N 个写接口，超出快速失败或排队</li>
+<li><strong>合理 DB 池</strong>：按副本数与 PG 容量反推 MaxOpen</li>
+<li><strong>HPA</strong>：按 CPU &#x2F; 自定义指标扩 Pod</li>
+<li><strong>（可选）gRPC worker</strong>：固定 <code>NumStreamWorkers</code> 换调度开销，一般不是第一优先级</li>
+</ol>
+<p>注意：把 handler 改成固定 worker，<strong>不会 magically 提高吞吐</strong>；它只是把“无限排队进 goroutine”改成“有限排队进队列”，保护进程不被拖死。</p>
+<hr>
+<h2 id="10-收束"><a href="#10-收束" class="headerlink" title="10. 收束"></a>10. 收束</h2><p>回到标题里的两个问题：</p>
+<p><strong>为什么能做到“自动扩容”？</strong><br>因为 Go 的 HTTP&#x2F;gRPC 默认就是 <strong>按并发请求创建 handler goroutine</strong>，没有强制你先买一张固定大小的协程票；请求结束，协程退出，看起来就像自动扩缩。</p>
+<p><strong>风险点在哪？</strong><br>自动扩的是“能同时挂起多少个请求”，不是“系统一定扛得住”。<br>真正的天花板通常是 <strong>DB 连接、下游延迟、超时策略、有没有并发闸门、Pod 是否水平扩</strong>。<br>goroutine 变多，往往是压力的 <strong>症状</strong>；要治的是慢调用和资源上限错配。</p>
+<hr>
+<h2 id="附录：和本仓库路径的对应关系（方便对照代码）"><a href="#附录：和本仓库路径的对应关系（方便对照代码）" class="headerlink" title="附录：和本仓库路径的对应关系（方便对照代码）"></a>附录：和本仓库路径的对应关系（方便对照代码）</h2><table><thead><tr><th>话题</th><th>位置</th></tr></thead><tbody><tr><td>HTTP Server 装配</td><td><code>internal/server/http.go</code></td></tr><tr><td>gRPC Server 装配</td><td><code>internal/server/grpc.go</code></td></tr><tr><td><code>automaxprocs</code></td><td><code>cmd/main.go</code></td></tr><tr><td>PG 连接池创建与参数</td><td><code>.local/xxx-go-common-lib/storage/db/postgres.go</code></td></tr><tr><td>业务取 DB 句柄</td><td><code>internal/data/position/tx.go</code> 的 <code>repoBase.db</code></td></tr><tr><td>一次典型查询</td><td><code>internal/data/position/config_repo.go</code> 的 <code>GetByID</code></td></tr><tr><td>HTTP/gRPC 超时配置</td><td><code>configs/server.yaml</code>（<code>timeout: 2s</code>）</td></tr></tbody></table>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/872.html">https://leon-book.github.io/blog/index.php/archives/872.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/golang/">golang</a></div><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/873.html" title="MySQL 迁移 PostgreSQL 常见问题与避坑指南"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">MySQL 迁移 PostgreSQL 常见问题与避坑指南</div></div><div class="info-2"><div class="info-item-1">  MySQL 迁移 PostgreSQL，真正麻烦的地方通常不是 CRUD 语法。 而是迁移之后发现： 连接突然满了SQL 超时了索引不走了事务卡死了程序断线了自增 ID 冲突了同样 SQL 跑得比 MySQL 慢UPDATE 越跑表越大  所以这篇文章不从数据库理论开始，而是直接按线上常见问题横向对比。  一、先看总表问题MySQLPostgreSQL迁移时最容易踩的坑连接数可以相对较高单连接成本更高直接照搬 MySQL 连接池连接超时connect_timeout客户端 connect timeout把连接超时误认为 SQL 慢SQL执行超时max_execution_timestatement_timeoutPG 默认策略不同锁等待innodb_lock_wait_timeoutlock_timeoutSQL 本身不慢，是在等锁空闲连接wait_timeoutidle_session_timeout连接池拿到失效连接空闲事务相对不突出idle in transaction 非常危险长事务阻塞 VACUUM断线server has gone awayserver close...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/871.html" title="云原生“交通枢纽”：跟着我，5分钟从零开始死磕 Istio 服务网格"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">云原生“交通枢纽”：跟着我，5分钟从零开始死磕 Istio 服务网格</div></div><div class="info-2"><div class="info-item-1">  最近在复习云原生微服务架构，越学越觉得之前的自己太天真了。以前总觉得把服务拆开、用 Kubernetes（K8s）跑起来就万事大吉了。直到遇到线上要搞 5% 流量的灰度发布（金丝雀发布），或者几个微服务天天因为网络抖动报超时、而我又不知道到底是哪两个服务之间卡住了的时候，我才发现：微服务之间的网络通信和流量治理，真的是个大坑！ 在疯狂补课之后，我终于摸到了解决这个痛点的神器——Istio。今天这篇博客，我就以一个学习者的角度，把我啃下来的 Istio 核心知识点和心得整理出来，希望能帮大家一起少走弯路！🔍 重新认识：Istio 到底是个啥？在刚接触的时候，我一直有个误区，以为它和 Spring Cloud 一样，需要我往代码里导各种依赖、写各种注解。学了之后才发现自己狭隘了：Istio 是一种“服务网格”（Service Mesh），它最大的魅力就在于“代码零侵入”！用我自己的话来理解：如果说 Kubernetes（K8s） 帮我们盖好了大楼（管好了容器的生命周期），那么 Istio 就是在大楼之间拉起了智能交通指挥系统、地下保密通信光缆和全城天网监控 [istio.io]...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/index.php/archives/855.html" title="Apache Pulsar 订阅模式与消费模型深度解析（Go 实战）"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-05-25</div><div class="info-item-2">Apache Pulsar 订阅模式与消费模型深度解析（Go 实战）</div></div><div class="info-2"><div class="info-item-1">  在落地 Pulsar 的过程中，开发者最容易踩的坑集中在两个问题上： 问题一：”我有多个消费者，消息是怎么分发的？顺序能保证吗？” 问题二：”消费者处理业务逻辑很慢，会不会把整个消费流程阻塞住？” 这两个问题的答案，分别对应 Pulsar 的订阅模式（Subscription Type） 和消费模型（Consumption Pattern）。 本文基于 Go 语言，通过完整可运行的代码，逐一拆解四种订阅模式，并给出生产环境中解决阻塞问题的异步消费方案。  环境准备# 1. 启动本地 Pulsar（Docker）docker run -d --name pulsar \  -p 6650:6650 \  apachepulsar/pulsar:latest \  bin/pulsar standalone# 2. 初始化 Go 项目go mod init pulsar-demogo get github.com/apache/pulsar-client-go/pulsar# 3. 运行 Demogo run pulsar_subscription_demo.go   一、基础概...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/414.html" title="Golang 中 new 和 make 区别"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2019-10-11</div><div class="info-item-2">Golang 中 new 和 make 区别</div></div><div class="info-2"><div class="info-item-1">  Golang 中 new 和 make 的区别在 Go 语言中，new 和 make 都用于分配内存，但它们的用途和返回值有所不同。下面将详细介绍这两者的区别。 1. new 函数new 是一个内置函数，用于分配内存并返回指向该内存的指针。它的主要用途是为值类型（如结构体、数组等）分配内存。 特点 返回值：new 返回的是指向类型的指针。 内存分配：它分配的内存是零值，意味着分配的内存中的字段都是类型的默认值。 用法：通常用于分配基本类型的指针或结构体。  示例代码type Person struct &#123;    Name string    Age  int&#125;func main() &#123;    p := new(Person) // p 的类型是 *Person    p.Name = &quot;Alice&quot;    p.Age = 30    fmt.Println(p) // 输出：&amp;&#123;Alice 30&#125;&#125;  2. make 函数make 是另一个内置函数，用于创建和初始化切片（slice）、映射...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/641.html" title="Go实战项目-Beego的Session、日志文件的使用和redis的选择使用"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2024-02-20</div><div class="info-item-2">Go实战项目-Beego的Session、日志文件的使用和redis的选择使用</div></div><div class="info-2"><div class="info-item-1">   列表项目  原文地址 : https://cloud.tencent.com/developer/article/2017632 Go实战项目-Beego的Session、日志文件的使用和[redis][1]的选择使用 session的简单使用go标准库里面没有实现这功能，只能靠自己实现了，哦，不，是第三方库。好在beego就自带session功能，这个之前就说过了。我们只是简单使用下，高并发场景估计还得自己来实现，单纯的靠这个框架，够呛。来看下怎么使用： 1、在调用之前就需要开启 beego.BConfig.WebConfig.Session.SessionOn = true //开始session  beego目前支持四种session的存储引擎 memory、file、Redis 和 MySQL 默认就是memory ，但是，你重启之后就失效了，这除了写demo可以用之外，就算是保活的进程也是很肉痛，基于之前PHP框架保存文件的处理方式，我这边也是存放文件中。 2、设置存储引擎 beego.BConfig.WebConfig.Session.SessionProvid...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/542.html" title="Go runtime.Gosched()的作用分析"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2022-06-06</div><div class="info-item-2">Go runtime.Gosched()的作用分析</div></div><div class="info-2"><div class="info-item-1">  runtime.Gosched()用于让出CPU时间片。这就像跑接力赛，A跑了一会碰到代码runtime.Gosched()就把接力棒交给B了，A歇着了，B继续跑。 看代码： package mainimport (    &quot;fmt&quot;    &quot;runtime&quot;)func say(s string) &#123;    for i := 0; i &lt; 2; i++ &#123;        runtime.Gosched()        fmt.Println(s)    &#125;&#125;func main() &#123;    go say(&quot;world&quot;)    say(&quot;hello&quot;)&#125;  输出结果： helloworldhello  注意结果： 1、先输出了hello,后输出了world. 2、hello输出了2个，world输出了1个（因为第2个hello输出完，主线程就退出了，第2个world没机会了） 把代码中的runtime.Gosched()注释掉，执...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/538.html" title="LiteIDE配置go环境 执行 BR , 抛错 see &#39;go help modules&#39;"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2022-05-11</div><div class="info-item-2">LiteIDE配置go环境 执行 BR , 抛错 see &#39;go help modules&#39;</div></div><div class="info-2"><div class="info-item-1">  LiteIDE配置Go环境执行BR，抛错”see ‘go help modules’”的解决方法在使用LiteIDE进行Go开发时，有时在执行go build、go run等命令时会遇到错误信息”see ‘go help modules’”。这种错误通常是由于缺少或错误配置Go模块所导致的。在本文中，我们将介绍如何解决这个问题并正确配置Go环境，以便顺利执行BR命令。 步骤1：确认LiteIDE的Go环境配置首先，确保你已经正确配置了LiteIDE的Go环境。在LiteIDE的菜单栏中，选择”环境”-&gt;”设置”，进入设置窗口。在左侧的选项中，找到”Go”选项，确保设置了正确的Go安装路径和工作区路径。如果未正确设置，请进行相应的更改并点击”应用”保存设置。 步骤2：检查Go模块的配置错误信息”see ‘go help modules’”提示我们检查Go模块的配置。在LiteIDE中，我们可以通过以下步骤来确认和修复Go模块的配置：  打开终端或命令提示符窗口。  进入你的Go项目的根目录，即包含go.mod文件的目录。  执行以下命令，检查当前Go模块的状态： go m...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/543.html" title="Go 语言指针符号 * 和 &amp;"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2022-06-07</div><div class="info-item-2">Go 语言指针符号 * 和 &amp;</div></div><div class="info-2"><div class="info-item-1">  符号 &amp; 的意思是对变量取地址如：变量a的地址是&amp;a 符号 * 的意思是对指针取值，如:*&amp;a，就是a变量所在地址的值，当然也就是a的值了 先看一段代码，人工运行一下，看看自己能做对几题？ package mainimport &quot;fmt&quot;func main() &#123;    var a int = 1     var b *int = &amp;a    var c **int = &amp;b    var x int = *b    fmt.Println(&quot;a = &quot;,a)    fmt.Println(&quot;&amp;a = &quot;,&amp;a)    fmt.Println(&quot;*&amp;a = &quot;,*&amp;a)    fmt.Println(&quot;b = &quot;,b)    fmt.Println(&quot;&amp;b = &quot;,&amp;b)    fmt.Println(&quot;*&amp;b = &quot;,*&amp;b...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%BB%93%E8%AE%BA"><span class="toc-number">1.</span> <span class="toc-text">一句话结论</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E5%85%88%E5%88%86%E6%B8%85%E4%B8%89%E4%B8%AA%E8%AF%8D%EF%BC%9AQPS%E3%80%81%E5%B9%B6%E5%8F%91%E3%80%81goroutine"><span class="toc-number">2.</span> <span class="toc-text">1. 先分清三个词：QPS、并发、goroutine</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E4%B8%BA%E4%BB%80%E4%B9%88%E8%83%BD%E2%80%9C%E8%87%AA%E5%8A%A8%E6%89%A9%E2%80%9D%EF%BC%9AHTTP-%E8%B7%AF%E5%BE%84"><span class="toc-number">3.</span> <span class="toc-text">2. 为什么能“自动扩”：HTTP 路径</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-gRPC-%E8%B7%AF%E5%BE%84%E4%B9%9F%E4%B8%80%E6%A0%B7%EF%BC%88%E5%BD%93%E5%89%8D%E9%85%8D%E7%BD%AE%E4%B8%8B%EF%BC%89"><span class="toc-number">4.</span> <span class="toc-text">3. gRPC 路径也一样（当前配置下）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-automaxprocs-%E7%AE%A1%E7%9A%84%E4%B8%8D%E6%98%AF%E5%8D%8F%E7%A8%8B%E6%95%B0"><span class="toc-number">5.</span> <span class="toc-text">4. automaxprocs 管的不是协程数</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E5%92%8C%E2%80%9CDB-%E8%BF%9E%E6%8E%A5%E6%B1%A0%E8%87%AA%E5%8A%A8%E6%89%A9%E2%80%9D%E4%B8%8D%E8%A6%81%E6%B7%B7%E4%B8%BA%E4%B8%80%E8%B0%88"><span class="toc-number">6.</span> <span class="toc-text">5. 和“DB 连接池自动扩”不要混为一谈</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E9%A3%8E%E9%99%A9%E7%82%B9%EF%BC%88%E6%AF%94%E2%80%9C%E4%BC%9A%E4%B8%8D%E4%BC%9A%E8%87%AA%E5%8A%A8%E6%89%A9%E2%80%9D%E6%9B%B4%E9%87%8D%E8%A6%81%EF%BC%89"><span class="toc-number">7.</span> <span class="toc-text">6. 风险点（比“会不会自动扩”更重要）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A3%8E%E9%99%A9-1%EF%BC%9A%E6%97%A0%E8%BF%9B%E7%A8%8B%E7%BA%A7%E5%B9%B6%E5%8F%91%E4%B8%8A%E9%99%90-%E2%86%92-%E6%85%A2%E8%AF%B7%E6%B1%82%E9%9B%AA%E5%B4%A9"><span class="toc-number">7.1.</span> <span class="toc-text">风险 1：无进程级并发上限 → 慢请求雪崩</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A3%8E%E9%99%A9-2%EF%BC%9ADB-%E6%B1%A0%E5%A4%AA%E5%B0%8F%EF%BC%8C%E6%94%BE%E5%A4%A7%E6%8E%92%E9%98%9F"><span class="toc-number">7.2.</span> <span class="toc-text">风险 2：DB 池太小，放大排队</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A3%8E%E9%99%A9-3%EF%BC%9A%E6%8A%8A%E2%80%9Cgoroutine-%E5%8F%98%E5%A4%9A%E2%80%9D%E8%AF%AF%E5%BD%93%E6%88%90%E2%80%9C%E5%90%9E%E5%90%90%E5%8F%98%E9%AB%98%E2%80%9D"><span class="toc-number">7.3.</span> <span class="toc-text">风险 3：把“goroutine 变多”误当成“吞吐变高”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A3%8E%E9%99%A9-4%EF%BC%9A%E4%B8%9A%E5%8A%A1%E9%87%8C%E8%A3%B8%E8%B5%B7%E7%9A%84%E5%90%8E%E5%8F%B0-goroutine-%E4%B8%8D%E4%BC%9A%E8%87%AA%E5%8A%A8%E7%BC%A9"><span class="toc-number">7.4.</span> <span class="toc-text">风险 4：业务里裸起的后台 goroutine 不会自动缩</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A3%8E%E9%99%A9-5%EF%BC%9A%E6%B0%B4%E5%B9%B3%E6%89%A9%E5%AE%B9%EF%BC%88Pod%EF%BC%89%E4%B8%8D%E6%98%AF%E8%BF%99%E4%BB%BD%E4%BB%A3%E7%A0%81%E8%87%AA%E5%B8%A6%E7%9A%84"><span class="toc-number">7.5.</span> <span class="toc-text">风险 5：水平扩容（Pod）不是这份代码自带的</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E4%B8%80%E5%BC%A0%E5%AF%B9%E7%85%A7%E8%A1%A8%EF%BC%9A%E8%B0%81%E5%9C%A8%E6%89%A9%E3%80%81%E6%89%A9%E5%88%B0%E5%93%AA"><span class="toc-number">8.</span> <span class="toc-text">7. 一张对照表：谁在扩、扩到哪</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E7%BA%BF%E4%B8%8A%E5%BB%BA%E8%AE%AE%E7%9B%AF%E4%BB%80%E4%B9%88%E6%8C%87%E6%A0%87"><span class="toc-number">9.</span> <span class="toc-text">8. 线上建议盯什么指标</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#9-%E5%A6%82%E6%9E%9C%E7%9C%9F%E8%A6%81%E2%80%9C%E5%8F%AF%E6%8E%A7%E7%9A%84%E8%87%AA%E5%8A%A8%E6%89%A9%E2%80%9D%EF%BC%8C%E8%AF%A5%E5%8A%A0%E4%BB%80%E4%B9%88"><span class="toc-number">10.</span> <span class="toc-text">9. 如果真要“可控的自动扩”，该加什么</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10-%E6%94%B6%E6%9D%9F"><span class="toc-number">11.</span> <span class="toc-text">10. 收束</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%9A%E5%92%8C%E6%9C%AC%E4%BB%93%E5%BA%93%E8%B7%AF%E5%BE%84%E7%9A%84%E5%AF%B9%E5%BA%94%E5%85%B3%E7%B3%BB%EF%BC%88%E6%96%B9%E4%BE%BF%E5%AF%B9%E7%85%A7%E4%BB%A3%E7%A0%81%EF%BC%89"><span class="toc-number">12.</span> <span class="toc-text">附录：和本仓库路径的对应关系（方便对照代码）</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

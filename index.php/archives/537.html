@@ -1,0 +1,659 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>supervisord 中的 open files 数量限制 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Linux 中的 nofile 设置Linux 系统通过 rlimit 来对一个进程可以使用的计算机资源进行限制，其中 nofile 表示单个进程可以打开的文件句柄数，默认值为 1024。 我们知道，Linux 系统下一切都是文件，这不仅包括了常规的文件，还包括 socket, pipe 等等，对于一些较大的应用，如数据库，Web 服务器等，1024 这个限制肯定是不够的。所以一般在初始化新服">
+<meta property="og:type" content="article">
+<meta property="og:title" content="supervisord 中的 open files 数量限制">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/537.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="Linux 中的 nofile 设置Linux 系统通过 rlimit 来对一个进程可以使用的计算机资源进行限制，其中 nofile 表示单个进程可以打开的文件句柄数，默认值为 1024。 我们知道，Linux 系统下一切都是文件，这不仅包括了常规的文件，还包括 socket, pipe 等等，对于一些较大的应用，如数据库，Web 服务器等，1024 这个限制肯定是不够的。所以一般在初始化新服">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2022-05-10T04:33:00.000Z">
+<meta property="article:modified_time" content="2022-05-10T04:33:00.000Z">
+<meta property="article:author" content="leon">
+<meta property="article:tag" content="Supervisor">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "supervisord 中的 open files 数量限制",
+  "url": "https://leon-book.github.io/blog/index.php/archives/537.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2022-05-10T04:33:00.000Z",
+  "dateModified": "2022-05-10T04:33:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/537.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'supervisord 中的 open files 数量限制',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">supervisord 中的 open files 数量限制</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">supervisord 中的 open files 数量限制</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2022-05-10T04:33:00.000Z" title="发表于 2022-05-10 13:33:00">2022-05-10</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2022-05-10T04:33:00.000Z" title="更新于 2022-05-10 13:33:00">2022-05-10</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E8%B8%A9%E5%9D%91%E6%95%99%E8%AE%AD/">踩坑教训</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/537.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<h2 id="Linux-中的-nofile-设置"><a href="#Linux-中的-nofile-设置" class="headerlink" title="Linux 中的 nofile 设置"></a>Linux 中的 <code>nofile</code> 设置</h2><p><code>Linux</code> 系统通过 <code>rlimit</code> 来对一个进程可以使用的计算机资源进行限制，其中 <code>nofile</code> 表示单个进程可以打开的文件句柄数，默认值为 1024。 我们知道，Linux 系统下一切都是文件，这不仅包括了常规的文件，还包括 <code>socket</code>, <code>pipe</code> 等等，对于一些较大的应用，如数据库，Web 服务器等，1024 这个限制肯定是不够的。所以一般在初始化新服务器时都要进行修改，例如修改 <code>/etc/security/limits.conf</code>，把所有用户的 nofile 限制设置为 <code>65535</code>，其中，* 不能用于 root 用户，root 用户必须显式地使用 root 定义。</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">root soft nofile <span class="number">65535</span></span><br><span class="line">root hard nofile <span class="number">65535</span></span><br><span class="line">* soft nofile <span class="number">65535</span></span><br><span class="line">* hard nofile <span class="number">65535</span></span><br></pre></td></tr></table></figure>
+
+<p>查看当前 Shell 的 nofile 限制，可以使用</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">&gt; ulimit -n</span><br><span class="line"><span class="number">65535</span></span><br></pre></td></tr></table></figure>
+
+<p>查看某一个进程的 <code>nofile</code> 限制，可以使用</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">&gt; cat /proc/$PID/limits</span><br><span class="line">Limit                     Soft Limit           Hard Limit           Units</span><br><span class="line">Max cpu time              unlimited            unlimited            seconds</span><br><span class="line">Max file size             unlimited            unlimited            bytes</span><br><span class="line">Max data size             unlimited            unlimited            bytes</span><br><span class="line">Max <span class="built_in">stack</span> size            <span class="number">8388608</span>              unlimited            bytes</span><br><span class="line">Max core file size        <span class="number">0</span>                    unlimited            bytes</span><br><span class="line">Max resident <span class="built_in">set</span>          unlimited            unlimited            bytes</span><br><span class="line">Max processes             <span class="number">15076</span>                <span class="number">15076</span>                processes</span><br><span class="line">Max open files            <span class="number">65500</span>                <span class="number">65500</span>                files</span><br><span class="line">Max locked memory         <span class="number">65536</span>                <span class="number">65536</span>                bytes</span><br><span class="line">Max address space         unlimited            unlimited            bytes</span><br><span class="line">Max file locks            unlimited            unlimited            locks</span><br><span class="line">Max pending signals       <span class="number">15076</span>                <span class="number">15076</span>                signals</span><br><span class="line">Max msgqueue size         <span class="number">819200</span>               <span class="number">819200</span>               bytes</span><br><span class="line">Max nice priority         <span class="number">0</span>                    <span class="number">0</span></span><br><span class="line">Max realtime priority     <span class="number">0</span>                    <span class="number">0</span></span><br><span class="line">Max realtime timeout      unlimited            unlimited            us</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>刚刚接触的时候，会比较疑惑“Soft Limit” 和 ”Hard Limit” 是什么区别？其实这是一个非常巧妙的设计，我们在实际工作中，对不同进程的资源限制往往是不一样的，需要能够灵活地配置。“Soft Limit”就是这样的作用，用户可以自由地增加或减小 ”Soft Limit”的值，让自己的进程有不同的资源限制。而“Hard Limit”则代表了这个用户能设置的资源限制的最大值。当然这里的用户指的是非 root 用户。</p>
+<h2 id="supervisord-中的-nofile-坑"><a href="#supervisord-中的-nofile-坑" class="headerlink" title="supervisord 中的 nofile 坑"></a><code>supervisord</code> 中的 <code>nofile</code> 坑</h2><p><code>supervisord</code> 是一个常用的进程管理工具，不仅可以简化进程的启动操作，还可以在进程意外退出时自动重启。但是这里有一个坑是，默认情况下，我们会发现 <code>supervisord</code> 启动的进程，并不会使用 <code>/etc/security/limits.conf</code> 中配置的 <code>nofile</code> 数值，而是会默认设置为 <code>1024</code>。</p>
+<p>检查 <code>supervisord</code> 的配置文件 <code>/etc/supervisor.conf</code> 中，会发现一个 minfds 的参数设置了 nofile 限制，默认为 1024。难道是 supervisord 的配置限制了 nofile ？</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">[supervisord]</span><br><span class="line"></span><br><span class="line">minfds=<span class="number">1024</span>                 ; (min. avail startup file descriptors;<span class="keyword">default</span> <span class="number">1024</span>)</span><br><span class="line">minprocs=<span class="number">200</span>                ; (min. avail process descriptors;<span class="keyword">default</span> <span class="number">200</span>)</span><br></pre></td></tr></table></figure>
+
+<p>这里需要注意的另一个点是这里的 <code>minprocs</code> 参数，<code>minprocs</code> 对应的是 <code>rlimit</code> 中的 <code>nproc</code>, <code>nproc</code> 代表一个进程最多可以创建的线程数。这里设置成了 200，但是我们查看 <code>supervisord</code> 进程的 limits 时，Max processes 却不是 200。说明这个配置其实并没有生效。</p>
+<p>还好，我们可以查看 <code>supervisord</code> 的源码，访问：<a href="https://github.com/Supervisor/supervisor/blob/master/supervisor/options.py#L1466">https://github.com/Supervisor/supervisor/blob/master/supervisor/options.py#L1466</a>，</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">soft, hard = resource.getrlimit(res)</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (soft &lt; min_limit) <span class="keyword">and</span> (soft != -<span class="number">1</span>): <span class="comment"># -1 means unlimited</span></span><br><span class="line">    <span class="keyword">if</span> (hard &lt; min_limit) <span class="keyword">and</span> (hard != -<span class="number">1</span>):</span><br><span class="line">        <span class="comment"># setrlimit should increase the hard limit if we are</span></span><br><span class="line">        <span class="comment"># root, if not then setrlimit raises and we print usage</span></span><br><span class="line">        hard = min_limit</span><br><span class="line"></span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        resource.setrlimit(res, (min_limit, hard))</span><br><span class="line">        <span class="variable language_">self</span>.parse_infos.append(<span class="string">&#x27;Increased %(name)s limit to &#x27;</span></span><br><span class="line">                    <span class="string">&#x27;%(min_limit)s&#x27;</span> % <span class="built_in">locals</span>())</span><br><span class="line">    <span class="keyword">except</span> (resource.error, ValueError):</span><br><span class="line">        <span class="variable language_">self</span>.usage(msg % <span class="built_in">locals</span>())</span><br></pre></td></tr></table></figure>
+
+<p>这里可以看出，只有当前 limit 小于配置文件中的值时才会调用 setrlimit。这说明系统中配置的 rlimit 并没有生效。</p>
+<p>其实 &#x2F;etc&#x2F;security&#x2F;limits.conf 文件的开头已经写得很明白了。</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">&gt; head /etc/security/limits.conf</span><br><span class="line"># /etc/security/limits.conf</span><br><span class="line">#</span><br><span class="line">#This file sets the resource limits <span class="keyword">for</span> the users logged in via PAM.</span><br><span class="line">#It does not affect resource limits of the system services.</span><br><span class="line">#</span><br></pre></td></tr></table></figure>
+
+<p><code>/etc/security/limits.conf</code> 中的配置对 systemd 启动的进程是无效的。我们的 supervisord 是通过 systemd 启动的，在没有设置的情况下，使用的是系统默认的 <code>nofile</code> 限制数据，Soft Limit 为 1024，Hard Limit 为 4096。</p>
+<p><code>systemd</code> 中的 nofile，要通过 LimitNOFILE 参数设置，例如编辑 &#x2F;usr&#x2F;lib&#x2F;systemd&#x2F;system&#x2F;supervisord.service 将LimitNOFILE设置为 10000。</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">[Unit]</span><br><span class="line">Description=Process Monitoring and Control Daemon</span><br><span class="line">After=rc-local.service nss-user-lookup.target</span><br><span class="line"></span><br><span class="line">[Service]</span><br><span class="line">Type=forking</span><br><span class="line">LimitNOFILE=<span class="number">10000</span></span><br><span class="line">ExecStart=/usr/bin/supervisord -c /etc/supervisord.conf</span><br><span class="line"></span><br><span class="line">[Install]</span><br><span class="line">WantedBy=multi-user.target</span><br></pre></td></tr></table></figure>
+
+<p>保存文件后，需要调用 <code>systemctl daemon-reload</code> 刷新服务配置。</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"># 查看默认的 LimitNOFILE</span><br><span class="line">&gt; systemctl show -p DefaultLimitNOFILE</span><br><span class="line"></span><br><span class="line"><span class="number">4096</span></span><br><span class="line"># 查看某一个 Service 的 LimitNOFILE</span><br><span class="line">&gt; systemctl show supervisord -p LimitNOFILE</span><br><span class="line"><span class="number">10000</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>原文地址 : <a href="https://e7868a.com/linux-limits">https://e7868a.com/linux-limits</a></p>
+</blockquote>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/537.html">https://leon-book.github.io/blog/index.php/archives/537.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/Supervisor/">Supervisor</a></div><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/538.html" title="LiteIDE配置go环境 执行 BR , 抛错 see 'go help modules'"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">LiteIDE配置go环境 执行 BR , 抛错 see 'go help modules'</div></div><div class="info-2"><div class="info-item-1">  LiteIDE配置Go环境执行BR，抛错”see ‘go help modules’”的解决方法在使用LiteIDE进行Go开发时，有时在执行go build、go run等命令时会遇到错误信息”see ‘go help modules’”。这种错误通常是由于缺少或错误配置Go模块所导致的。在本文中，我们将介绍如何解决这个问题并正确配置Go环境，以便顺利执行BR命令。 步骤1：确认LiteIDE的Go环境配置首先，确保你已经正确配置了LiteIDE的Go环境。在LiteIDE的菜单栏中，选择”环境”-&gt;”设置”，进入设置窗口。在左侧的选项中，找到”Go”选项，确保设置了正确的Go安装路径和工作区路径。如果未正确设置，请进行相应的更改并点击”应用”保存设置。 步骤2：检查Go模块的配置错误信息”see ‘go help modules’”提示我们检查Go模块的配置。在LiteIDE中，我们可以通过以下步骤来确认和修复Go模块的配置：  打开终端或命令提示符窗口。  进入你的Go项目的根目录，即包含go.mod文件的目录。  执行以下命令，检查当前Go模块的状态： go m...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/536.html" title="Redis 高效删除大key"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Redis 高效删除大key</div></div><div class="info-2"><div class="info-item-1">  一、大key的删除问题大key（bigkey）是指 key 的 value 是个庞然大物，例如 Hashes, Sorted Sets, Lists, Sets，日积月累之后，会变得非常大，可能几十上百MB，甚至到GB。 如果对这类大key直接使用 del 命令进行删除，会导致长时间阻塞，甚至崩溃。 因为 del 命令在删除集合类型数据时，时间复杂度为 O(M)，M 是集合中元素的个数。 Redis 是单线程的，单个命令执行时间过长就会阻塞其他命令，容易引起雪崩。 二、解决方案可靠方案： 渐进式删除UNLINK (4.0版本以后) 1. 渐进式删除思路： 分批删除，通过 scan 命令遍历大key，每次取得少部分元素，对其删除，然后再获取和删除下一批元素。 示例：  删除大 Hashes  步骤： （1）key改名，相当于逻辑上把这个key删除了，任何redis命令都访问不到这个key了（2）小步多批次的删除 伪代码： # key改名newkey = &quot;gc:hashes:&quot; + redis.INCR( &quot;gc:index&quot; )redi...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/index.php/archives/479.html" title="Supervisord 添加环境变量 environment"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2020-05-26</div><div class="info-item-2">Supervisord 添加环境变量 environment</div></div><div class="info-2"><div class="info-item-1">  原文: https://www.bbsmax.com/A/Ae5R4o13zQ/ [program:usercenter]directory = /home/leon/projects/usercenter ; 程序的启动目录command = gunicorn -c gunicorn.py wsgi:app  ; 启动命令，可以看出与手动在命令行启动的命令是一样的autostart = true     ; 在 supervisord 启动的时候也自动启动startsecs = 5        ; 启动 5 秒后没有异常退出，就当作已经正常启动了autorestart = true   ; 程序异常退出后自动重启startretries = 3     ; 启动失败自动重试次数，默认是 3user = leon          ; 用哪个用户启动redirect_stderr = true  ; 把 stderr 重定向到 stdout，默认 falsestdout_logfile_maxbytes = 20MB  ; stdout 日志文件大小，默认 50MBstdo...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/803.html" title="Supervisor 守护 PHP 脚本日志中断问题排查记录"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-07-24</div><div class="info-item-2">Supervisor 守护 PHP 脚本日志中断问题排查记录</div></div><div class="info-2"><div class="info-item-1">  🧩 问题描述线上生产环境中，Supervisor 用于守护多个 PHP 脚本任务（共计 310 个）。这些脚本长期运行，一直有正常的日志输出。然而在某天突然发现：  某任务的日志输出中断； 执行 supervisorctl status 显示任务状态为 RUNNING，没有异常； 但实际进程未运行、无任何日志产出； 尝试 supervisorctl restart 无效，任务仍然假运行，没有报错。  同时排查系统资源：  磁盘空间充足； CPU、内存无明显瓶颈； 任务脚本代码无更新，排除人为逻辑问题。  🔍 日志排查查看 supervisord.log，发现有如下记录： 2025-07-23 18:22:18,057 INFO waiting for check-test-100 to stop2025-07-23 18:22:18,061 INFO stopped: check-test-100 (terminated by SIGTERM)2025-07-23 18:22:18,129 INFO spawned: &#x27;check-test-100&#x27; ...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/289.html" title="报错 unix:&#x2F;&#x2F;&#x2F;tmp&#x2F;supervisor.sock no such file"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2018-08-10</div><div class="info-item-2">报错 unix:&#x2F;&#x2F;&#x2F;tmp&#x2F;supervisor.sock no such file</div></div><div class="info-2"><div class="info-item-1">  在使用supervisor进行进程管理时，启动 supervisorctl，启动时候报错 unix:///tmp/supervisor.sock no such file  然后网上搜了一堆也没解决问题，后来去看supervisor.log，发现supervisord一启动，过了几秒就自动to die了。 后来在stackOverFlow看到了这个问题尝试去修改了下/etc/supervisord.conf中的 [unix_http_server]file=/tmp/supervisor.sock   ; (the path to the socket file)chmod=0700                 ; socket file mode (default 0700)chown=nobody:nogroup       ; socket file uid:gid ownerusername=root              ; (default is no username (open server))password=root               ;...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/358.html" title="Supervisor 进程子进程管理"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2019-03-14</div><div class="info-item-2">Supervisor 进程子进程管理</div></div><div class="info-2"><div class="info-item-1">  之前使用 Supervisord 守护 swoole 服务 问题restart 服务后 master 进程重启了 并拉起新的worker 进程, 但是老的worker 进程并没有kill我都是通过 shell 脚本实现子进程kill 的工作 就在刚才我同事的服务跪了, 我俩总结了原因 并告诉如下配置, 可以控制子进程 只需要在每个任务配置, 就可以对子进程进程管理. stopasgroup=true;killasgroup=true;  Jenkins 配合 Supervisor 上线 swoole 服务 一定要保证所有swoole进程kill 否则由于 Jenkins 版本控制分配不同目录 导致worker 重启后 include 文件 加载失败 学费很贵 2小时 300美刀 记录下 </div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/602.html" title="Supervisor Event Listener 任务监控与告警"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2023-09-03</div><div class="info-item-2">Supervisor Event Listener 任务监控与告警</div></div><div class="info-2"><div class="info-item-1">  场景描述Supervisor 脚本定时重启脚本任务, 任务中存在多个子进程, 重启服务基本都是能一波带走所有子进程.但这次发现有个服务重启失败, 查看原因是存在子进程未kill掉, 子进程占用服务端口, 重启服务端口被占用最后服务BACKOFF了, 原因就是子进程没杀掉, 莫得办法. 下面配置也都是有的,因为之前踩过坑.没想到还是有问题. ;使用supervisorctl停止时，子进程也会一起停止stopasgroup=true;向进程组发送kill信号，包括子进程killasgroup=true       为了监控这种服务异常拉起失败的场景, 百度一下 Supervisor 是有一个 事件监听的 Event Listener. Event Types 由 Supervisor 官方定义，覆盖了进程运行生命周期的各种状态。下面翻译一些常用的类型 : |Event |解释||-|-||PROCESS_STATE| 进程状态发生改变|PROCESS_STATE_STARTING| 进程状态从其他状态转换为正在启动(Supervisord的配置项中有startsecs配置项，是指...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/654.html" title="[踩坑] 终端执行 systemctl start supervisord"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2024-03-15</div><div class="info-item-2">[踩坑] 终端执行 systemctl start supervisord</div></div><div class="info-2"><div class="info-item-1">  今天调整生产环境 supervisord 配置 , 启动 inet_http_server 配置 # systemctl restart supervisord  我在重启服务器前 , 增加了一些配置在 /etc/supervisord.d/. 执行后抛错如下 :  Job for supervisord.service failed because the control process exited with error code. See “systemctl status supervisord.service” and “journalctl -xe” for details.  报错了 尝试 # systemctl start supervisord [supervisord.d] # /usr/bin/supervisord -c/etc/supervisord.confror: Another program is already listening on a port that one of our HTTP servers is configured to...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Linux-%E4%B8%AD%E7%9A%84-nofile-%E8%AE%BE%E7%BD%AE"><span class="toc-number">1.</span> <span class="toc-text">Linux 中的 nofile 设置</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#supervisord-%E4%B8%AD%E7%9A%84-nofile-%E5%9D%91"><span class="toc-number">2.</span> <span class="toc-text">supervisord 中的 nofile 坑</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

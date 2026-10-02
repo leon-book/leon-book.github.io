@@ -1,0 +1,888 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>我让 6 个大模型参加了 2025 高考数学：3 个满分，最低 94 分 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="如果把一整套高考数学卷交给当前主流大模型，并且禁止联网、禁止互相抄答案、只允许提交一次，它们能考多少分？  这一次，我没有问大模型几个零散的数学问题，而是认真布置了一间“AI 高考考场”。 统一试卷、统一规则、同时开考，甚至还安排了一个单独的模型担任监考官。 最终结果有些出乎意料：  GPT-5.6：150 分 Opus 5：150 分 Kimi K3：150 分 Codex：143 分 C">
+<meta property="og:type" content="article">
+<meta property="og:title" content="我让 6 个大模型参加了 2025 高考数学：3 个满分，最低 94 分">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/866.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="如果把一整套高考数学卷交给当前主流大模型，并且禁止联网、禁止互相抄答案、只允许提交一次，它们能考多少分？  这一次，我没有问大模型几个零散的数学问题，而是认真布置了一间“AI 高考考场”。 统一试卷、统一规则、同时开考，甚至还安排了一个单独的模型担任监考官。 最终结果有些出乎意料：  GPT-5.6：150 分 Opus 5：150 分 Kimi K3：150 分 Codex：143 分 C">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2026-07-29T07:15:00.000Z">
+<meta property="article:modified_time" content="2026-07-29T07:15:00.000Z">
+<meta property="article:author" content="leon">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "我让 6 个大模型参加了 2025 高考数学：3 个满分，最低 94 分",
+  "url": "https://leon-book.github.io/blog/index.php/archives/866.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2026-07-29T07:15:00.000Z",
+  "dateModified": "2026-07-29T07:15:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/866.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '我让 6 个大模型参加了 2025 高考数学：3 个满分，最低 94 分',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">我让 6 个大模型参加了 2025 高考数学：3 个满分，最低 94 分</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">我让 6 个大模型参加了 2025 高考数学：3 个满分，最低 94 分</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-07-29T07:15:00.000Z" title="发表于 2026-07-29 16:15:00">2026-07-29</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-07-29T07:15:00.000Z" title="更新于 2026-07-29 16:15:00">2026-07-29</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/Ai/">Ai</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/866.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<blockquote>
+<p>如果把一整套高考数学卷交给当前主流大模型，并且禁止联网、禁止互相抄答案、只允许提交一次，它们能考多少分？</p>
+</blockquote>
+<p>这一次，我没有问大模型几个零散的数学问题，而是认真布置了一间“AI 高考考场”。</p>
+<p>统一试卷、统一规则、同时开考，甚至还安排了一个单独的模型担任监考官。</p>
+<p>最终结果有些出乎意料：</p>
+<ul>
+<li>GPT-5.6：150 分</li>
+<li>Opus 5：150 分</li>
+<li>Kimi K3：150 分</li>
+<li>Codex：143 分</li>
+<li>Cursor Grok 4.5：141 分</li>
+<li>GLM 5.2：94 分</li>
+</ul>
+<p>同一张试卷，最高分与最低分相差了 <strong>56 分</strong>。</p>
+<p>AI GAOKAO · 2025</p>
+<p>当 6 个大模型走进<br>高考数学考场</p>
+<p>同一张试卷 · 禁止联网 · 禁止互抄 · 只准交卷一次</p>
+<p>150</p>
+<p>最高分</p>
+<p>3</p>
+<p>满分模型</p>
+<p>56</p>
+<p>最高最低分差</p>
+<p>19</p>
+<p>试题总数</p>
+<h2 id="一、先准备一张所有模型都能读懂的试卷"><a href="#一、先准备一张所有模型都能读懂的试卷" class="headerlink" title="一、先准备一张所有模型都能读懂的试卷"></a>一、先准备一张所有模型都能读懂的试卷</h2><p>本次使用的是 <strong>2025 年普通高等学校招生考试（新高考 I 卷）数学</strong>，适用地区包括山东、广东、湖南、湖北、河北、江苏、福建、浙江、河南、江西、安徽。</p>
+<p>原始 PDF 不只是文字和公式，还包含表格、坐标图与立体几何图形。如果直接读取 PDF，部分模型可能遇到根号、分数、希腊字母或图形信息识别错误。</p>
+<p>因此，正式开考前，我先把整套试卷整理成统一的 Markdown：</p>
+<ul>
+<li>全卷共 19 题；</li>
+<li>数学公式统一使用 LaTeX；</li>
+<li>表格转换为结构化 Markdown 表格；</li>
+<li>原卷图形保留为图片；</li>
+<li>每张图额外补充纯文字描述；</li>
+<li>清除 PDF 文字层中的乱码、断行和 OCR 错误。</li>
+</ul>
+<p>所有模型读取的都是同一份文件：</p>
+<p><code>exam_2025_math_clean.md</code></p>
+<p>这一步非常重要。否则最后比较的可能不是模型的数学能力，而是谁更擅长猜测乱码。</p>
+<p>试卷标准化流水线</p>
+<p>INPUT</p>
+<p>原始 PDF</p>
+<p>公式乱码、断行、图形与文字层混合</p>
+<p>→</p>
+<p>PROCESS</p>
+<p>识图与人工校订</p>
+<p>LaTeX 公式、结构化表格、图形文字描述</p>
+<p>→</p>
+<p>OUTPUT</p>
+<p>统一 Markdown</p>
+<p>所有模型读取完全相同的 19 道题</p>
+<h2 id="二、考场规则：不联网、不互抄、只能交一次"><a href="#二、考场规则：不联网、不互抄、只能交一次" class="headerlink" title="二、考场规则：不联网、不互抄、只能交一次"></a>二、考场规则：不联网、不互抄、只能交一次</h2><p>为了尽量接近一次真实的限时考试，我给所有参赛模型设置了相同规则。</p>
+<h3 id="我的原始要求"><a href="#我的原始要求" class="headerlink" title="我的原始要求"></a>我的原始要求</h3><ol>
+<li>所有模型统一使用 <code>exam_2025_math_clean.md</code>；</li>
+<li>考试期间禁止网络检索答案；</li>
+<li>只能依靠模型自身能力完成试卷；</li>
+<li>目标答卷时间为 5 分钟；</li>
+<li>禁止读取或参考其他模型的答案；</li>
+<li>每个模型只允许提交一次；</li>
+<li>提交后不允许二次演算或修改答案；</li>
+<li>只提交最终答案，不展示完整推理过程；</li>
+<li>不允许修改原始试卷文件；</li>
+<li>由 Composer 2.5 担任独立监考官。</li>
+</ol>
+<p>原计划参赛阵容包括：</p>
+<ul>
+<li>GPT-5.6</li>
+<li>Opus 5</li>
+<li>Kimi K3</li>
+<li>Codex</li>
+<li>Gemini 3.5 Flash</li>
+<li>GLM 5.2</li>
+<li>Cursor Grok 4.5</li>
+</ul>
+<p>不过，实际执行时 <strong>Gemini 3.5 Flash 不在当前可用模型列表中</strong>。为了不擅自更换型号，本次没有用其他 Gemini 版本代替，所以最终共有 6 名考生入场。</p>
+<p>考场纪律</p>
+<p>STRICT MODE</p>
+<p>01 · 禁止联网</p>
+<p>考试期间不得检索答案</p>
+<p>02 · 独立作答</p>
+<p>不得读取其他模型答卷</p>
+<p>03 · 目标 5 分钟</p>
+<p>同批启动，限时交卷</p>
+<p>04 · 只交一次</p>
+<p>提交后不得修改答案</p>
+<p>05 · 只写答案</p>
+<p>不展示完整推理过程</p>
+<p>06 · 独立监考</p>
+<p>Composer 2.5 只监考不答题</p>
+<h2 id="三、开考：6-个模型同时作答"><a href="#三、开考：6-个模型同时作答" class="headerlink" title="三、开考：6 个模型同时作答"></a>三、开考：6 个模型同时作答</h2><p>6 个模型在同一个并行批次中启动，分别独立读取试卷。</p>
+<p>监考官 Composer 2.5 不参与答题，只负责核对规则和记录可观察到的行为。它确认了试卷路径有效，并且自身没有修改试卷或输出答案。</p>
+<p>但这里必须说明实验边界：</p>
+<ul>
+<li>系统没有记录每个模型精确到秒的作答耗时；</li>
+<li>聊天时间戳只能确认整批答卷在约 6 分钟的窗口内返回；</li>
+<li>因此不能严格证明每个模型都在 5 分钟内完成；</li>
+<li>每个模型都只有一次提交记录，没有再次交卷或修改答案；</li>
+<li>模型内部是否自行验算，无法从外部技术审计；</li>
+<li>Kimi K3 的答卷中可以看到少量中间式，其他模型主要提交最终结果或简短结论。</li>
+</ul>
+<p>换句话说，我能够确认“没有二次提交”，但不能把“模型内部从未回头检查”当成已经证实的事实。</p>
+<p>考生状态 · 同批并行启动</p>
+<p>GPT-5.6</p>
+<p>已交卷 · 1 次</p>
+<p>Opus 5</p>
+<p>已交卷 · 1 次</p>
+<p>Kimi K3</p>
+<p>已交卷 · 1 次</p>
+<p>Codex</p>
+<p>已交卷 · 1 次</p>
+<p>Cursor Grok 4.5</p>
+<p>已交卷 · 1 次</p>
+<p>GLM 5.2</p>
+<p>已交卷 · 1 次</p>
+<p>监考官：Composer 2.5 · 未作答 · 未修改试卷 · 未发现可证实违规</p>
+<h2 id="四、阅卷标准：满分-150-分"><a href="#四、阅卷标准：满分-150-分" class="headerlink" title="四、阅卷标准：满分 150 分"></a>四、阅卷标准：满分 150 分</h2><p>考试结束后，阅卷阶段允许联网，用于交叉核验公开答案和题型分值。</p>
+<p>本卷采用新高考 I 卷常见的 150 分结构：</p>
+<table><thead><tr><th>题型</th><th>题号</th><th align="right">分值</th></tr></thead><tbody><tr><td>单项选择题</td><td>1—8</td><td align="right">40 分</td></tr><tr><td>多项选择题</td><td>9—11</td><td align="right">18 分</td></tr><tr><td>填空题</td><td>12—14</td><td align="right">15 分</td></tr><tr><td>解答题</td><td>15—19</td><td align="right">77 分</td></tr><tr><td><strong>总计</strong></td><td><strong>1—19</strong></td><td align="right"><strong>150 分</strong></td></tr></tbody></table>
+
+<p>解答题采用以下题目总分：</p>
+<ul>
+<li>第 15 题：13 分</li>
+<li>第 16 题：15 分</li>
+<li>第 17 题：15 分</li>
+<li>第 18 题：17 分</li>
+<li>第 19 题：17 分</li>
+</ul>
+<p>为了比较模型的最终解题结果，本次排名使用的是 <strong>“最终答案正确度评分”</strong>：最终结论正确，就按照对应小问计分。</p>
+<p>这不等于真实高考卷面分。</p>
+<p>真实高考明确要求解答题写出文字说明、证明过程或演算步骤。由于我在考试规则中要求模型“只提交答案”，证明题缺少完整过程，若严格按照真实高考阅卷，它们不可能仅凭一句“结论成立”拿到全部过程分。</p>
+<p>因此，本文成绩代表的是：</p>
+<blockquote>
+<p><strong>模型最终答案的正确程度，而不是一张符合高考书写规范的正式答题卡得分。</strong></p>
+</blockquote>
+<h2 id="五、成绩公布：3-个满分"><a href="#五、成绩公布：3-个满分" class="headerlink" title="五、成绩公布：3 个满分"></a>五、成绩公布：3 个满分</h2><table><thead><tr><th align="right">排名</th><th>模型</th><th align="right">客观题</th><th align="right">解答题</th><th align="right">总分</th></tr></thead><tbody><tr><td align="right">1</td><td>GPT-5.6</td><td align="right">73/73</td><td align="right">77/77</td><td align="right"><strong>150</strong></td></tr><tr><td align="right">1</td><td>Opus 5</td><td align="right">73/73</td><td align="right">77/77</td><td align="right"><strong>150</strong></td></tr><tr><td align="right">1</td><td>Kimi K3</td><td align="right">73/73</td><td align="right">77/77</td><td align="right"><strong>150</strong></td></tr><tr><td align="right">4</td><td>Codex</td><td align="right">73/73</td><td align="right">70/77</td><td align="right"><strong>143</strong></td></tr><tr><td align="right">5</td><td>Cursor Grok 4.5</td><td align="right">73/73</td><td align="right">68/77</td><td align="right"><strong>141</strong></td></tr><tr><td align="right">6</td><td>GLM 5.2</td><td align="right">57/73</td><td align="right">37/77</td><td align="right"><strong>94</strong></td></tr></tbody></table>
+
+<p>最醒目的结果不是第一名，而是前三名同时拿到了满分。</p>
+<p>GPT-5.6、Opus 5 和 Kimi K3 的答案完全命中。更值得注意的是，它们不仅基础题和客观题正确，后面的数列、立体几何、椭圆和三角函数压轴题也给出了正确结果。</p>
+<p>Codex 和 Grok 4.5 的客观题同样全部正确，差距主要出现在解答题最后阶段。</p>
+<p>GLM 5.2 则从第 11 题开始出现明显失误，最终停在 94 分。</p>
+<p>最终答案正确度</p>
+<p>满分 150 · 分数越高，横条越长</p>
+<p>3 个满分</p>
+<p>GPT-5.6<strong>150</strong></p>
+<p>Opus 5<strong>150</strong></p>
+<p>Kimi K3<strong>150</strong></p>
+<p>Codex<strong>143</strong></p>
+<p>Cursor Grok 4.5<strong>141</strong></p>
+<p>GLM 5.2<strong>94</strong></p>
+<p>评分口径：最终答案命中分，不等同于真实高考过程分。</p>
+<blockquote>
+<p>交互式成绩面板：<a href="https://cursor.com/dashboard/shared-canvases?shareId=canvas-_rb1DXUjB3NdJQei9P3reuUd">2025 Math Model Grading</a></p>
+</blockquote>
+<h2 id="六、它们分别错在了哪里？"><a href="#六、它们分别错在了哪里？" class="headerlink" title="六、它们分别错在了哪里？"></a>六、它们分别错在了哪里？</h2><h3 id="GPT-5-6、Opus-5、Kimi-K3：全部命中"><a href="#GPT-5-6、Opus-5、Kimi-K3：全部命中" class="headerlink" title="GPT-5.6、Opus 5、Kimi K3：全部命中"></a>GPT-5.6、Opus 5、Kimi K3：全部命中</h3><p>三者在最终答案层面没有发现错误，均得到 150 分。</p>
+<p>但需要再次强调：其中涉及证明的题目只提交了结论，不能据此断言它们在真实高考阅卷中也会获得满分。</p>
+<h3 id="Codex：倒在椭圆题最后一问"><a href="#Codex：倒在椭圆题最后一问" class="headerlink" title="Codex：倒在椭圆题最后一问"></a>Codex：倒在椭圆题最后一问</h3><p>Codex 前 17 题以及第 19 题均与正确答案一致。</p>
+<p>它唯一的错误出现在第 18 题第（2）问第②小问：</p>
+<ul>
+<li>Codex 作答：约 $5.515$</li>
+<li>核验答案：$3\sqrt3+3\sqrt2$</li>
+</ul>
+<p>该小问扣 7 分，最终得分 <strong>143 分</strong>。</p>
+<h3 id="Cursor-Grok-4-5：两处失分"><a href="#Cursor-Grok-4-5：两处失分" class="headerlink" title="Cursor Grok 4.5：两处失分"></a>Cursor Grok 4.5：两处失分</h3><p>Grok 4.5 的客观题全部正确，但解答题出现两处问题：</p>
+<ol>
+<li>第 15 题独立性检验的 $\chi^2$ 统计量多了一位数量级，但“检查结果与患病有关”的结论正确，因此只扣部分分；</li>
+<li>第 18 题最后一问最大值错误。</li>
+</ol>
+<p>最终得分 <strong>141 分</strong>。</p>
+<h3 id="GLM-5-2：错误开始连锁出现"><a href="#GLM-5-2：错误开始连锁出现" class="headerlink" title="GLM 5.2：错误开始连锁出现"></a>GLM 5.2：错误开始连锁出现</h3><p>GLM 5.2 的主要失分包括：</p>
+<ul>
+<li>第 11 题多选题出现错选；</li>
+<li>第 12、14 题填空错误；</li>
+<li>第 16 题第（2）问结果错误；</li>
+<li>第 17 题空间角结果错误；</li>
+<li>第 18 题后两问错误；</li>
+<li>第 19 题第（1）、（3）问错误。</li>
+</ul>
+<p>它的前 10 题与其他模型保持一致，但进入后半卷后，错误数量明显增加，最终得分 <strong>94 分</strong>。</p>
+<p>真正拉开差距的是第 18 题</p>
+<p>第（2）问第②小问：求 |PQ| 的最大值</p>
+<p>正确答案</p>
+<p>3(√3 + √2)</p>
+<p>GPT-5.6 · Opus 5 · Kimi K3</p>
+<p>CODEX</p>
+<p>≈ 5.515</p>
+<p>该小问扣 7 分</p>
+<p>GROK 4.5</p>
+<p>5 + 3√2</p>
+<p>该小问扣 7 分</p>
+<p>GLM 5.2</p>
+<p>√10</p>
+<p>第 18 题后两问均错误</p>
+<h2 id="七、这场测试能说明什么？"><a href="#七、这场测试能说明什么？" class="headerlink" title="七、这场测试能说明什么？"></a>七、这场测试能说明什么？</h2><h3 id="1-当前头部模型已经具备很强的高中数学结果输出能力"><a href="#1-当前头部模型已经具备很强的高中数学结果输出能力" class="headerlink" title="1. 当前头部模型已经具备很强的高中数学结果输出能力"></a>1. 当前头部模型已经具备很强的高中数学结果输出能力</h3><p>在统一输入、禁止联网、完整试卷和短时间约束下，3 个模型给出了全卷正确答案。</p>
+<p>至少从“得到最终结果”这一维度看，它们已经能稳定处理：</p>
+<ul>
+<li>复数、集合与函数；</li>
+<li>向量和解析几何；</li>
+<li>概率统计与数列；</li>
+<li>立体几何；</li>
+<li>椭圆综合题；</li>
+<li>三角函数压轴题。</li>
+</ul>
+<h3 id="2-客观题已经很难拉开头部模型的差距"><a href="#2-客观题已经很难拉开头部模型的差距" class="headerlink" title="2. 客观题已经很难拉开头部模型的差距"></a>2. 客观题已经很难拉开头部模型的差距</h3><p>GPT-5.6、Opus 5、Kimi K3、Codex 和 Grok 4.5 的客观题全部得到 73 分。</p>
+<p>真正产生差距的是解答题，尤其是第 18 题椭圆综合题。Codex、Grok 4.5 和 GLM 5.2 都在这道题的后半部分失分。</p>
+<h3 id="3-“答案正确”与“会不会证明”不是同一件事"><a href="#3-“答案正确”与“会不会证明”不是同一件事" class="headerlink" title="3. “答案正确”与“会不会证明”不是同一件事"></a>3. “答案正确”与“会不会证明”不是同一件事</h3><p>本次测试为了控制输出长度，要求模型只提交答案。</p>
+<p>这适合比较最终结果，却不适合评价完整的数学表达、推导严谨性和证明能力。一个模型可以猜中或算出结论，但如果不能提供可检查的推理链，就不能直接等同于真实考生的满分答卷。</p>
+<h3 id="4-AI-测评首先要控制输入质量"><a href="#4-AI-测评首先要控制输入质量" class="headerlink" title="4. AI 测评首先要控制输入质量"></a>4. AI 测评首先要控制输入质量</h3><p>如果每个模型读取到的公式、表格和图形不一致，那么排行榜没有意义。</p>
+<p>这次测试中，先把 PDF 清洗为统一 Markdown，再让所有模型同时读取，是整个实验成立的基础。</p>
+<h2 id="八、这次实验仍有哪些局限？"><a href="#八、这次实验仍有哪些局限？" class="headerlink" title="八、这次实验仍有哪些局限？"></a>八、这次实验仍有哪些局限？</h2><p>这不是一项严格的学术基准测试，至少存在以下限制：</p>
+<ol>
+<li>每个模型只运行了一次，无法反映多次采样下的稳定性；</li>
+<li>没有记录单模型精确耗时；</li>
+<li>不能审计模型内部是否自行验算；</li>
+<li>模型只提交答案，无法完整评价证明过程；</li>
+<li>解答题小问分值采用模拟拆分，并非教育考试院公开的逐步采分细则；</li>
+<li>Gemini 3.5 Flash 因当前环境不可用，未实际参赛；</li>
+<li>本次成绩只对应当前试卷、当前提示词和当前模型版本，不能直接推广到所有数学任务。</li>
+</ol>
+<p>如果要继续完善这项测试，下一轮至少应该加入：</p>
+<ul>
+<li>每个模型重复测试 3—5 次；</li>
+<li>记录准确开始时间、结束时间和首字延迟；</li>
+<li>同时保留“只交答案组”与“完整过程组”；</li>
+<li>使用盲审方式对证明题单独评分；</li>
+<li>在不改变原意的前提下，准备不同排版版本，测试模型对输入形式的敏感程度。</li>
+</ul>
+<h2 id="九、最后"><a href="#九、最后" class="headerlink" title="九、最后"></a>九、最后</h2><p>这场 AI 高考最有意思的地方，并不是“某个模型拿了满分”。</p>
+<p>真正值得关注的是：当输入被认真整理、规则被统一之后，头部模型之间的差距已经被压缩到少数几道综合题上。</p>
+<p>它们在基础题上的表现越来越接近，决定排名的，开始变成复杂推导中的稳定性。</p>
+<p>而这也提醒我们：</p>
+<blockquote>
+<p>测试大模型，不能只随手问一道题。<br>要给它完整试卷、统一规则、独立考场，以及一套能够被复核的评分标准。</p>
+</blockquote>
+<p>下一次，我准备让它们挑战另一年的高考数学。</p>
+<p>到时候，是继续出现多个满分，还是会有新的模型翻车？</p>
+<p>NEXT EXAM</p>
+<p>下一场：2026 高考数学</p>
+<p>同样的规则，更难的新卷。<br>下一次还会出现三个满分吗？</p>
+<p>To be continued</p>
+<hr>
+<h2 id="附：本次实验信息"><a href="#附：本次实验信息" class="headerlink" title="附：本次实验信息"></a>附：本次实验信息</h2><ul>
+<li>试卷：2025 年新高考 I 卷数学</li>
+<li>试卷格式：清洗后的 Markdown</li>
+<li>实际参赛模型：6 个</li>
+<li>监考模型：Composer 2.5</li>
+<li>考试阶段网络：禁止</li>
+<li>阅卷阶段网络：允许，仅用于交叉核验</li>
+<li>提交次数：每个模型 1 次</li>
+<li>精确作答耗时：未记录</li>
+<li>评分口径：最终答案正确度评分</li>
+<li>满分：150 分</li>
+</ul>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ol>
+<li><a href="https://www.jhgk.cn/upload/file/20250610/1749549496776033663.pdf">2025 年普通高等学校招生全国统一考试（新高考 I 卷）</a></li>
+<li><a href="https://www.xueke.org/xuexi/790722.html">2025 年高考全国一卷数学真题及计分规则</a></li>
+<li><a href="https://www.lambdark.com/posts/gaokao-math-2025-i/">2025 新高考 I 卷第 18 题解析</a></li>
+<li><a href="https://pdf.hanspub.org/pm_1253050.pdf">2025 新高考 I 卷第 19 题研究与解析</a></li>
+</ol>
+<blockquote>
+<p>注：公开答案和解析可能来自教育机构或教师整理，本文已结合独立演算交叉核验。解答题模拟小问分值不代表教育考试院正式评分细则。</p>
+</blockquote>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/866.html">https://leon-book.github.io/blog/index.php/archives/866.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/867.html" title="Protobuf 语法通关教程：写给后端开发者的实战指南（PHP / Go 双视角）"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Protobuf 语法通关教程：写给后端开发者的实战指南（PHP / Go 双视角）</div></div><div class="info-2"><div class="info-item-1">   适合人群：会一门后端语言（PHP &#x2F; Go &#x2F; Java 都行），听说过 gRPC 但被 .proto 文件劝退过的人。读完你能得到：看懂任意 proto 文件、能自己写服务契约、知道怎么改 schema 不把生产搞挂。   目录 Protobuf 是什么：三分钟版 环境准备与第一个 .proto 文件骨架五个关键字（syntax &#x2F; package &#x2F; import &#x2F; option &#x2F; extend） 类型系统：标量、字段编号与默认值 复合结构：repeated &#x2F; map &#x2F; oneof &#x2F; 嵌套 枚举 enum：规则与坑 import 进阶与 Well-Known Types service 与 rpc：四种调用模式 google.api.http：一份契约同时暴露 gRPC 和 REST Schema 演进规则：怎么改不把生产搞挂 proto2 vs proto3 速览 工程化：用 Buf 管理 proto 踩坑清单 10 条 参考资源   1. Protobuf 是什么：三...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/865.html" title="一次线上 Nginx `malloc failed (12: Cannot allocate memory)` 故障排查与修复"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">一次线上 Nginx `malloc failed (12: Cannot allocate memory)` 故障排查与修复</div></div><div class="info-2"><div class="info-item-1">   环境:Nginx 反向代理(10.0.12.13)→ 后端 API 服务(10.0.4.10:8901)现象:接口大面积报错,错误日志刷屏  一、故障现象某天下午,监控告警显示交易所后台的资产类接口(/ApiInt/Assets/depositWithdrawList、/Contract/openPositionList 等)大量返回 502,查看 Nginx error.log 发现日志被同一类错误刷屏: 2026/07/22 17:40:59 [emerg] 4257#0: *6286680928 malloc(1048576) failed(12: Cannot allocate memory) while reading response header from upstream,client: 10.0.2.19, server: localhost,request: &quot;POST /ApiInt/Assets/depositWithdrawList HTTP/1.1&quot;,upstream: &quot;http://10.0.4.10:8901/...</div></div></div></a></nav><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E5%85%88%E5%87%86%E5%A4%87%E4%B8%80%E5%BC%A0%E6%89%80%E6%9C%89%E6%A8%A1%E5%9E%8B%E9%83%BD%E8%83%BD%E8%AF%BB%E6%87%82%E7%9A%84%E8%AF%95%E5%8D%B7"><span class="toc-number">1.</span> <span class="toc-text">一、先准备一张所有模型都能读懂的试卷</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%80%83%E5%9C%BA%E8%A7%84%E5%88%99%EF%BC%9A%E4%B8%8D%E8%81%94%E7%BD%91%E3%80%81%E4%B8%8D%E4%BA%92%E6%8A%84%E3%80%81%E5%8F%AA%E8%83%BD%E4%BA%A4%E4%B8%80%E6%AC%A1"><span class="toc-number">2.</span> <span class="toc-text">二、考场规则：不联网、不互抄、只能交一次</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%88%91%E7%9A%84%E5%8E%9F%E5%A7%8B%E8%A6%81%E6%B1%82"><span class="toc-number">2.1.</span> <span class="toc-text">我的原始要求</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%BC%80%E8%80%83%EF%BC%9A6-%E4%B8%AA%E6%A8%A1%E5%9E%8B%E5%90%8C%E6%97%B6%E4%BD%9C%E7%AD%94"><span class="toc-number">3.</span> <span class="toc-text">三、开考：6 个模型同时作答</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E9%98%85%E5%8D%B7%E6%A0%87%E5%87%86%EF%BC%9A%E6%BB%A1%E5%88%86-150-%E5%88%86"><span class="toc-number">4.</span> <span class="toc-text">四、阅卷标准：满分 150 分</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%88%90%E7%BB%A9%E5%85%AC%E5%B8%83%EF%BC%9A3-%E4%B8%AA%E6%BB%A1%E5%88%86"><span class="toc-number">5.</span> <span class="toc-text">五、成绩公布：3 个满分</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E5%AE%83%E4%BB%AC%E5%88%86%E5%88%AB%E9%94%99%E5%9C%A8%E4%BA%86%E5%93%AA%E9%87%8C%EF%BC%9F"><span class="toc-number">6.</span> <span class="toc-text">六、它们分别错在了哪里？</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#GPT-5-6%E3%80%81Opus-5%E3%80%81Kimi-K3%EF%BC%9A%E5%85%A8%E9%83%A8%E5%91%BD%E4%B8%AD"><span class="toc-number">6.1.</span> <span class="toc-text">GPT-5.6、Opus 5、Kimi K3：全部命中</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Codex%EF%BC%9A%E5%80%92%E5%9C%A8%E6%A4%AD%E5%9C%86%E9%A2%98%E6%9C%80%E5%90%8E%E4%B8%80%E9%97%AE"><span class="toc-number">6.2.</span> <span class="toc-text">Codex：倒在椭圆题最后一问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Cursor-Grok-4-5%EF%BC%9A%E4%B8%A4%E5%A4%84%E5%A4%B1%E5%88%86"><span class="toc-number">6.3.</span> <span class="toc-text">Cursor Grok 4.5：两处失分</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#GLM-5-2%EF%BC%9A%E9%94%99%E8%AF%AF%E5%BC%80%E5%A7%8B%E8%BF%9E%E9%94%81%E5%87%BA%E7%8E%B0"><span class="toc-number">6.4.</span> <span class="toc-text">GLM 5.2：错误开始连锁出现</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E8%BF%99%E5%9C%BA%E6%B5%8B%E8%AF%95%E8%83%BD%E8%AF%B4%E6%98%8E%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="toc-number">7.</span> <span class="toc-text">七、这场测试能说明什么？</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E5%BD%93%E5%89%8D%E5%A4%B4%E9%83%A8%E6%A8%A1%E5%9E%8B%E5%B7%B2%E7%BB%8F%E5%85%B7%E5%A4%87%E5%BE%88%E5%BC%BA%E7%9A%84%E9%AB%98%E4%B8%AD%E6%95%B0%E5%AD%A6%E7%BB%93%E6%9E%9C%E8%BE%93%E5%87%BA%E8%83%BD%E5%8A%9B"><span class="toc-number">7.1.</span> <span class="toc-text">1. 当前头部模型已经具备很强的高中数学结果输出能力</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%AE%A2%E8%A7%82%E9%A2%98%E5%B7%B2%E7%BB%8F%E5%BE%88%E9%9A%BE%E6%8B%89%E5%BC%80%E5%A4%B4%E9%83%A8%E6%A8%A1%E5%9E%8B%E7%9A%84%E5%B7%AE%E8%B7%9D"><span class="toc-number">7.2.</span> <span class="toc-text">2. 客观题已经很难拉开头部模型的差距</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E2%80%9C%E7%AD%94%E6%A1%88%E6%AD%A3%E7%A1%AE%E2%80%9D%E4%B8%8E%E2%80%9C%E4%BC%9A%E4%B8%8D%E4%BC%9A%E8%AF%81%E6%98%8E%E2%80%9D%E4%B8%8D%E6%98%AF%E5%90%8C%E4%B8%80%E4%BB%B6%E4%BA%8B"><span class="toc-number">7.3.</span> <span class="toc-text">3. “答案正确”与“会不会证明”不是同一件事</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-AI-%E6%B5%8B%E8%AF%84%E9%A6%96%E5%85%88%E8%A6%81%E6%8E%A7%E5%88%B6%E8%BE%93%E5%85%A5%E8%B4%A8%E9%87%8F"><span class="toc-number">7.4.</span> <span class="toc-text">4. AI 测评首先要控制输入质量</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E8%BF%99%E6%AC%A1%E5%AE%9E%E9%AA%8C%E4%BB%8D%E6%9C%89%E5%93%AA%E4%BA%9B%E5%B1%80%E9%99%90%EF%BC%9F"><span class="toc-number">8.</span> <span class="toc-text">八、这次实验仍有哪些局限？</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%9D%E3%80%81%E6%9C%80%E5%90%8E"><span class="toc-number">9.</span> <span class="toc-text">九、最后</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%EF%BC%9A%E6%9C%AC%E6%AC%A1%E5%AE%9E%E9%AA%8C%E4%BF%A1%E6%81%AF"><span class="toc-number">10.</span> <span class="toc-text">附：本次实验信息</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">11.</span> <span class="toc-text">参考资料</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

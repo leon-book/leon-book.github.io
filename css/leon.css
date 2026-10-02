@@ -1,0 +1,10 @@
+/* Preserve the supplied avatar; tags use Butterfly's unmodified styles. */
+:root { --leon-profile-bg: #f4f7f8; --leon-profile-border: #e5eaed; }
+[data-theme="dark"] { --leon-profile-bg: #242a2f; --leon-profile-border: #343e45; }
+#aside-content .card-info .avatar-img { width: 130px; height: 142px; border-radius: 20px; background: #fff; }
+#aside-content .card-info .avatar-img img { width: 100%; height: 100%; object-fit: contain; border-radius: 20px; transform: none; }
+.leon-profile { display: flex; align-items: center; gap: 24px; margin-bottom: 30px; padding: 22px; border: 1px solid var(--leon-profile-border); border-radius: 18px; background: var(--leon-profile-bg); }
+#article-container .leon-profile img { width: 104px; height: 114px; margin: 0; object-fit: contain; border-radius: 15px; background: #fff; }
+.leon-profile strong { display: block; font-size: 26px; letter-spacing: .03em; }
+.leon-profile span { display: block; margin-top: 5px; opacity: .7; font-size: 14px; }
+@media (max-width: 600px) { .leon-profile { gap: 16px; padding: 16px; } }

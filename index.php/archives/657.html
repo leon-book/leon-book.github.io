@@ -1,0 +1,660 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>vmstat 命令 - 报告虚拟内存统计的工具 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="众所周知，计算机必须有称之为RAM(随机访问内存)的存储器使得计算机工作。RAM指的是插在计算机主板上的物理存储。这里的RAM被用于加载像浏览器、文字处理器这类的程序，实际上，你使用的程序都运行在内存上。 让我们假设你有2GB的内存。当你在运行操作系统时，你的可用内存可能只有1.5GB。接着你使用了大量的程序。当内存使用满之后，你可能再也无法加载更多的程序。浅显地说，计算机可能会说:”抱歉，你">
+<meta property="og:type" content="article">
+<meta property="og:title" content="vmstat 命令 - 报告虚拟内存统计的工具">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/657.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="众所周知，计算机必须有称之为RAM(随机访问内存)的存储器使得计算机工作。RAM指的是插在计算机主板上的物理存储。这里的RAM被用于加载像浏览器、文字处理器这类的程序，实际上，你使用的程序都运行在内存上。 让我们假设你有2GB的内存。当你在运行操作系统时，你的可用内存可能只有1.5GB。接着你使用了大量的程序。当内存使用满之后，你可能再也无法加载更多的程序。浅显地说，计算机可能会说:”抱歉，你">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/migrated/0c3be43326bfb0d6ad2f.jpg">
+<meta property="article:published_time" content="2024-03-18T11:24:00.000Z">
+<meta property="article:modified_time" content="2024-03-18T11:24:00.000Z">
+<meta property="article:author" content="leon">
+<meta property="article:tag" content="工具">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/migrated/0c3be43326bfb0d6ad2f.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "vmstat 命令 - 报告虚拟内存统计的工具",
+  "url": "https://leon-book.github.io/blog/index.php/archives/657.html",
+  "image": "https://leon-book.github.io/blog/assets/migrated/0c3be43326bfb0d6ad2f.jpg",
+  "datePublished": "2024-03-18T11:24:00.000Z",
+  "dateModified": "2024-03-18T11:24:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/657.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'vmstat 命令 - 报告虚拟内存统计的工具',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/migrated/0c3be43326bfb0d6ad2f.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">vmstat 命令 - 报告虚拟内存统计的工具</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">vmstat 命令 - 报告虚拟内存统计的工具</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2024-03-18T11:24:00.000Z" title="发表于 2024-03-18 20:24:00">2024-03-18</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2024-03-18T11:24:00.000Z" title="更新于 2024-03-18 20:24:00">2024-03-18</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E5%85%B6%E4%BB%96/">其他</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/657.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<p>众所周知，计算机必须有称之为RAM(随机访问内存)的存储器使得计算机工作。RAM指的是插在计算机主板上的物理存储。这里的RAM被用于加载像浏览器、文字处理器这类的程序，实际上，你使用的程序都运行在内存上。</p>
+<p>让我们假设你有2GB的内存。当你在运行操作系统时，你的可用内存可能只有1.5GB。接着你使用了大量的程序。当内存使用满之后，你可能再也无法加载更多的程序。浅显地说，计算机可能会说:”抱歉，你不能在运行更多的程序了，如果你还要运行其他的程序请先关闭一些程序。</p>
+<p><img src="/blog/assets/migrated/0c3be43326bfb0d6ad2f.jpg" alt="photo\_2024-03-18 19.23.37.jpeg" title="photo_2024-03-18 19.23.37.jpeg"></p>
+<p>为了解决这个问题，包括Linux在内的各种操作系统使用了一个称之为虚拟内存的方法。这个方法会搜索最近不在使用的程序的内存区域，接着将它们拷贝到计算机硬盘上。这会腾出一些剩余内存空间给你有机会运行更多的程序。</p>
+<p>为了监视虚拟内存的活动，我们使用<code>vmstat</code>工具。</p>
+<h1 id="什么是-vmstat"><a href="#什么是-vmstat" class="headerlink" title="什么是 vmstat"></a>什么是 vmstat</h1><p>vmstat是一个提供报告虚拟内存统计的工具。它包括了系统内存、交换和实时处理器利用率。</p>
+<h1 id="如何运行-vmstat"><a href="#如何运行-vmstat" class="headerlink" title="如何运行 vmstat"></a>如何运行 vmstat</h1><p>和mpstat一样，vmstat包含在sysstat包中。如果你还没有，请安装sysstat包。</p>
+<p>为了运行vmstat，只需在控制台输入vmstat。不带参数运行vmstat会显示vmstat的默认结果。</p>
+<p><img src="/blog/assets/migrated/132e55dd8830a48bc913.jpg" alt="photo\_2024-03-18 19.25.49.jpeg" title="photo_2024-03-18 19.25.49.jpeg"></p>
+<p>让我们看下如何了解vmstat提供的信息：</p>
+<h1 id="Procs"><a href="#Procs" class="headerlink" title="Procs"></a>Procs</h1><p>procs有 r列和b列。r列代表等待访问CPU的进程数量。而b列意味着睡眠进程的数量。在这些列的下面，是它们的值。从上面的截图中，我门有2个进程正在等待访问CPU，0个睡眠进程。</p>
+<h1 id="Memory"><a href="#Memory" class="headerlink" title="Memory"></a>Memory</h1><p><code>memory</code>有<code>swpd</code>、 <code>free</code>、 <code>buff</code> 和 <code>cache</code> 这些列。这些信息和命令free -m相同。swpd列显示了有多少内存已经被交换到了交换文件或者磁盘。free列显示了未分配的可用内存。buff列显示了使用中的内存。cache列显示了有多少内存可以被交换到交换文件或者磁盘上如果一些应用需要他们。</p>
+<h1 id="Swap"><a href="#Swap" class="headerlink" title="Swap"></a>Swap</h1><p>swap显示了从交换系统上发送或取回了多少内存。si列告诉我们每秒有多少内存被从swap移到真实内存中（In）。so列告诉我们每秒有多少内存被从真实内存移到swap中（Out）。</p>
+<h1 id="I-O"><a href="#I-O" class="headerlink" title="I&#x2F;O"></a>I&#x2F;O</h1><p>io依据块的读写显示了每秒输入输出的活动。bi列告诉我们收到的块数量，bo列告诉我们发送的块数量。</p>
+<h1 id="System"><a href="#System" class="headerlink" title="System"></a>System</h1><p>system显示了每秒的系统操作数量。in列显示了系统每秒被中断的数量。cs列显示了系统为了处理所以任务而上下文切换的数量。</p>
+<h1 id="CPU"><a href="#CPU" class="headerlink" title="CPU"></a>CPU</h1><p>CPU告诉了我们CPU资源的使用情况。us列显示了处理器在非内核程序消耗的时间。sy列显示了处理器在内核相关任务上消耗的时间。id列显示了处理器的空闲时间。wa列显示了处理器在等待IO操作完成以继续处理任务上的时间。</p>
+<h1 id="按间隔时间运行vmstat"><a href="#按间隔时间运行vmstat" class="headerlink" title="按间隔时间运行vmstat"></a>按间隔时间运行<code>vmstat</code></h1><p>作为一个统计工具，使用vmstat最好的方法是使用间隔时间。你可以间断地捕捉系统状态。让我假设以5秒的间隔运行vmstat。只需要在你的控制台中输入<code>vmstat 5</code>就行。</p>
+<p><img src="/blog/assets/migrated/bbaeb655b3d557060805.jpg" alt="photo\_2024-03-18 19.27.47.jpeg" title="photo_2024-03-18 19.27.47.jpeg"></p>
+<p>命令将会每5秒运行一次，直到你按下Ctrl-C来终止它。你也可以使用第二个参数来控制vmstat运行的次数。</p>
+<p><img src="/blog/assets/migrated/5bebc7851a64f30d3f25.jpg" alt="photo\_2024-03-18 19.28.28.jpeg" title="photo_2024-03-18 19.28.28.jpeg"></p>
+<p>上面的命令会<code>以5秒的间隔运行7次vmstat</code>。</p>
+<h1 id="显示活跃和非活跃内存"><a href="#显示活跃和非活跃内存" class="headerlink" title="显示活跃和非活跃内存"></a>显示活跃和非活跃内存</h1><p>要这么做，你可以在<code>vmstat</code>后加入<code>-a</code>选项。这是个示例。</p>
+<p><img src="/blog/assets/migrated/daceb8d3c05aa1d8a5bb.jpg" alt="photo\_2024-03-18 19.29.34.jpeg" title="photo_2024-03-18 19.29.34.jpeg"></p>
+<h1 id="显示磁盘统计数据总结"><a href="#显示磁盘统计数据总结" class="headerlink" title="显示磁盘统计数据总结"></a>显示磁盘统计数据总结</h1><p>如果你想，<code>vmstat</code>也可以打印系统磁盘活动统计。使用<code>-D</code>选项就行。</p>
+<p><img src="/blog/assets/migrated/ab4ee348e31e9d26150b.jpg" alt="photo\_2024-03-18 19.30.53.jpeg" title="photo_2024-03-18 19.30.53.jpeg"></p>
+<h1 id="显示单位"><a href="#显示单位" class="headerlink" title="显示单位"></a>显示单位</h1><p>你可以选择你想打印的显示单位字符。在-S后跟上k (小写，1000)、 K (大写，1024)、 m (小写，1000000)、 M (大写，1048576) 字节. 如果你不想选择单位，默认使用的是K (1024)。</p>
+<p><img src="/blog/assets/migrated/68589f966035acc6b027.jpg" alt="photo\_2024-03-18 19.33.44.jpeg" title="photo_2024-03-18 19.33.44.jpeg"></p>
+<h1 id="显示某个磁盘分区的详细统计数据"><a href="#显示某个磁盘分区的详细统计数据" class="headerlink" title="显示某个磁盘分区的详细统计数据"></a>显示某个磁盘分区的详细统计数据</h1><p>要这么做，你可以使用-p选项跟上设备名。这里有个例子。</p>
+<p><img src="/blog/assets/migrated/4e60f47217a3ce6554b7.jpg" alt="photo\_2024-03-18 19.34.22.jpeg" title="photo_2024-03-18 19.34.22.jpeg"></p>
+<h1 id="文件"><a href="#文件" class="headerlink" title="文件"></a>文件</h1><p>vmstat实际上是使用这些文件获取的数据。</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">/proc/meminfo</span><br><span class="line">/proc/stat</span><br><span class="line">/proc<span class="comment">/*/stat </span></span><br></pre></td></tr></table></figure>
+
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>如果你感觉系统运行超出内存了，在你增加物理内存前，这个工具可以帮助你确定问题的根本原因。通常上，你可以在控制台中输入man vmstat获取更多的关于vmstat的详细信息，这会为你显示vmstat的手册页。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/657.html">https://leon-book.github.io/blog/index.php/archives/657.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/%E5%B7%A5%E5%85%B7/">工具</a></div><div class="post-share"><div class="social-share" data-image="/blog/assets/migrated/0c3be43326bfb0d6ad2f.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/658.html" title="PHP Warning: Redis::connect(): php_network_getaddresses: getaddrinfo failed: Name or service not known"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">PHP Warning: Redis::connect(): php_network_getaddresses: getaddrinfo failed: Name or service not known</div></div><div class="info-2"><div class="info-item-1">  当你在使用 Redis 扩展连接到 Redis 服务器时，可能会遇到 Redis::connect(): php_network_getaddresses: getaddrinfo failed: Name or service not known 的警告。这个警告通常表示 PHP 无法解析 Redis 服务器的主机名或无法连接到 Redis 服务器。以下是一篇关于解决这个问题的技术博客的 Markdown 格式示例： 解决 Redis 连接问题：php_network_getaddresses在使用 Redis 扩展连接到 Redis 服务器时，可能会遇到以下警告信息： PHP Warning: Redis::connect(): php_network_getaddresses: getaddrinfo failed: Name or service not known  这个警告通常表示 PHP 无法解析 Redis 服务器的主机名或无法连接到 Redis 服务器。下面是一些可能的解决方法： 1. 检查主机名和端口确保你在连接 Redis 服务器时使用了正确的主机名和端...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/656.html" title="使用 iftop 监控网络流量"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">使用 iftop 监控网络流量</div></div><div class="info-2"><div class="info-item-1">  非常抱歉，似乎在转换成 Markdown 格式时出现了问题。以下是使用 iftop 监控网络流量的修正版技术博客：  使用 iftop 监控网络流量在网络管理和故障排除中，监控网络流量是一项重要的任务。iftop 是一个开源的命令行工具，可以实时显示网络接口的流量信息。本篇博客将介绍如何使用 iftop 来监控网络流量。 什么是 iftop？iftop 是一个基于终端的实时网络流量监控工具，它可以显示网络接口的实时流量信息，包括源IP地址、目标IP地址、端口和传输速率等。通过 iftop，您可以了解网络中的数据流向和流量分布情况。 安装 iftop在开始使用 iftop 之前，需要先安装它。以下是在常见 Linux 发行版上安装 iftop 的命令：  Ubuntu&#x2F;Debian:  sudo apt-get install iftop   CentOS&#x2F;Fedora:  sudo yum install iftop  使用 iftop 监控网络流量安装完成后，可以按照以下步骤使用 iftop 监控网络流量：  打开终端。 运行以下命令启动 iftop： ...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/index.php/archives/258.html" title="Netcat 安装 网络工具中的瑞士军刀"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2018-01-01</div><div class="info-item-2">Netcat 安装 网络工具中的瑞士军刀</div></div><div class="info-2"><div class="info-item-1">  Netcat（简称为nc）。Netcat是一款强大而多功能的网络工具，它提供了在网络上进行数据传输和通信的能力。无论是创建、监听和连接网络套接字，执行端口扫描，还是进行数据传输和调试，Netcat都可以胜任。 本文将介绍如何在常见的Linux发行版上安装Netcat，并提供一些基本的使用示例。 安装NetcatNetcat在Linux系统中的安装非常简单。以下是在Ubuntu&#x2F;Debian和CentOS&#x2F;RHEL上安装Netcat的步骤。 Ubuntu&#x2F;Debian 打开终端。  运行以下命令以使用apt包管理器安装Netcat： sudo apt updatesudo apt install netcat  等待安装完成。安装完成后，Netcat将可用于使用nc命令。   CentOS&#x2F;RHEL 打开终端。  运行以下命令以使用yum包管理器安装Netcat： sudo yum updatesudo yum install nmap-ncat  等待安装完成。安装完成后，Netcat将可用于使用nc命令。   使用示例一旦安装完成，您...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/751.html" title="web目录扫描工具汇总"><img class="cover" src="/blog/assets/migrated/d31a508cad9fd95b6f98.png" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2024-10-30</div><div class="info-item-2">web目录扫描工具汇总</div></div><div class="info-2"><div class="info-item-1">  01 GobusterGobuster 是一个开源工具，主要用于网站目录扫描和子域名收集。安装也很简单，只需执行下面命令即可！ apt-get install gobuster   使用参数：  -u : –url 网站的域名或者IP -w : 用户自定义字典 -x : 自定义文件类型如php jsp  gobuster dir -u http://192.168.0.106/bolt/ -w /usr/share/wordlists/dirb/big.txt -x php   02 DIRBDIRB 是一个 Web 内容扫描器。它是 kali linux 内置的工具，通过对 Web 服务器发起基于字典的攻击并分析响应来工作，但请记住它是内容扫描器而不是漏洞扫描器。 使用也很简单，在DIRB后面直接加目标域名即可。 dirb https://bbskali.cn   03 dirsearchDirsearch 是一个用 Python 编写的暴力扫描工具，用于查找隐藏的 Web 目录和文件。它可以在 Windows、Linux 和 macOS 上运行，而且终端界面配色也比较漂亮...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/735.html" title="DNSDumpster.com 网站介绍及 DNS 流量图分析"><img class="cover" src="/blog/assets/migrated/a316209a8bf29f4aed7c.png" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2024-10-23</div><div class="info-item-2">DNSDumpster.com 网站介绍及 DNS 流量图分析</div></div><div class="info-2"><div class="info-item-1">  DNS 流量 https://dnsdumpster.com/DNSDumpster.com 是一个免费的域名研究工具，专注于发现与特定域名相关的主机。它在安全评估过程中扮演着重要角色，帮助用户从攻击者的视角识别可见主机，进而评估网络的攻击面。 主要功能DNS 记录查找：提供对域名相关 DNS 记录的查找，帮助用户获取网络结构的信息。被动侦察：利用开源情报资源，DNSDumpster 不依赖暴力破解子域名，而是通过收集和整理互联网上的公开信息来提供相关数据。攻击面映射：用户可以通过对目标组织的 DNS 记录进行“虚拟垃圾桶潜水”，来绘制其攻击面。  </div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/744.html" title="《用户体验要素》读书笔记：产品设计不只是把页面画出来"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2024-10-27</div><div class="info-item-2">《用户体验要素》读书笔记：产品设计不只是把页面画出来</div></div><div class="info-2"><div class="info-item-1">   书名：《用户体验要素：以用户为中心的产品设计》英文名： The Elements of User Experience作者： Jesse James Garrett  前言最近在继续补产品方面的知识。 前面看《人人都是产品经理》的时候，我开始对产品经理整个工作流程有了一个比较基础的认识。 包括： 用户 ↓需求 ↓产品设计 ↓原型 ↓开发 ↓上线 ↓迭代  但是继续往下学习的时候，我发现自己还有一个很明显的“开发惯性”。 就是看到一个需求以后，很容易直接开始想：  这个功能应该怎么设计？  甚至打开 Axure 以后，就开始考虑：  页面怎么布局？ 按钮放在哪里？ 弹窗怎么设计？ 点击以后跳转到哪里？  但是《用户体验要素》让我开始意识到： 页面其实已经是产品设计非常靠后的一个环节了。 在开始画页面之前，还有很多问题需要先想清楚。  一、产品设计并不是从页面开始以前作为开发接需求的时候，我们看到的产品通常已经比较完整了。 产品经理可能已经提供：  PRD 原型图 流程图 交互说明  所以开发天然会认为： 需求 ↓原型 ↓开发  但是如果自己开始做产品，就会发现： 原型不是需求...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/140.html" title="linux 性能检监测工具 time"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2016-12-20</div><div class="info-item-2">linux 性能检监测工具 time</div></div><div class="info-2"><div class="info-item-1">  Linux 性能检测监测工具 - Time在 Linux 系统中，性能监测是优化和调试的关键部分。为了评估程序或命令的执行时间以及系统性能，Linux 提供了一个强大的工具，即 time 命令。本篇博客将介绍如何使用 time 命令来进行性能检测和监测。 1. 什么是 time 命令？time 命令是一个用于测量程序执行时间的内置 Linux 命令。它可以精确地计算命令或程序的实际执行时间，包括用户 CPU 时间、系统 CPU 时间和墙钟时间。通过 time 命令，我们可以了解程序的执行效率和资源利用情况。 2. 基本用法要使用 time 命令，只需在要执行的命令之前添加 time。以下是基本的用法： time command  其中，command 是你要执行的命令或程序。 例如，我们要测量 ls 命令的执行时间，可以这样使用： time ls  time 命令会打印出命令的执行时间统计信息，包括实际时间、用户 CPU 时间和系统 CPU 时间。 3. 输出结果解析time 命令的输出结果包含三个部分：  实际时间（Real time）：即命令实际执行的总时间。它包括了命令...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/333.html" title="自建短链接服务"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2019-01-15</div><div class="info-item-2">自建短链接服务</div></div><div class="info-2"><div class="info-item-1">  收藏开源项目 官网地址 : https://yourls.org/#API 项目地址 : https://github.com/YOURLS/YOURLS </div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BB%80%E4%B9%88%E6%98%AF-vmstat"><span class="toc-number">1.</span> <span class="toc-text">什么是 vmstat</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E8%BF%90%E8%A1%8C-vmstat"><span class="toc-number">2.</span> <span class="toc-text">如何运行 vmstat</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Procs"><span class="toc-number">3.</span> <span class="toc-text">Procs</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Memory"><span class="toc-number">4.</span> <span class="toc-text">Memory</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Swap"><span class="toc-number">5.</span> <span class="toc-text">Swap</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#I-O"><span class="toc-number">6.</span> <span class="toc-text">I&#x2F;O</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#System"><span class="toc-number">7.</span> <span class="toc-text">System</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#CPU"><span class="toc-number">8.</span> <span class="toc-text">CPU</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%8C%89%E9%97%B4%E9%9A%94%E6%97%B6%E9%97%B4%E8%BF%90%E8%A1%8Cvmstat"><span class="toc-number">9.</span> <span class="toc-text">按间隔时间运行vmstat</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%98%BE%E7%A4%BA%E6%B4%BB%E8%B7%83%E5%92%8C%E9%9D%9E%E6%B4%BB%E8%B7%83%E5%86%85%E5%AD%98"><span class="toc-number">10.</span> <span class="toc-text">显示活跃和非活跃内存</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%98%BE%E7%A4%BA%E7%A3%81%E7%9B%98%E7%BB%9F%E8%AE%A1%E6%95%B0%E6%8D%AE%E6%80%BB%E7%BB%93"><span class="toc-number">11.</span> <span class="toc-text">显示磁盘统计数据总结</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%98%BE%E7%A4%BA%E5%8D%95%E4%BD%8D"><span class="toc-number">12.</span> <span class="toc-text">显示单位</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%98%BE%E7%A4%BA%E6%9F%90%E4%B8%AA%E7%A3%81%E7%9B%98%E5%88%86%E5%8C%BA%E7%9A%84%E8%AF%A6%E7%BB%86%E7%BB%9F%E8%AE%A1%E6%95%B0%E6%8D%AE"><span class="toc-number">13.</span> <span class="toc-text">显示某个磁盘分区的详细统计数据</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%96%87%E4%BB%B6"><span class="toc-number">14.</span> <span class="toc-text">文件</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">15.</span> <span class="toc-text">总结</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

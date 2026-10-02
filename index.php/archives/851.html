@@ -1,0 +1,805 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>产品要懂得的 性能指标：性能需求，你要好好提 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="产品经理提性能需求时，最容易写出的一句话是：  页面打开要快一点，系统要稳定，用户多的时候也不能卡。  这句话方向没错，但没法开发，也没法验收。 “快一点”到底是 1 秒还是 5 秒？“用户多”是 100 人同时在线，还是 100 人同一秒提交订单？“稳定”是全年不宕机，还是请求成功率达到 99.9%？如果这些问题没有说清楚，开发只能凭经验实现，测试也只能凭感觉验收。 一份可执行的性能需求，至">
+<meta property="og:type" content="article">
+<meta property="og:title" content="产品要懂得的 性能指标：性能需求，你要好好提">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/851.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="产品经理提性能需求时，最容易写出的一句话是：  页面打开要快一点，系统要稳定，用户多的时候也不能卡。  这句话方向没错，但没法开发，也没法验收。 “快一点”到底是 1 秒还是 5 秒？“用户多”是 100 人同时在线，还是 100 人同一秒提交订单？“稳定”是全年不宕机，还是请求成功率达到 99.9%？如果这些问题没有说清楚，开发只能凭经验实现，测试也只能凭感觉验收。 一份可执行的性能需求，至">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/migrated/754bf9f7ff97a69f0123.png">
+<meta property="article:published_time" content="2026-05-11T04:32:00.000Z">
+<meta property="article:modified_time" content="2026-05-11T04:32:00.000Z">
+<meta property="article:author" content="leon">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/migrated/754bf9f7ff97a69f0123.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "产品要懂得的 性能指标：性能需求，你要好好提",
+  "url": "https://leon-book.github.io/blog/index.php/archives/851.html",
+  "image": "https://leon-book.github.io/blog/assets/migrated/754bf9f7ff97a69f0123.png",
+  "datePublished": "2026-05-11T04:32:00.000Z",
+  "dateModified": "2026-05-11T04:32:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/851.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '产品要懂得的 性能指标：性能需求，你要好好提',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/migrated/754bf9f7ff97a69f0123.png);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">产品要懂得的 性能指标：性能需求，你要好好提</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">产品要懂得的 性能指标：性能需求，你要好好提</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-05-11T04:32:00.000Z" title="发表于 2026-05-11 13:32:00">2026-05-11</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-05-11T04:32:00.000Z" title="更新于 2026-05-11 13:32:00">2026-05-11</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E4%BA%A7%E5%93%81/">产品</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/851.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<p>产品经理提性能需求时，最容易写出的一句话是：</p>
+<blockquote>
+<p>页面打开要快一点，系统要稳定，用户多的时候也不能卡。</p>
+</blockquote>
+<p>这句话方向没错，但没法开发，也没法验收。</p>
+<p>“快一点”到底是 1 秒还是 5 秒？“用户多”是 100 人同时在线，还是 100 人同一秒提交订单？“稳定”是全年不宕机，还是请求成功率达到 99.9%？如果这些问题没有说清楚，开发只能凭经验实现，测试也只能凭感觉验收。</p>
+<p>一份可执行的性能需求，至少要说清楚四件事：</p>
+<blockquote>
+<p><strong>在什么场景下，用多大的数据量和访问压力，要求哪个指标达到什么数值。</strong></p>
+</blockquote>
+<p>下面是产品经理需要掌握的 9 类性能指标。</p>
+<p><img src="/blog/assets/migrated/754bf9f7ff97a69f0123.png" alt="产品性能指标地图" title="产品性能指标地图"></p>
+<p>这 9 类指标可以先分成三个问题：<strong>用户等多久、系统扛多少、能否稳定运行。</strong> 产品不需要把自己变成运维工程师，但要知道每个指标看什么参数、解决什么问题。</p>
+<hr>
+<h2 id="1-响应时间：用户要等多久"><a href="#1-响应时间：用户要等多久" class="headerlink" title="1. 响应时间：用户要等多久"></a>1. 响应时间：用户要等多久</h2><p>响应时间，是从用户发起操作，到用户看到结果所经历的时间。</p>
+<p>它不是一个单独的“后端接口耗时”，而是一整条请求链路的总和：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">用户操作</span><br><span class="line">  ↓</span><br><span class="line">客户端处理</span><br><span class="line">  ↓</span><br><span class="line">网络传输</span><br><span class="line">  ↓</span><br><span class="line">网关、鉴权与排队</span><br><span class="line">  ↓</span><br><span class="line">服务端业务处理</span><br><span class="line">  ↓</span><br><span class="line">数据库、缓存及外部服务调用</span><br><span class="line">  ↓</span><br><span class="line">结果返回</span><br><span class="line">  ↓</span><br><span class="line">客户端解析、渲染与展示</span><br></pre></td></tr></table></figure>
+
+<p>可以简单理解为：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">用户感知响应时间</span><br><span class="line">= 客户端发送耗时</span><br><span class="line">+ 上行网络耗时</span><br><span class="line">+ 网关与排队耗时</span><br><span class="line">+ 服务端处理耗时</span><br><span class="line">+ 数据库/缓存/外部依赖耗时</span><br><span class="line">+ 下行网络耗时</span><br><span class="line">+ 客户端渲染耗时</span><br></pre></td></tr></table></figure>
+
+<p><img src="/blog/assets/migrated/fd87db1ceffb987abb50.png" alt="响应时间全链路拆解" title="响应时间全链路拆解"></p>
+<p>因此，用户说“页面打开用了 3 秒”，不等于“接口响应用了 3 秒”。接口可能只用了 300 毫秒，其余时间消耗在网络、多个接口串行请求、图片下载或页面渲染上。</p>
+<h3 id="不要只写平均响应时间"><a href="#不要只写平均响应时间" class="headerlink" title="不要只写平均响应时间"></a>不要只写平均响应时间</h3><p>平均值很容易掩盖慢请求。比如 100 次请求中，95 次耗时 200 毫秒，5 次耗时 8 秒，平均值看起来还可以，但那 5 个用户已经认为系统坏了。</p>
+<p>性能需求通常应关注分位值：</p>
+<ul>
+<li>P50：50% 的请求不超过这个时间，代表普通用户体验。</li>
+<li>P95：95% 的请求不超过这个时间，适合多数业务验收。</li>
+<li>P99：99% 的请求不超过这个时间，用于关注尾部慢请求。</li>
+<li>Max：最慢请求耗时，可辅助排查，但一般不建议单独作为承诺指标。</li>
+</ul>
+<h3 id="用户体验可以参考“1—3—5”，但不能机械套用"><a href="#用户体验可以参考“1—3—5”，但不能机械套用" class="headerlink" title="用户体验可以参考“1—3—5”，但不能机械套用"></a>用户体验可以参考“1—3—5”，但不能机械套用</h3><ul>
+<li>1 秒内：用户通常感觉操作流畅。</li>
+<li>1～3 秒：用户能感知到等待，但多数情况下可以接受。</li>
+<li>3～5 秒：应显示明确的加载状态或处理进度。</li>
+<li>超过 5 秒：用户更容易重复点击、离开页面，或者认为系统异常。</li>
+</ul>
+<p>这只是体验参考，不是所有业务的统一标准。支付结果查询、登录、搜索和十万条数据导出的合理等待时间完全不同。</p>
+<h3 id="合格的需求写法"><a href="#合格的需求写法" class="headerlink" title="合格的需求写法"></a>合格的需求写法</h3><figure class="highlight text"><table><tr><td class="code"><pre><span class="line">在 1,000 名并发用户、商品列表包含 10 万条数据、筛选结果不超过 1 万条的条件下：</span><br><span class="line">- 搜索接口响应时间 P95 ≤ 800ms，P99 ≤ 1.5s；</span><br><span class="line">- 首屏可见时间 P95 ≤ 2s；</span><br><span class="line">- 超过 1s 时页面显示加载状态；</span><br><span class="line">- 请求超过 5s 未完成时提示用户稍后重试，不允许无反馈。</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="2-并发用户数：同一时刻有多少人在操作"><a href="#2-并发用户数：同一时刻有多少人在操作" class="headerlink" title="2. 并发用户数：同一时刻有多少人在操作"></a>2. 并发用户数：同一时刻有多少人在操作</h2><p>并发用户数不是“注册用户数”，也不是“日活用户数”。它描述的是同一时间段内，正在向系统发起操作的用户数量。</p>
+<p>并发场景至少分两种：</p>
+<ul>
+<li>混合并发：不同用户同时浏览、搜索、提交、刷新，更接近真实流量。</li>
+<li>单场景并发：大量用户同时执行同一个操作，例如抢购、开票、提交订单或考试交卷，更容易形成流量尖峰。</li>
+</ul>
+<p>“支持 10 万用户”没有实际意义。产品需要说明：10 万是注册量、同时在线人数，还是同一秒发起请求的人数。</p>
+<p><img src="/blog/assets/migrated/993579cba89367c1663f.png" alt="并发用户数估算与峰值校准" title="并发用户数估算与峰值校准"></p>
+<p>用日活和使用时长估算平均并发，只适合早期没有监控数据时做容量起点。上线后的需求应优先使用真实小时分布和历史峰值，并额外考虑营销活动、开盘、抢购等集中流量。</p>
+<h3 id="合格的需求写法-1"><a href="#合格的需求写法-1" class="headerlink" title="合格的需求写法"></a>合格的需求写法</h3><figure class="highlight text"><table><tr><td class="code"><pre><span class="line">活动开始后的前 5 分钟，预计有 20,000 人在线；峰值时有 3,000 名用户同时进入活动页，其中约 500 名用户会在同一秒提交领取请求。系统在该压力下仍需满足既定响应时间和成功率。</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="3-吞吐量：系统每秒能处理多少业务"><a href="#3-吞吐量：系统每秒能处理多少业务" class="headerlink" title="3. 吞吐量：系统每秒能处理多少业务"></a>3. 吞吐量：系统每秒能处理多少业务</h2><p>吞吐量表示系统在单位时间内完成的工作量。常见口径包括：</p>
+<ul>
+<li>QPS：每秒处理的请求数。</li>
+<li>TPS：每秒完成的事务数。</li>
+<li>每秒订单数、每分钟导入行数、每小时生成报表数：更贴近业务的吞吐口径。</li>
+</ul>
+<p>QPS 和 TPS 不能直接画等号。一次“提交订单”可能包含查询商品、校验库存、计算优惠、创建订单和扣减库存等多个请求，但从业务角度只完成了一笔交易。</p>
+<p>产品经理更应该优先描述业务吞吐量，再由技术团队换算接口和系统压力。</p>
+<p><img src="/blog/assets/migrated/12145947cd803436b282.png" alt="并发、QPS 与 TPS 的关系" title="并发、QPS 与 TPS 的关系"></p>
+<h3 id="合格的需求写法-2"><a href="#合格的需求写法-2" class="headerlink" title="合格的需求写法"></a>合格的需求写法</h3><figure class="highlight text"><table><tr><td class="code"><pre><span class="line">秒杀开始后的峰值 10 秒内，系统每秒需接收 5,000 次下单尝试，并成功处理至少 1,000 笔有效订单；重复提交不得生成重复订单。</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="4-成功率与错误率：快，但不能错"><a href="#4-成功率与错误率：快，但不能错" class="headerlink" title="4. 成功率与错误率：快，但不能错"></a>4. 成功率与错误率：快，但不能错</h2><p>如果系统响应很快，但大量请求失败，这种“性能好”没有业务价值。</p>
+<p>常见指标包括：</p>
+<ul>
+<li>请求成功率；</li>
+<li>超时率；</li>
+<li>系统错误率；</li>
+<li>业务失败率；</li>
+<li>重试成功率。</li>
+</ul>
+<p>这里必须区分两类失败：</p>
+<ul>
+<li>系统失败：超时、服务异常、数据库错误、网络错误等。</li>
+<li>业务拒绝：余额不足、库存不足、验证码错误、无操作权限等。</li>
+</ul>
+<p>业务拒绝通常不应该算作系统错误，否则指标会失真；但产品需要确认每一种结果是否符合预期。</p>
+<h3 id="合格的需求写法-3"><a href="#合格的需求写法-3" class="headerlink" title="合格的需求写法"></a>合格的需求写法</h3><figure class="highlight text"><table><tr><td class="code"><pre><span class="line">在峰值压力下，系统请求成功率 ≥ 99.95%，系统错误率 ≤ 0.05%，超时率 ≤ 0.1%。因库存不足导致的正常业务拒绝单独统计，不计入系统错误率。</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="5-可用性：系统有多少时间真正可用"><a href="#5-可用性：系统有多少时间真正可用" class="headerlink" title="5. 可用性：系统有多少时间真正可用"></a>5. 可用性：系统有多少时间真正可用</h2><p>可用性回答的是：用户需要系统时，系统能否正常提供服务。</p>
+<p>常见表达是 99.9%、99.95% 或 99.99%。以 30 天计算，大致对应：</p>
+<table><thead><tr><th>月度可用性</th><th align="right">每月最多不可用时间（约）</th></tr></thead><tbody><tr><td>99.9%</td><td align="right">43 分钟</td></tr><tr><td>99.95%</td><td align="right">22 分钟</td></tr><tr><td>99.99%</td><td align="right">4.3 分钟</td></tr></tbody></table>
+
+<p>但只写一个百分比还不够，还要定义：</p>
+<ul>
+<li>哪些核心功能纳入计算；</li>
+<li>计划维护是否排除；</li>
+<li>部分用户失败是否算不可用；</li>
+<li>统计周期是月、季度还是年；</li>
+<li>由哪个监控口径判定开始和恢复时间。</li>
+</ul>
+<p>状态可见性也是可用性的一部分。当系统正在处理、降级或发生异常时，应让用户知道发生了什么，并在合适的时间给出反馈，而不是一直转圈。</p>
+<h3 id="合格的需求写法-4"><a href="#合格的需求写法-4" class="headerlink" title="合格的需求写法"></a>合格的需求写法</h3><figure class="highlight text"><table><tr><td class="code"><pre><span class="line">登录、查询余额和提交订单三个核心功能的月度可用性均需达到 99.95%。若连续 1 分钟内超过 20% 的请求失败，则该功能记为不可用；计划维护窗口不计入，但需提前通知。</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="6-资源利用率：系统有没有余量"><a href="#6-资源利用率：系统有没有余量" class="headerlink" title="6. 资源利用率：系统有没有余量"></a>6. 资源利用率：系统有没有余量</h2><p>CPU、内存、磁盘和网络是技术资源指标。产品不一定要规定具体实现，但需要知道：系统如果长期跑满，就没有能力应对下一次流量上涨。</p>
+<p>常见观察项包括：</p>
+<ul>
+<li>CPU 利用率：计算资源是否接近饱和；</li>
+<li>内存使用率：是否持续增长、是否存在泄漏风险；</li>
+<li>磁盘吞吐和 I&#x2F;O 等待：读写是否成为瓶颈；</li>
+<li>网络吞吐和连接数：是否接近带宽或连接上限。</li>
+</ul>
+<p>“CPU 必须低于 75%”“内存必须低于 70%”可以作为初步参考，但不能脱离部署方式和业务特点直接套用。更重要的是明确峰值持续时间、扩容策略和安全余量。</p>
+<h3 id="合格的需求写法-5"><a href="#合格的需求写法-5" class="headerlink" title="合格的需求写法"></a>合格的需求写法</h3><figure class="highlight text"><table><tr><td class="code"><pre><span class="line">在目标峰值流量持续 30 分钟的压测中，系统不得因资源耗尽发生错误；核心服务应保留至少 30% 的容量余量，并能够在流量达到目标值 120% 时触发扩容或限流保护。</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="7-数据规模与批处理时长：一万条和十万条不是同一个需求"><a href="#7-数据规模与批处理时长：一万条和十万条不是同一个需求" class="headerlink" title="7. 数据规模与批处理时长：一万条和十万条不是同一个需求"></a>7. 数据规模与批处理时长：一万条和十万条不是同一个需求</h2><p>查询、导入、导出、统计和报表类需求，必须把数据规模与完成时间一起写。</p>
+<p>例如：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">1 万条数据导出完成时间 ≤ 3s；</span><br><span class="line">3 万条数据导出完成时间 ≤ 5s；</span><br><span class="line">10 万条数据导出完成时间 ≤ 8s。</span><br></pre></td></tr></table></figure>
+
+<p>这种写法比“导出要快”清楚，但还缺少几个关键条件：</p>
+<ul>
+<li>每条数据包含多少字段；</li>
+<li>是否包含图片、附件或复杂计算结果；</li>
+<li>导出格式是什么；</li>
+<li>是同步下载还是后台生成；</li>
+<li>多人同时导出时是否仍满足要求；</li>
+<li>超过上限后系统如何处理。</li>
+</ul>
+<h3 id="合格的需求写法-6"><a href="#合格的需求写法-6" class="headerlink" title="合格的需求写法"></a>合格的需求写法</h3><figure class="highlight text"><table><tr><td class="code"><pre><span class="line">导出范围最多 10 万条，每条包含 20 个文本字段，文件格式为 XLSX。在 50 个导出任务同时执行时，95% 的任务应在 30 秒内生成。超过 3 秒的任务转为后台处理，完成后通知用户下载；文件保留 24 小时。</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="8-客户端流畅度：不只看接口快不快"><a href="#8-客户端流畅度：不只看接口快不快" class="headerlink" title="8. 客户端流畅度：不只看接口快不快"></a>8. 客户端流畅度：不只看接口快不快</h2><p>移动端和 Web 页面即使接口很快，也可能因为渲染、长列表、图片或动画处理不当而卡顿。</p>
+<p>常见指标包括：</p>
+<ul>
+<li>FPS：每秒显示帧数；</li>
+<li>卡顿帧或慢帧占比；</li>
+<li>页面滚动是否掉帧；</li>
+<li>点击后多久出现可见反馈；</li>
+<li>页面首屏和关键内容何时可操作。</li>
+</ul>
+<p>60 FPS 通常意味着每帧只有约 16.7 毫秒的处理预算；30 FPS 对应约 33.3 毫秒。单写“FPS 达到 60”仍然不够，还需要指定机型、系统版本、页面和操作路径。</p>
+<h3 id="合格的需求写法-7"><a href="#合格的需求写法-7" class="headerlink" title="合格的需求写法"></a>合格的需求写法</h3><figure class="highlight text"><table><tr><td class="code"><pre><span class="line">在指定的中端测试机型上，打开包含 200 条数据的行情列表并连续滚动 30 秒，平均 FPS ≥ 55，严重卡顿次数为 0；点击筛选后 100ms 内必须出现可见反馈。</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="9-启动、耗电与流量：移动端长期体验"><a href="#9-启动、耗电与流量：移动端长期体验" class="headerlink" title="9. 启动、耗电与流量：移动端长期体验"></a>9. 启动、耗电与流量：移动端长期体验</h2><p>移动端性能不只是“页面快”，还包括启动速度、耗电量和网络流量。</p>
+<h3 id="启动时间"><a href="#启动时间" class="headerlink" title="启动时间"></a>启动时间</h3><ul>
+<li>冷启动：应用进程不存在，从点击图标到首页可操作；</li>
+<li>热启动：应用仍在内存中，从后台回到前台；</li>
+<li>首次启动：可能还包含初始化、资源解压和用户授权。</li>
+</ul>
+<p>三种启动场景不能混用一个数字。</p>
+<h3 id="耗电量"><a href="#耗电量" class="headerlink" title="耗电量"></a>耗电量</h3><p>耗电与机型、电池健康度、屏幕亮度、网络环境和测试时长有关。只写“耗电不能太高”无法验收，直接与竞品对比也要保证测试条件一致。</p>
+<h3 id="网络流量"><a href="#网络流量" class="headerlink" title="网络流量"></a>网络流量</h3><p>需要关注首装后的资源下载、图片和视频流量、后台刷新频率，以及弱网下的重复请求。</p>
+<h3 id="合格的需求写法-8"><a href="#合格的需求写法-8" class="headerlink" title="合格的需求写法"></a>合格的需求写法</h3><figure class="highlight text"><table><tr><td class="code"><pre><span class="line">在指定测试机型、相同亮度和 Wi-Fi 环境下：</span><br><span class="line">- 冷启动至首页可操作 P95 ≤ 2.5s；</span><br><span class="line">- 热启动至页面可操作 P95 ≤ 1s；</span><br><span class="line">- 前台连续浏览行情 30 分钟，耗电量不超过电池总量的 5%；</span><br><span class="line">- 浏览 100 个普通图文条目产生的下行流量不超过 50MB。</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="性能需求应该怎么提"><a href="#性能需求应该怎么提" class="headerlink" title="性能需求应该怎么提"></a>性能需求应该怎么提</h2><p>写性能需求时，可以直接套下面这个公式：</p>
+<p><img src="/blog/assets/migrated/4524f9d3dbaf7157120a.png" alt="可验收的性能需求示例卡" title="可验收的性能需求示例卡"></p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">业务场景 + 环境条件 + 数据规模 + 访问压力 + 指标阈值 + 统计口径 + 持续时间 + 异常处理</span><br></pre></td></tr></table></figure>
+
+<h3 id="一个错误示例"><a href="#一个错误示例" class="headerlink" title="一个错误示例"></a>一个错误示例</h3><figure class="highlight text"><table><tr><td class="code"><pre><span class="line">系统需要支持高并发，页面响应要快，不能出现卡顿。</span><br></pre></td></tr></table></figure>
+
+<p>问题在于：并发是多少、哪个页面、什么操作、什么设备、快到什么程度、允许多少失败，全都没有定义。</p>
+<h3 id="一个可执行示例"><a href="#一个可执行示例" class="headerlink" title="一个可执行示例"></a>一个可执行示例</h3><figure class="highlight text"><table><tr><td class="code"><pre><span class="line">在生产同等配置、10 万条商品数据、2,000 名用户混合并发持续 30 分钟的条件下：</span><br><span class="line"></span><br><span class="line">1. 商品搜索接口响应时间 P95 ≤ 800ms、P99 ≤ 1.5s；</span><br><span class="line">2. 搜索页面首屏可见时间 P95 ≤ 2s；</span><br><span class="line">3. 请求成功率 ≥ 99.95%，系统错误率 ≤ 0.05%；</span><br><span class="line">4. 搜索结果滚动平均 FPS ≥ 55；</span><br><span class="line">5. 核心服务不得因资源耗尽发生重启；</span><br><span class="line">6. 超过 1s 的操作显示加载状态，超过 5s 仍未完成时给出明确提示；</span><br><span class="line">7. 压测结束后系统应在 5 分钟内恢复到正常资源水位。</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="产品提性能需求前，要确认的-10-个问题"><a href="#产品提性能需求前，要确认的-10-个问题" class="headerlink" title="产品提性能需求前，要确认的 10 个问题"></a>产品提性能需求前，要确认的 10 个问题</h2><ol>
+<li>测的是哪个业务场景和哪条用户操作路径？</li>
+<li>测试环境与生产环境的配置差异是什么？</li>
+<li>数据量是多少，数据分布是否接近真实业务？</li>
+<li>在线用户、并发用户、QPS 和 TPS 分别是多少？</li>
+<li>压力是瞬时尖峰，还是持续半小时的稳定流量？</li>
+<li>响应时间看平均值，还是 P95、P99？</li>
+<li>成功、失败、超时和正常业务拒绝分别怎么定义？</li>
+<li>达到极限后，是排队、限流、降级，还是直接失败？</li>
+<li>哪些指标必须达标，哪些只是观察项？</li>
+<li>谁提供数据、谁执行测试、谁确认最终结果？</li>
+</ol>
+<hr>
+<hr>
+<h2 id="最后一句"><a href="#最后一句" class="headerlink" title="最后一句"></a>最后一句</h2><p>性能需求不是一句“要快”，也不是随手填一个 500 毫秒。</p>
+<p>产品经理真正要定义的是：<strong>用户在什么情况下需要等多久，系统在多大压力下必须完成多少业务，失败时又该给用户什么反馈。</strong></p>
+<p>数值不是越小越好，而是要与业务价值、用户预期、技术成本和风险等级相匹配。写清场景、口径和验收方式，性能才会从“感觉问题”变成一项真正可管理的产品需求。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/851.html">https://leon-book.github.io/blog/index.php/archives/851.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/blog/assets/migrated/754bf9f7ff97a69f0123.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/853.html" title="性能需求应该怎么提？关键功能不能跪"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">性能需求应该怎么提？关键功能不能跪</div></div><div class="info-2"><div class="info-item-1">   本文是《产品要懂得的性能指标：性能需求，你要好好提》的下篇。  上一篇解决的是“产品需要看懂哪些性能指标”：响应时间、并发用户数、吞吐量、成功率、可用性、资源利用率、数据规模、客户端流畅度，以及启动、耗电和流量。 但认识指标只是第一步。真正写需求时，产品还要解决几个更现实的问题：哪些功能必须重点保障？性能需求什么时候提？写到什么程度才可以验收？最后达不到又该怎么办？ 这篇不再逐个解释指标，而是继续往下讲，怎么把指标真正写进需求、带进评审，并变成可以验收的标准。 产品经理写需求时，通常会把主要精力放在业务流程上：用户点哪里、页面展示什么、什么情况下成功、什么情况下失败。 功能写得很细，性能却经常只留下一句话：  系统响应要快，用户多的时候不能卡。  这句话看起来提了性能，实际上跟没提差不多。 多快算快？多少用户算多？哪个功能不能卡？可以失败多少次？持续一分钟和持续一小时是不是同一个要求？这些问题不说清楚，开发无法判断要按什么规模设计，测试也没有明确的验收标准。 性能需求很容易被忽视，却无比重要。功能做错了，可能只是某个流程不好用；性能没想清楚，可能是用户全部涌进来的时候，登录...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/849.html" title="从&quot;只能看 Markdown&quot;到&quot;什么都能看&quot;——我和 Claude Code 一起重造 markdownShow"><img class="cover" src="/blog/assets/migrated/4eec30f7acea7226097d.png" onerror="onerror=null;src='/blog/img/404.jpg'" alt="cover of next post"><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">从"只能看 Markdown"到"什么都能看"——我和 Claude Code 一起重造 markdownShow</div></div><div class="info-2"><div class="info-item-1">    这篇文章本身就是一个 .md 文件。你现在看到的图片、下面的内联 HTML 卡片、还有那些 Mermaid 图，全都是 markdownShow 直接渲染出来的——这正是我想让它做到的事。  缘起：一个”拖进去就能看”的小工具一开始，markdownShow 只做一件事：把 .md 拖进浏览器，立刻渲染。代码高亮、目录 TOC、亮&#x2F;暗主题、Mermaid 图表，再加一层 DOMPurify 防脚本注入——一个纯前端、零后端、能装成 PWA 的 Markdown 查看器，部署在 GitHub Pages 上。 它够用，但有个我越用越明显的痛点：我的文件夹里不只有 md。还有 PDF 报告、单页 HTML 计算器、一堆截图、XMind 导出的思维导图。每次看它们都得切到别的应用。于是我打开 Claude Code，开始把这个”只能看 md 的工具”，改造成”我本地文档的统一查看器”。 我是怎么和 Claude Code 协作的我的节奏很简单，也一直这么要求它：  一次只做一件事，做完立刻汇报，别一口气堆一堆； 不许臆测——改之前先看代码、先复现，改完要真的跑测试、真...</div></div></div></a></nav><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E5%93%8D%E5%BA%94%E6%97%B6%E9%97%B4%EF%BC%9A%E7%94%A8%E6%88%B7%E8%A6%81%E7%AD%89%E5%A4%9A%E4%B9%85"><span class="toc-number">1.</span> <span class="toc-text">1. 响应时间：用户要等多久</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8D%E8%A6%81%E5%8F%AA%E5%86%99%E5%B9%B3%E5%9D%87%E5%93%8D%E5%BA%94%E6%97%B6%E9%97%B4"><span class="toc-number">1.1.</span> <span class="toc-text">不要只写平均响应时间</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%94%A8%E6%88%B7%E4%BD%93%E9%AA%8C%E5%8F%AF%E4%BB%A5%E5%8F%82%E8%80%83%E2%80%9C1%E2%80%943%E2%80%945%E2%80%9D%EF%BC%8C%E4%BD%86%E4%B8%8D%E8%83%BD%E6%9C%BA%E6%A2%B0%E5%A5%97%E7%94%A8"><span class="toc-number">1.2.</span> <span class="toc-text">用户体验可以参考“1—3—5”，但不能机械套用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%88%E6%A0%BC%E7%9A%84%E9%9C%80%E6%B1%82%E5%86%99%E6%B3%95"><span class="toc-number">1.3.</span> <span class="toc-text">合格的需求写法</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E5%B9%B6%E5%8F%91%E7%94%A8%E6%88%B7%E6%95%B0%EF%BC%9A%E5%90%8C%E4%B8%80%E6%97%B6%E5%88%BB%E6%9C%89%E5%A4%9A%E5%B0%91%E4%BA%BA%E5%9C%A8%E6%93%8D%E4%BD%9C"><span class="toc-number">2.</span> <span class="toc-text">2. 并发用户数：同一时刻有多少人在操作</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%88%E6%A0%BC%E7%9A%84%E9%9C%80%E6%B1%82%E5%86%99%E6%B3%95-1"><span class="toc-number">2.1.</span> <span class="toc-text">合格的需求写法</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E5%90%9E%E5%90%90%E9%87%8F%EF%BC%9A%E7%B3%BB%E7%BB%9F%E6%AF%8F%E7%A7%92%E8%83%BD%E5%A4%84%E7%90%86%E5%A4%9A%E5%B0%91%E4%B8%9A%E5%8A%A1"><span class="toc-number">3.</span> <span class="toc-text">3. 吞吐量：系统每秒能处理多少业务</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%88%E6%A0%BC%E7%9A%84%E9%9C%80%E6%B1%82%E5%86%99%E6%B3%95-2"><span class="toc-number">3.1.</span> <span class="toc-text">合格的需求写法</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E6%88%90%E5%8A%9F%E7%8E%87%E4%B8%8E%E9%94%99%E8%AF%AF%E7%8E%87%EF%BC%9A%E5%BF%AB%EF%BC%8C%E4%BD%86%E4%B8%8D%E8%83%BD%E9%94%99"><span class="toc-number">4.</span> <span class="toc-text">4. 成功率与错误率：快，但不能错</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%88%E6%A0%BC%E7%9A%84%E9%9C%80%E6%B1%82%E5%86%99%E6%B3%95-3"><span class="toc-number">4.1.</span> <span class="toc-text">合格的需求写法</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E5%8F%AF%E7%94%A8%E6%80%A7%EF%BC%9A%E7%B3%BB%E7%BB%9F%E6%9C%89%E5%A4%9A%E5%B0%91%E6%97%B6%E9%97%B4%E7%9C%9F%E6%AD%A3%E5%8F%AF%E7%94%A8"><span class="toc-number">5.</span> <span class="toc-text">5. 可用性：系统有多少时间真正可用</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%88%E6%A0%BC%E7%9A%84%E9%9C%80%E6%B1%82%E5%86%99%E6%B3%95-4"><span class="toc-number">5.1.</span> <span class="toc-text">合格的需求写法</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E8%B5%84%E6%BA%90%E5%88%A9%E7%94%A8%E7%8E%87%EF%BC%9A%E7%B3%BB%E7%BB%9F%E6%9C%89%E6%B2%A1%E6%9C%89%E4%BD%99%E9%87%8F"><span class="toc-number">6.</span> <span class="toc-text">6. 资源利用率：系统有没有余量</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%88%E6%A0%BC%E7%9A%84%E9%9C%80%E6%B1%82%E5%86%99%E6%B3%95-5"><span class="toc-number">6.1.</span> <span class="toc-text">合格的需求写法</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E6%95%B0%E6%8D%AE%E8%A7%84%E6%A8%A1%E4%B8%8E%E6%89%B9%E5%A4%84%E7%90%86%E6%97%B6%E9%95%BF%EF%BC%9A%E4%B8%80%E4%B8%87%E6%9D%A1%E5%92%8C%E5%8D%81%E4%B8%87%E6%9D%A1%E4%B8%8D%E6%98%AF%E5%90%8C%E4%B8%80%E4%B8%AA%E9%9C%80%E6%B1%82"><span class="toc-number">7.</span> <span class="toc-text">7. 数据规模与批处理时长：一万条和十万条不是同一个需求</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%88%E6%A0%BC%E7%9A%84%E9%9C%80%E6%B1%82%E5%86%99%E6%B3%95-6"><span class="toc-number">7.1.</span> <span class="toc-text">合格的需求写法</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E5%AE%A2%E6%88%B7%E7%AB%AF%E6%B5%81%E7%95%85%E5%BA%A6%EF%BC%9A%E4%B8%8D%E5%8F%AA%E7%9C%8B%E6%8E%A5%E5%8F%A3%E5%BF%AB%E4%B8%8D%E5%BF%AB"><span class="toc-number">8.</span> <span class="toc-text">8. 客户端流畅度：不只看接口快不快</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%88%E6%A0%BC%E7%9A%84%E9%9C%80%E6%B1%82%E5%86%99%E6%B3%95-7"><span class="toc-number">8.1.</span> <span class="toc-text">合格的需求写法</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#9-%E5%90%AF%E5%8A%A8%E3%80%81%E8%80%97%E7%94%B5%E4%B8%8E%E6%B5%81%E9%87%8F%EF%BC%9A%E7%A7%BB%E5%8A%A8%E7%AB%AF%E9%95%BF%E6%9C%9F%E4%BD%93%E9%AA%8C"><span class="toc-number">9.</span> <span class="toc-text">9. 启动、耗电与流量：移动端长期体验</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%AF%E5%8A%A8%E6%97%B6%E9%97%B4"><span class="toc-number">9.1.</span> <span class="toc-text">启动时间</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%80%97%E7%94%B5%E9%87%8F"><span class="toc-number">9.2.</span> <span class="toc-text">耗电量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C%E6%B5%81%E9%87%8F"><span class="toc-number">9.3.</span> <span class="toc-text">网络流量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%88%E6%A0%BC%E7%9A%84%E9%9C%80%E6%B1%82%E5%86%99%E6%B3%95-8"><span class="toc-number">9.4.</span> <span class="toc-text">合格的需求写法</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%A7%E8%83%BD%E9%9C%80%E6%B1%82%E5%BA%94%E8%AF%A5%E6%80%8E%E4%B9%88%E6%8F%90"><span class="toc-number">10.</span> <span class="toc-text">性能需求应该怎么提</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E4%B8%AA%E9%94%99%E8%AF%AF%E7%A4%BA%E4%BE%8B"><span class="toc-number">10.1.</span> <span class="toc-text">一个错误示例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E4%B8%AA%E5%8F%AF%E6%89%A7%E8%A1%8C%E7%A4%BA%E4%BE%8B"><span class="toc-number">10.2.</span> <span class="toc-text">一个可执行示例</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%A7%E5%93%81%E6%8F%90%E6%80%A7%E8%83%BD%E9%9C%80%E6%B1%82%E5%89%8D%EF%BC%8C%E8%A6%81%E7%A1%AE%E8%AE%A4%E7%9A%84-10-%E4%B8%AA%E9%97%AE%E9%A2%98"><span class="toc-number">11.</span> <span class="toc-text">产品提性能需求前，要确认的 10 个问题</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9C%80%E5%90%8E%E4%B8%80%E5%8F%A5"><span class="toc-number">12.</span> <span class="toc-text">最后一句</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

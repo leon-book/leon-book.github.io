@@ -1,0 +1,840 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>腾讯云 Centos 安装 PHP 开发环境 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="腾讯云做活动花了120买了台 1核2G的云服, 记录下装机全过程为以后准备;安装软件配置 :  Nginx  Mysql  Redis  MongoDB  PHP7  swoole yar yac yaf redis mongodb   PHP5  swoole yar yac yaf redis mongodb   Python (默认自带python2.6)  NodeJs  Lua  S">
+<meta property="og:type" content="article">
+<meta property="og:title" content="腾讯云 Centos 安装 PHP 开发环境">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/269.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="腾讯云做活动花了120买了台 1核2G的云服, 记录下装机全过程为以后准备;安装软件配置 :  Nginx  Mysql  Redis  MongoDB  PHP7  swoole yar yac yaf redis mongodb   PHP5  swoole yar yac yaf redis mongodb   Python (默认自带python2.6)  NodeJs  Lua  S">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2018-02-27T14:01:00.000Z">
+<meta property="article:modified_time" content="2018-02-27T14:01:00.000Z">
+<meta property="article:author" content="leon">
+<meta property="article:tag" content="centos">
+<meta property="article:tag" content="php">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "腾讯云 Centos 安装 PHP 开发环境",
+  "url": "https://leon-book.github.io/blog/index.php/archives/269.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2018-02-27T14:01:00.000Z",
+  "dateModified": "2018-02-27T14:01:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/269.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '腾讯云 Centos 安装 PHP 开发环境',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">腾讯云 Centos 安装 PHP 开发环境</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">腾讯云 Centos 安装 PHP 开发环境</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2018-02-27T14:01:00.000Z" title="发表于 2018-02-27 23:01:00">2018-02-27</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2018-02-27T14:01:00.000Z" title="更新于 2018-02-27 23:01:00">2018-02-27</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/">编程语言</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/">操作系统</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/269.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<p>腾讯云做活动花了120买了台 1核2G的云服, 记录下装机全过程为以后准备;<br>安装软件配置 :</p>
+<ul>
+<li><p>Nginx</p>
+</li>
+<li><p>Mysql</p>
+</li>
+<li><p>Redis</p>
+</li>
+<li><p>MongoDB</p>
+</li>
+<li><p>PHP7</p>
+<ul>
+<li>swoole</li>
+<li>yar</li>
+<li>yac</li>
+<li>yaf</li>
+<li>redis</li>
+<li>mongodb</li>
+</ul>
+</li>
+<li><p>PHP5</p>
+<ul>
+<li>swoole</li>
+<li>yar</li>
+<li>yac</li>
+<li>yaf</li>
+<li>redis</li>
+<li>mongodb</li>
+</ul>
+</li>
+<li><p>Python (默认自带python2.6)</p>
+</li>
+<li><p>NodeJs</p>
+</li>
+<li><p>Lua</p>
+</li>
+<li><p>Supervisor</p>
+</li>
+<li><p>Golang</p>
+</li>
+<li><p>Git</p>
+</li>
+<li><p>NetCat</p>
+</li>
+</ul>
+<h1 id="准备工作"><a href="#准备工作" class="headerlink" title="准备工作:"></a>准备工作:</h1><h3 id="查看-linux-版本"><a href="#查看-linux-版本" class="headerlink" title="查看 linux 版本"></a>查看 linux 版本</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">[root@centos software]# cat /etc/issue</span><br><span class="line">CentOS release 6.8 (Final)</span><br><span class="line">Kernel \r on an \m</span><br></pre></td></tr></table></figure>
+
+<h3 id="安装依赖"><a href="#安装依赖" class="headerlink" title="安装依赖:"></a>安装依赖:</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install -y gcc gcc-c++ autoconf libjpeg libjpeg-devel enchant-devel pam-devel  \</span><br><span class="line">libc-client libc-client-devel libpng libpng-devel freetype freetype-devel libpng \</span><br><span class="line">libpng-devel libxml2 libxml2-devel zlib zlib-devel glibc glibc-devel  bzip2 \</span><br><span class="line">bzip2-devel ncurses curl openssl-devel gdbm-devel db4-devel libXpm-devel \</span><br><span class="line"> libX11-devel gd-devel gmp-devel readline-devel libxslt-devel expat-devel \</span><br><span class="line"> xmlrpc-c xmlrpc-c-devel</span><br></pre></td></tr></table></figure>
+
+<h3 id="创建用户及用户组"><a href="#创建用户及用户组" class="headerlink" title="创建用户及用户组"></a>创建用户及用户组</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">groupadd www</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">useradd -g www www     <span class="comment">#创建www用户到www用户组</span></span></span><br></pre></td></tr></table></figure>
+
+<h2 id="Lua"><a href="#Lua" class="headerlink" title="Lua"></a>Lua</h2><h3 id="官网地址-http-www-lua-org-download-html"><a href="#官网地址-http-www-lua-org-download-html" class="headerlink" title="官网地址: http://www.lua.org/download.html"></a>官网地址: <a href="http://www.lua.org/download.html">http://www.lua.org/download.html</a></h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">wget http://www.lua.org/ftp/lua-5.3.4.tar.gz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar zxf lua-5.3.4.tar.gz</span></span><br><span class="line">[root@centos lua-5.3.4]# make  linux</span><br><span class="line">[root@centos lua-5.3.4]# make install</span><br></pre></td></tr></table></figure>
+
+<p>测试 Ok</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">lua</span></span><br><span class="line">Lua 5.3.4  Copyright (C) 1994-2017 Lua.org, PUC-Rio</span><br><span class="line"><span class="meta prompt_">&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>安装 luajit <a href="http://luajit.org/download.html">http://luajit.org/download.html</a></p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">wget https://github.com/openresty/lua-nginx-module/archive/v0.10.15.tar.gz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar zxf  v0.10.15.tar.gz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cd</span> lua-nginx-module-0.10.15</span></span><br><span class="line">[root@centos lua-nginx-module-0.10.15]# make PREFIX=/usr/local/</span><br><span class="line">[root@centos lua-nginx-module-0.10.15]# make install PREFIX=/usr/local/</span><br></pre></td></tr></table></figure>
+
+<h2 id="Nginx"><a href="#Nginx" class="headerlink" title="Nginx"></a>Nginx</h2><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">wget http://nginx.org/download/nginx-1.13.8.tar.gz</span></span><br><span class="line">--2018-03-06 21:12:40--  http://nginx.org/download/nginx-1.13.8.tar.gz</span><br><span class="line">Resolving nginx.org... 95.211.80.227, 206.251.255.63, 2001:1af8:4060:a004:21::e3, ...</span><br><span class="line">Connecting to nginx.org|95.211.80.227|:80... connected.</span><br><span class="line">HTTP request sent, awaiting response... 200 OK</span><br><span class="line">Length: 992237 (969K) [application/octet-stream]</span><br><span class="line">Saving to: “nginx-1.13.8.tar.gz”</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_">100%</span><span class="language-bash">[=============================================================================================&gt;] 992,237     64.9K/s   <span class="keyword">in</span> 7.3s</span>    </span><br><span class="line"></span><br><span class="line">2018-03-06 21:12:48 (132 KB/s) - “nginx-1.13.8.tar.gz” saved [992237/992237]</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar zxf nginx-1.13.8.tar.gz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cd</span> nginx-1.13.8</span></span><br><span class="line">[root@centos nginx-1.13.8]# ls</span><br><span class="line">auto  CHANGES  CHANGES.ru  conf  configure  contrib  html  LICENSE  man  README  src</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h3 id="准备模块所需"><a href="#准备模块所需" class="headerlink" title="准备模块所需 :"></a>准备模块所需 :</h3><p>下载<code>ngx_devel_kit（NDK</code> 模块 ：<a href="https://github.com/simpl/ngx_devel_kit/tags">https://github.com/simpl/ngx_devel_kit&#x2F;tags</a></p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">wget https://github.com/simplresty/ngx_devel_kit/archive/v0.3.1rc1.tar.gz</span><br><span class="line">tar -xzvf v0.3.1rc1.tar.gz</span><br></pre></td></tr></table></figure>
+
+<p>下载最新的<code>lua-nginx-module</code> 模块 ：<a href="https://github.com/openresty/lua-nginx-module/tags">https://github.com/openresty/lua-nginx-module/tags</a></p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">wget https://github.com/openresty/lua-nginx-module/archive/v0.10.12rc2.tar.gz.gz</span><br><span class="line">tar -xzvf v0.10.12rc2.tar.gz</span><br></pre></td></tr></table></figure>
+
+<p>下载最新的 redis2-nginx-module模块 : <a href="https://github.com/openresty/redis2-nginx-module/releases">https://github.com/openresty/redis2-nginx-module/releases</a></p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">wget https://github.com/openresty/redis2-nginx-module/archive/v0.15rc1.tar.gz</span><br><span class="line">tar zxf v0.15rc1.tar.gz</span><br></pre></td></tr></table></figure>
+
+<p>下载 <code>pcre</code> 并编译: <a href="http://www.linuxfromscratch.org/blfs/view/svn/general/pcre.html">http://www.linuxfromscratch.org/blfs/view/svn/general/pcre.html</a></p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">wget https://downloads.sourceforge.net/pcre/pcre-8.41.tar.bz2</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar jxf pcre-8.41.tar.bz2</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cd</span> pcre-8.41</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">./configure --prefix=/usr/local/pcre --enable-utf8 --enable-unicode-properties</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">make &amp;&amp; make install</span></span><br></pre></td></tr></table></figure>
+
+<p>开始加载的<code>nginx</code> 模块及编译参数</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ ./configure --prefix=/usr/local/nginx --user=www --group=www \</span><br><span class="line"> --with-http_stub_status_module --with-http_ssl_module \</span><br><span class="line"> --with-pcre=/usr/local/src/pcre-8.41 \</span><br><span class="line"> --add-module=/usr/local/src/redis2-nginx-module-0.15rc1 \</span><br><span class="line"> --add-module=/usr/local/src/ngx_devel_kit-0.3.1rc1 \</span><br><span class="line"> --add-module=/usr/local/src/lua-nginx-module-0.10.12rc2</span><br></pre></td></tr></table></figure>
+
+<p>设置软链</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">ln</span> -s /usr/local/nginx/sbin/nginx  /usr/bin/nginx</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">which</span> nginx</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">/usr/bin/nginx</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="Redis"><a href="#Redis" class="headerlink" title="Redis"></a>Redis</h2><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">https://redis.io/download</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">wget http://download.redis.io/releases/redis-4.0.8.tar.gz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar xzf redis-4.0.8.tar.gz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cd</span> redis-4.0.8</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">make</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cd</span> src</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">make install</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cd</span> ..</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">mkdir</span> -p /usr/local/redis/bin</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">mkdir</span> -p /usr/local/redis/ect</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cp</span> redis.conf /usr/local/redis/ect/</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">mv</span> mkreleasdhdr.sh redis-benchmark redis-check-aof redis-check-dump redis-cli redis-server redis-check-rdb redis-sentinel redis-trib.rb /usr/local/redis/bin</span></span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">ln</span> /usr/local/redis/bin/redis-server /usr/bin/redis-server</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">ln</span> /usr/local/redis/bin/redis-cli /usr/bin/redis-cli</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">redis-server</span></span><br><span class="line">    </span><br><span class="line">    6443:C 18 Mar 22:57:20.008 # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo</span><br><span class="line">    6443:C 18 Mar 22:57:20.008 # Redis version=4.0.8, bits=64, commit=00000000, modified=0, pid=6443, just started</span><br><span class="line">    6443:C 18 Mar 22:57:20.008 # Warning: no config file specified, using the default config. In order to specify a config file use redis-server /path/to/redis.conf</span><br><span class="line">    6443:M 18 Mar 22:57:20.009 # Not listening to IPv6: unsupproted</span><br><span class="line">                    _._                                                  </span><br><span class="line">               _.-``__ &#x27;&#x27;-._                                  </span><br><span class="line">          _.-``    `.  `_.  &#x27;&#x27;-._           Redis 4.0.8 (00000000/0) 64 bit</span><br><span class="line">      .-`` .-```.  ```\/    _.,_ &#x27;&#x27;-._              </span><br><span class="line">    (    &#x27;      ,       .-`  | `,    )     Running in standalone mode</span><br><span class="line">    |`-._`-...-` __...-.``-._|&#x27;` _.-&#x27;|     Port: 6379</span><br><span class="line">    |    `-._   `._    /     _.-&#x27;    |     PID: 6443</span><br><span class="line">      `-._    `-._  `-./  _.-&#x27;    _.-&#x27;            </span><br><span class="line">    |`-._`-._    `-.__.-&#x27;    _.-&#x27;_.-&#x27;|            </span><br><span class="line">    |    `-._`-._        _.-&#x27;_.-&#x27;    |           http://redis.io</span><br><span class="line">      `-._    `-._`-.__.-&#x27;_.-&#x27;    _.-&#x27;            </span><br><span class="line">    |`-._`-._    `-.__.-&#x27;    _.-&#x27;_.-&#x27;|            </span><br><span class="line">    |    `-._`-._        _.-&#x27;_.-&#x27;    |            </span><br><span class="line">      `-._    `-._`-.__.-&#x27;_.-&#x27;    _.-&#x27;            </span><br><span class="line">          `-._    `-.__.-&#x27;    _.-&#x27;                </span><br><span class="line">              `-._        _.-&#x27;                    </span><br><span class="line">                  `-.__.-&#x27;                                               </span><br><span class="line">    </span><br><span class="line">    6443:M 18 Mar 22:57:20.011 # WARNING: The TCP backlog setting of 511 cannot be enforced because /proc/sys/net/core/somaxconn is set to the lower value of 128.</span><br><span class="line">    6443:M 18 Mar 22:57:20.011 # Server initialized</span><br><span class="line">    6443:M 18 Mar 22:57:20.011 # WARNING overcommit_memory is set to 0! Background save may fail under low memory condition. To fix this issue add &#x27;vm.overcommit_memory = 1&#x27; to /etc/sysctl.conf and then reboot or run the command &#x27;sysctl vm.overcommit_memory=1&#x27; for this to take effect.</span><br><span class="line">    6443:M 18 Mar 22:57:20.011 # WARNING you have Transparent Huge Pages (THP) support enabled in your kernel. This will create latency and memory usage issues with Redis. To fix this issue run the command &#x27;echo never &gt; /sys/kernel/mm/transparent_hugepage/enabled&#x27; as root, and add it to your /etc/rc.local in order to retain the setting after a reboot. Redis must be restarted after THP is disabled.</span><br><span class="line">    6443:M 18 Mar 22:57:20.011 * Ready to accept connections</span><br></pre></td></tr></table></figure>
+
+<h2 id="Mysql"><a href="#Mysql" class="headerlink" title="Mysql"></a>Mysql</h2><p>官方下载 社区开源免费版</p>
+<p>下载网页 <a href="https://dev.mysql.com/downloads/file/?id=474703">https://dev.mysql.com/downloads/file/?id=474703</a></p>
+<p>云服下载太慢了， 本地下载在上传到服务器</p>
+<h3 id="下载rpm包"><a href="#下载rpm包" class="headerlink" title="下载rpm包"></a>下载rpm包</h3><p><a href="https://dev.mysql.com/get/Downloads/MySQL-5.7/mysql-5.7.21-1.el6.x86_64.rpm-bundle.tar">https://dev.mysql.com/get/Downloads/MySQL-5.7/mysql-5.7.21-1.el6.x86_64.rpm-bundle.tar</a></p>
+<h3 id="解压tar"><a href="#解压tar" class="headerlink" title="解压tar"></a>解压tar</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar xf mysql-5.7.21-1.el6.x86_64.rpm-bundle.tar</span></span><br><span class="line">mysql-community-client-5.7.21-1.el6.x86_64.rpm </span><br><span class="line">mysql-community-embedded-5.7.21-1.el6.x86_64.rpm      </span><br><span class="line">mysql-community-libs-compat-5.7.21-1.el6.x86_64.rpm</span><br><span class="line">mysql-community-common-5.7.21-1.el6.x86_64.rpm  </span><br><span class="line">mysql-community-embedded-devel-5.7.21-1.el6.x86_64.rpm </span><br><span class="line">mysql-community-server-5.7.21-1.el6.x86_64.rpm</span><br><span class="line">mysql-community-devel-5.7.21-1.el6.x86_64.rpm   </span><br><span class="line">mysql-community-libs-5.7.21-1.el6.x86_64.rpm            </span><br><span class="line">mysql-community-test-5.7.21-1.el6.x86_64.rpm</span><br></pre></td></tr></table></figure>
+
+<p>按照以下顺序进行安装，因为它们之间存在依赖关系<br><code>common</code> –&gt; <code>libs</code> –&gt; <code>clients</code> –&gt; <code>server</code></p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">rpm -ivh mysql-community-common-5.7.21-1.el6.x86_64.rpm</span></span><br></pre></td></tr></table></figure>
+
+<p>安装时抛错 <code>--force --nodeps</code> 完美解决 原因：这是由于<code>yum</code>安装了旧版本的<code>GPG keys</code>造成的</p>
+<p>参考地址： <a href="https://www.cnblogs.com/royfans/p/7243641.html">https://www.cnblogs.com/royfans/p/7243641.html</a></p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">rpm -ivh mysql-community-libs-compat-5.7.21-1.el6.x86_64.rpm --force --nodeps</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">rpm -ivh mysql-community-client-5.7.21-1.el6.x86_64.rpm --force --nodeps</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">rpm -ivh mysql-community-server-5.7.21-1.el6.x86_64.rpm --force --nodeps</span></span><br><span class="line">检查安装</span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">which</span> mysql</span></span><br><span class="line">/usr/bin/mysql</span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">mysql -V</span></span><br><span class="line">mysql  Ver 14.14 Distrib 5.7.21, for Linux (x86_64) using  EditLine wrapper</span><br><span class="line">启动mysql服务</span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">/etc/init.d/mysqld start</span></span><br><span class="line">Initializing MySQL database:  </span><br><span class="line">                                                           [  OK  ]</span><br><span class="line">Starting mysqld:                                           [  OK  ]</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"> ps -aux |grep mysql</span></span><br><span class="line">root     24518  0.0  0.0 106216  1568 pts/1    S    01:22   0:00 /bin/sh /usr/bin/mysqld_safe --datadir=/var/lib/mysql --socket=/var/lib/mysql/mysql.sock --pid-file=/var/run/mysqld/mysqld.pid --basedir=/usr --user=mysql</span><br><span class="line">mysql    24712  2.4  9.0 1171424 173212 pts/1  Sl   01:22   0:00 /usr/sbin/mysqld --basedir=/usr --datadir=/var/lib/mysql --plugin-dir=/usr/lib64/mysql/plugin --user=mysql --log-error=/var/log/mysqld.log --pid-file=/var/run/mysqld/mysqld.pid --socket=/var/lib/mysql/mysql.sock</span><br><span class="line">root     24755  0.0  0.0 103320   888 pts/1    S+   01:22   0:00 grep mysql</span><br></pre></td></tr></table></figure>
+
+<h3 id="修改Mysql-密码"><a href="#修改Mysql-密码" class="headerlink" title="修改Mysql 密码"></a>修改Mysql 密码</h3><p>查看临时密码</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">grep password /var/log/mysqld.log</span></span><br><span class="line">2018-03-19T17:22:19.429944Z 1 [Note] A temporary password is generated for root@localhost: hqhY9&gt;D+YvYZ</span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">mysql -h root -p</span> </span><br><span class="line">set password = password(&quot;Mysql_123456&quot;);</span><br></pre></td></tr></table></figure>
+
+<h3 id="创建mysql-用户数据目录"><a href="#创建mysql-用户数据目录" class="headerlink" title="创建mysql 用户数据目录"></a>创建mysql 用户数据目录</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">groupadd mysql</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">useradd -s /sbin/nologin -g mysql mysql</span></span><br></pre></td></tr></table></figure>
+
+<p>创建<code>data</code>目录和<code>mysql-files</code>目录，并修改权限</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">mkdir</span> -p /usr/local/mysql/data</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">mkdir</span> -p /usr/local/mysql/mysql-files</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">chown</span> -R root:mysql /usr/local/mysql</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">chown</span> -R mysql:mysql /usr/local/mysql/data</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">chown</span> -R mysql:mysql /usr/local/mysql/mysql-files</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="Supervisor"><a href="#Supervisor" class="headerlink" title="Supervisor"></a>Supervisor</h2><p>(参考文献：<a href="http://blog.csdn.net/xyang81/article/details/51555473">http://blog.csdn.net/xyang81/article/details/51555473</a>)</p>
+<p>安装<code>python</code>包管理工具(<code>easy_install</code>)</p>
+<p>easy_install是setuptools包里带的一个命令，使用easy_install实际上是在调用setuptools来完成安装模块的工作,所以安装setuptools即可。</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">wget --no-check-certificate https://bootstrap.pypa.io/ez_setup.py -O - | <span class="built_in">sudo</span> python</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="安装supervisor"><a href="#安装supervisor" class="headerlink" title="安装supervisor"></a>安装<code>supervisor</code></h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">easy_install supervisor</span></span><br></pre></td></tr></table></figure>
+
+<p>运行<code>echo_supervisord_conf</code>程序生成supervisor的初始化配置文件详情查看：<br><a href="http://supervisord.org/configuration.html">http://supervisord.org/configuration.html</a></p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"> <span class="built_in">mkdir</span> /etc/supervisor</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"> echo_supervisord_conf &gt; /etc/supervisor/supervisord.conf</span></span><br></pre></td></tr></table></figure>
+
+<p>启动<code>Supervisor</code>服务</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">supervisord -c /etc/supervisor/supervisord.conf</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="PHP"><a href="#PHP" class="headerlink" title="PHP"></a>PHP</h2><p>下载最新版本 <a href="http://php.net/get/php-7.2.3.tar.gz/from/this/mirror">http://php.net/get/php-7.2.3.tar.gz/from/this/mirror</a><br>下载5.6版本 <a href="http://cn2.php.net/get/php-5.6.34.tar.gz/from/this/mirror">http://cn2.php.net/get/php-5.6.34.tar.gz/from/this/mirror</a></p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar zxf php-7.2.3.tar.gz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cd</span> php-7.2.3</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">wget -c http://cn2.php.net/get/php-5.6.34.tar.gz/from/this/mirror -O php-5.tar.gz</span></span><br><span class="line">--2018-03-22 00:27:43--  http://cn2.php.net/get/php-5.6.34.tar.gz/from/this/mirror</span><br><span class="line">Resolving cn2.php.net... 123.125.23.168, 123.125.23.169, 123.125.23.172, ...</span><br><span class="line">Connecting to cn2.php.net|123.125.23.168|:80... connected.</span><br><span class="line">HTTP request sent, awaiting response... 302 Found</span><br><span class="line">Location: http://cn2.php.net/distributions/php-5.6.34.tar.gz [following]</span><br><span class="line">--2018-03-22 00:27:43--  http://cn2.php.net/distributions/php-5.6.34.tar.gz</span><br><span class="line">Connecting to cn2.php.net|123.125.23.168|:80... connected.</span><br><span class="line">HTTP request sent, awaiting response... 200 OK</span><br><span class="line">Length: 19294951 (18M) [application/x-gzip]</span><br><span class="line">Saving to: “php-5.tar.gz”</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_">100%</span><span class="language-bash">[=================================================&gt;] 19,294,951  2.44M/s   <span class="keyword">in</span> 6.8s</span>    </span><br><span class="line"></span><br><span class="line">2018-03-22 00:27:50 (2.71 MB/s) - “php-5.tar.gz” saved [19294951/19294951</span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar zxf php-5.tar.gz</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="安装-libmcrypt-库"><a href="#安装-libmcrypt-库" class="headerlink" title="安装 libmcrypt 库"></a>安装 <code>libmcrypt</code> 库</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">wget ftp://mcrypt.hellug.gr/pub/crypto/mcrypt/libmcrypt/libmcrypt-2.5.7.tar.gz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar xf libmcrypt-2.5.7.tar.gz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cd</span> libmcrypt-2.5.7</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">./configure</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">make &amp;&amp; make install</span></span><br><span class="line">异常：configure: WARNING: unrecognized options: --with-mcrypt php7.2 不支持以上三个选项，删掉即可</span><br></pre></td></tr></table></figure>
+
+<p>解决安装问题: libxml2 configure: error: xml2-config not found. Please check your libxml2 installation.</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">wget ftp://xmlsoft.org/libxml2/libxml2-2.9.1.tar.gz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar zxf libxml2-2.9.1.tar.gz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cd</span> libxml2-2.9.1</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">./configure</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">make &amp;&amp; make install</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="创建目录"><a href="#创建目录" class="headerlink" title="创建目录"></a>创建目录</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">mkdir</span> -p /usr/local/php7</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">mkdir</span> -p /usr/local/php5</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="安装php7"><a href="#安装php7" class="headerlink" title="安装php7"></a>安装php7</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">./configure  --prefix=/usr/local/php7/ --with-config-file-path=/usr/local/php7/etc \</span></span><br><span class="line"><span class="language-bash"> --with-config-file-scan-dir=/usr/local/php7/etc/conf.d --enable-fpm --with-fpm-user=www \</span></span><br><span class="line"><span class="language-bash"> --with-fpm-group=www --enable-soap --with-openssl --with-openssl-dir --with-pcre-regex \</span></span><br><span class="line"><span class="language-bash"> --with-zlib --with-iconv --with-bz2 --enable-calendar --with-curl --with-cdb --enable-dom \</span></span><br><span class="line"><span class="language-bash"> --enable-exif --with-pcre-dir --enable-ftp --with-gd --with-jpeg-dir --with-png-dir \</span></span><br><span class="line"><span class="language-bash"> --with-freetype-dir --with-gettext --with-gmp --with-mhash --enable-mbstring --with-libmbfl \</span></span><br><span class="line"><span class="language-bash"> --with-onig --enable-pdo --with-pdo-mysql --with-zlib-dir --with-readline --enable-session \</span></span><br><span class="line"><span class="language-bash"> --enable-shmop --enable-simplexml --enable-sockets --enable-sysvmsg --enable-sysvsem \</span></span><br><span class="line"><span class="language-bash"> --enable-sysvshm --enable-wddx --with-libxml-dir --with-xsl --enable-zip --enable-mysqlnd \ </span></span><br><span class="line"> --with-mysqli --without-pear --enable-pcntl --enable-bcmath </span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">make &amp;&amp; make install</span> </span><br></pre></td></tr></table></figure>
+
+<h3 id="安装php5"><a href="#安装php5" class="headerlink" title="安装php5"></a>安装php5</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">./configure  --prefix=/usr/local/php5/ --with-config-file-path=/usr/local/php5/etc \</span></span><br><span class="line"><span class="language-bash"> --with-config-file-scan-dir=/usr/local/php5/etc/conf.d --enable-fpm --with-fpm-user=www \</span></span><br><span class="line"><span class="language-bash"> --with-fpm-group=www --enable-soap --with-openssl --with-openssl-dir --with-mcrypt \</span></span><br><span class="line"><span class="language-bash"> --with-pcre-regex --with-zlib --with-iconv --with-bz2 --enable-calendar --with-curl \</span></span><br><span class="line"><span class="language-bash"> --with-cdb --enable-dom --enable-exif --with-pcre-dir --enable-ftp --with-gd --with-jpeg-dir \</span></span><br><span class="line"><span class="language-bash"> --with-png-dir --with-freetype-dir --with-gettext --with-gmp --with-mhash --enable-mbstring \</span></span><br><span class="line"><span class="language-bash"> --with-libmbfl --with-onig --enable-pdo --with-pdo-mysql --with-zlib-dir --with-readline \</span></span><br><span class="line"><span class="language-bash"> --enable-session --enable-shmop --enable-simplexml --enable-sockets --enable-sysvmsg \</span></span><br><span class="line"><span class="language-bash"> --enable-sysvsem --enable-sysvshm --enable-wddx --with-libxml-dir --with-xsl --enable-zip \</span></span><br><span class="line"><span class="language-bash"> --enable-mysqlnd --with-mysqli --without-pear --enable-pcntl</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="安装php扩展"><a href="#安装php扩展" class="headerlink" title="安装php扩展"></a>安装php扩展</h3><p>redis扩展</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">wget http://pecl.php.net/get/redis-4.0.0.tgz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar xf redis-4.0.0.tgz</span></span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cd</span> redis-4.0.0</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"> /usr/local/php7/bin/phpize</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">./configure  --with-php-config=/usr/local/php7/bin/php-config</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">make &amp;&amp; make install</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">make clean</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">/usr/local/php5/bin/phpize</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">./configure  --with-php-config=/usr/local/php5/bin/php-config</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">make &amp;&amp; make install</span></span><br></pre></td></tr></table></figure>
+
+<p>mongodb扩展</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar xf mongodb-1.4.2.tgz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cd</span> mongodb-1.4.2</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">/usr/local/php7/bin/phpize</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">./configure  --with-php-config=/usr/local/php7/bin/php-config</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"> make &amp;&amp; make install</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"> make clean</span> </span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"> ./configure  --with-php-config=/usr/local/php5/bin/php-config</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"> make &amp;&amp; make install</span></span><br></pre></td></tr></table></figure>
+
+<p>swoole 扩展</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">wget http://pecl.php.net/get/swoole-1.10.2.tgz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar xf swoole-1.10.2.tgz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cd</span> swoole-1.10.2</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">/usr/local/php7/bin/phpize</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">./configure  --with-php-config=/usr/local/php7/bin/php-config</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"> make &amp;&amp; make install</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"> make clean</span> </span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"> ./configure  --with-php-config=/usr/local/php5/bin/php-config</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"> make &amp;&amp; make install</span></span><br></pre></td></tr></table></figure>
+
+<p>Yac 扩展 (php7)</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">wget http://pecl.php.net/get/yac-2.0.2.tgz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar xf yac-2.0.2.tgz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cd</span> yac-2.0.2</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">/usr/local/php7/bin/phpize</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">./configure  --with-php-config=/usr/local/php7/bin/php-config</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"> make &amp;&amp; make install</span></span><br></pre></td></tr></table></figure>
+
+<p>Yar 扩展 （php7）</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"> wget http://pecl.php.net/get/yar-2.0.4.tgz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar xf yar-2.0.4.tgz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cd</span> yar-2.0.4</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">/usr/local/php7/bin/phpize</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">./configure  --with-php-config=/usr/local/php7/bin/php-config</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"> make &amp;&amp; make install</span></span><br></pre></td></tr></table></figure>
+
+<p>Yaf扩展 （PHP7）</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">wget http://pecl.php.net/get/yaf-3.0.6.tgz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar xf yaf-3.0.6.taz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cd</span> yaf-3.0.6</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">/usr/local/php7/bin/phpize</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">./configure  --with-php-config=/usr/local/php7/bin/php-config</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"> make &amp;&amp; make install</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="加载PHP配置"><a href="#加载PHP配置" class="headerlink" title="加载PHP配置"></a>加载PHP配置</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">extension=/usr/local/php7/lib/php/extensions/no-debug-non-zts-20170718/mongodb.so</span><br><span class="line">extension=/usr/local/php7/lib/php/extensions/no-debug-non-zts-20170718/redis.so</span><br><span class="line">extension=/usr/local/php7/lib/php/extensions/no-debug-non-zts-20170718/swoole.so</span><br><span class="line">extension=/usr/local/php7/lib/php/extensions/no-debug-non-zts-20170718/yac.so</span><br><span class="line">extension=/usr/local/php7/lib/php/extensions/no-debug-non-zts-20170718/yaf.so</span><br><span class="line">extension=/usr/local/php7/lib/php/extensions/no-debug-non-zts-20170718/yar.so</span><br></pre></td></tr></table></figure>
+
+<h4 id="启用php-fpm"><a href="#启用php-fpm" class="headerlink" title="启用php-fpm"></a>启用php-fpm</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">#</span><span class="language-bash">优化php-fpm配置后 检测配置  dynamic 模式 使用socket方式连接</span></span><br><span class="line"></span><br><span class="line">[root@centos sbin]# /usr/local/php7/sbin/php-fpm -c /usr/local/php7/etc/php.ini -y /usr/local/php7/etc/php-fpm.conf -t</span><br><span class="line">[08-Apr-2018 15:54:10] NOTICE: configuration file /usr/local/php7/etc/php-fpm.conf test is successful</span><br><span class="line"></span><br><span class="line">[root@centos sbin]# /usr/local/php7/sbin/php-fpm -c /usr/local/php7/etc/php.ini -y /usr/local/php7/etc/php-fpm.conf </span><br><span class="line">[root@centos sbin]# ps -ef |grep php-fpm</span><br></pre></td></tr></table></figure>
+
+<p>…… 启了50个进程</p>
+<p><code>php-fpm</code> 加入 <code>service</code> 服务</p>
+<p>1)、设置php-fpm.conf，将;pid &#x3D; run&#x2F;php-fpm.pid前面分号去掉<br>2)、将解压后的php文件夹下的init.d.php-fpm拷贝到&#x2F;etc&#x2F;init.d&#x2F;php-fpm<br>$ cp &#x2F;usr&#x2F;local&#x2F;src&#x2F;php7&#x2F;sapi&#x2F;fpm&#x2F;init.d.php-fpm &#x2F;etc&#x2F;init.d&#x2F;php-fpm<br>3)、将解压后的php文件夹下的init.d.php-fpm拷贝到&#x2F;etc&#x2F;init.d&#x2F;php-fpm<br>4)、修改 php-fpm 文件<br>将</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">php_fpm_BIN=@sbindir@/php-fpm</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">php_fpm_CONF=@sysconfdir@/php-fpm.conf</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">php_fpm_PID=@localstatedir@/run/php-fpm.pid</span></span><br></pre></td></tr></table></figure>
+
+<p>改成</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">php_fpm_BIN=/usr/local/php7/sbin/php-fpm</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">php_fpm_CONF=/usr/local/php7/etc/php-fpm.conf</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">php_fpm_PID=/usr/local/php7/var/run/php-fpm.pid</span></span><br></pre></td></tr></table></figure>
+
+<p>5)、执行</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">chmod</span> +x /etc/init.d/php-fpm</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">chkconfig --add php-fpm</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">chkconfig php-fpm on</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">service php-fpm status</span></span><br><span class="line">    php-fpm (pid 814) is running...</span><br></pre></td></tr></table></figure>
+
+<p>以后可以使用如下命令管理<code>php-fpm</code>了</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">service php-fpm start</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">service php-fpm stop</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">service php-fpm restart</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">service php-fpm reload</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="安装Golang"><a href="#安装Golang" class="headerlink" title="安装Golang"></a>安装Golang</h2><p>参考地址：<br><code>Golang</code>下载 ： <a href="https://golangtc.com/download">https://golangtc.com/download</a><br>下载太慢了 我用的迅雷 然后上传的文件</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cd</span> /usr/local/</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">wget https://golangtc.com/static/go/1.9.2/go1.9.2.linux-amd64.tar.gz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar xf go1.9.2.linux-amd64.tar.gz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">mkdir</span> -p /usr/local/gopackage</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">sudo</span> vim /etc/profile</span></span><br><span class="line">export GOROOT=/usr/local/go</span><br><span class="line">export GOPATH=/usr/local/gopackage</span><br><span class="line">export PATH=$PATH:$GOROOT/bin:$GOPATH/bin</span><br></pre></td></tr></table></figure>
+
+<p>环境变量生效</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ source /etc/profile</span><br></pre></td></tr></table></figure>
+
+<p>安装成功</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ go version</span><br><span class="line">go version go1.9.2 linux/amd64</span><br></pre></td></tr></table></figure>
+
+<h4 id="安装NetCat"><a href="#安装NetCat" class="headerlink" title="安装NetCat"></a>安装NetCat</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">wget  https://sourceforge.net/projects/netcat/files/netcat/0.7.1/netcat-0.7.1.tar.gz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar -zxvf netcat-0.7.1.tar.gz -C /usr/local</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cd</span> /usr/local</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">mv</span> netcat-0.7.1 netcat</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cd</span> /usr/local/netcat</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">./configure</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">make &amp;&amp; make install</span>    </span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">vim /etc/profile</span></span><br><span class="line">    export NETCAT_HOME=/usr/local/netcat</span><br><span class="line">    export PATH=$PATH:$NETCAT_HOME/bin</span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">source</span> /etc/profile</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="安装Git"><a href="#安装Git" class="headerlink" title="安装Git"></a>安装Git</h2><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ yum install -y curl curl-devel zlib-devel openssl-devel perl cpio expat-devel gettext-devel</span><br><span class="line">$ wget https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.16.3.tar.gz</span><br><span class="line"></span><br><span class="line">$ tar xf git-2.16.3.tar.gz</span><br><span class="line"></span><br><span class="line">$ cd git-2.16.3</span><br><span class="line">$ autoconf</span><br><span class="line">$ ./configure</span><br><span class="line">$ make</span><br><span class="line">$ sudo make install</span><br></pre></td></tr></table></figure>
+
+<p>异常处理</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">usr/bin/perl Makefile.PL PREFIX=&#x27;/usr/local/git&#x27; INSTALL_BASE=&#x27;&#x27; --localedir=&#x27;/usr/local/git/share/locale&#x27;</span><br><span class="line">Can&#x27;t locate ExtUtils/MakeMaker.pm in @INC (@INC contains: /usr/local/lib64/perl5 /usr/local/share/perl5 /usr/lib64/perl5/vendor_perl /usr/share/perl5/vendor_perl /usr/lib64/perl5 /usr/share/perl5 .) at Makefile.PL line 3.</span><br><span class="line">BEGIN failed--compilation aborted at Makefile.PL line 3.</span><br><span class="line">make[1]: *** [perl.mak] Error 2</span><br><span class="line"></span><br><span class="line">make: *** [perl/perl.mak] Error 2</span><br></pre></td></tr></table></figure>
+
+<p>-————-下面是解决方法——————————————————–</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ yum install perl-ExtUtils-MakeMaker package</span><br></pre></td></tr></table></figure>
+
+<h2 id="安装MongoDB"><a href="#安装MongoDB" class="headerlink" title="安装MongoDB"></a>安装MongoDB</h2><p>官网：<a href="https://www.mongodb.com/download-center">https://www.mongodb.com/download-center</a></p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">wget https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel62-3.6.3.tgz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar xf mongodb-linux-x86_64-rhel62-3.6.3.tgz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"> <span class="built_in">mv</span> mongodb-linux-x86_64-rhel62-3.6.3 /usr/local/mongo</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">sudo</span> vim /etc/profile</span> </span><br><span class="line">    export MONGOROOT=/usr/local/mongo</span><br><span class="line">    export PATH=$PATH:$MONGOROOT/bin</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">环境变量生效</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">source</span> /etc/profile</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">which</span> mongo</span></span><br><span class="line">  /usr/local/mongo/bin/mongo</span><br></pre></td></tr></table></figure>
+
+<p>开启防火墙</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ iptables -A INPUT -p tcp -m tcp --dport 27017 -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p>守护进程且不授权 –auth</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ mongod --dbpath=/usr/local/mongo/data --logpath=/usr/local/mongo/log/mongodb.log --fork</span><br><span class="line"></span><br><span class="line">$ netstat -tunpl</span><br><span class="line">Proto Recv-Q Send-Q Local Address               Foreign Address             State       PID/Program name   </span><br><span class="line">tcp        0      0 127.0.0.1:27017             0.0.0.0:*                   LISTEN      32268/mongod        </span><br><span class="line">tcp        0      0 0.0.0.0:3306                0.0.0.0:*                   LISTEN      27532/mysqld        </span><br><span class="line">tcp        0      0 0.0.0.0:80                  0.0.0.0:*                   LISTEN      2064/nginx          </span><br><span class="line">tcp        0      0 0.0.0.0:22                  0.0.0.0:*                   LISTEN      4971/sshd           </span><br><span class="line">tcp        0      0 127.0.0.1:25                0.0.0.0:*                   LISTEN      1215/master</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ mongo </span><br><span class="line">use leanote</span><br><span class="line">    db.createUser(&#123;user:&quot;libenfu01&quot;,pwd:&quot;lbf2131.&quot;,roles: [ &quot;readWrite&quot;, &quot;dbAdmin&quot; ]&#125;)</span><br><span class="line">    Successfully added user: &#123; &quot;user&quot; : &quot;libenfu&quot;, &quot;roles&quot; : [ &quot;readWrite&quot;, &quot;dbAdmin&quot; ] &#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="安装-Leanote-依赖go-git）"><a href="#安装-Leanote-依赖go-git）" class="headerlink" title="安装 Leanote (依赖go git）"></a>安装 Leanote (依赖go git）</h2><p>参考文献： <a href="https://www.idaybreak.com/install-leanote-server.html">https://www.idaybreak.com/install-leanote-server.html</a></p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">go get github.com/revel/cmd/revel</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">wget https://github.com/leanote/leanote-all/archive/master.zip</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">unzip leanote-all-master.zip</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">mv</span> ./leanote-all-master/src /usr/local/gopackage</span></span><br></pre></td></tr></table></figure>
+
+<p>导入初始数据</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">mongorestore -h localhost -d leanote --<span class="built_in">dir</span> /usr/local/gopackage/src/github.com/leanote/leanote/mongodb_backup/leanote_install_data</span></span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">mongo</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">show dbs;</span></span><br><span class="line">    admin    0.000GB</span><br><span class="line">    config   0.000GB</span><br><span class="line">    leanote  0.001GB</span><br><span class="line">    local    0.000GB</span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">use leanote</span></span><br><span class="line">       switched to db leanote</span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">show collections</span></span><br><span class="line">    albums</span><br><span class="line">    attachs</span><br><span class="line">    blog_comments</span><br><span class="line">    blog_likes</span><br><span class="line">    blog_singles</span><br><span class="line">    configs</span><br><span class="line">    email_logs</span><br><span class="line">    files</span><br><span class="line">    find_pwds</span><br><span class="line">    group_users</span><br><span class="line">    groups</span><br><span class="line">    has_share_notes</span><br><span class="line">    leanote.ShareNotes</span><br><span class="line">    leanote.has_share_notes</span><br><span class="line">    note_content_histories</span><br><span class="line">    note_contents</span><br><span class="line">    note_images</span><br><span class="line">    note_tags</span><br><span class="line">    notebooks</span><br><span class="line">    notes</span><br><span class="line">    reports</span><br><span class="line">    sessions</span><br><span class="line">    share_notebooks</span><br><span class="line">    share_notes</span><br><span class="line">    suggestions</span><br><span class="line">    tag_count</span><br><span class="line">    tags</span><br><span class="line">    themes</span><br><span class="line">    tokens</span><br><span class="line">    traffics</span><br><span class="line">    user_blogs</span><br><span class="line">    users</span><br><span class="line"><span class="meta prompt_">&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="试运行-leanote"><a href="#试运行-leanote" class="headerlink" title="试运行 leanote"></a>试运行 <code>leanote</code></h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd /usr/local/gopackage/src/github.com/leanote/leanote/bin</span><br></pre></td></tr></table></figure>
+
+<h3 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vi app.conf</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">访问端口 可以自定义</span></span><br><span class="line">http.port=8080</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">访问域名</span></span><br><span class="line">site.url=http://</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">管理员用户名（默认用户名admin，密码abc123）</span></span><br><span class="line">adminUsername=admin</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">MongoDB 数据库配置</span></span><br><span class="line">db.host=127.0.0.1</span><br><span class="line">db.port=27017</span><br><span class="line">db.dbname=leanote</span><br><span class="line">db.username= #自定义数据库帐户</span><br><span class="line">db.password= #自定义数据库帐户密码</span><br><span class="line">mongodb://root:root123@localhost:27017/leanote</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">app密钥 必须要自己修改 随便改成任意大小写字母加数字组合</span></span><br><span class="line">app.secret=OIJiokioHoIOHUY072893bhJHui765GHjkgjJK8989GVghUIY788</span><br></pre></td></tr></table></figure>
+
+<h3 id="安装-apache-组件-ab-htpasswd"><a href="#安装-apache-组件-ab-htpasswd" class="headerlink" title="安装 apache 组件 (ab, htpasswd)"></a>安装 apache 组件 (ab, htpasswd)</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install httpd-tools</span><br></pre></td></tr></table></figure>
+
+<h2 id="Python3-6-安装"><a href="#Python3-6-安装" class="headerlink" title="Python3.6 安装"></a>Python3.6 安装</h2><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">wget https://www.python.org/ftp/python/3.6.5/Python-3.6.5.tgz</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tar zxf Python-3.6.5.tgz</span> </span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">cd</span> Python-3.6.5</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">./configure --prefix=/usr/local/python36</span> </span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">make &amp;&amp; make install</span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">ln</span> -s /usr/local/python36/bin/python3.6 /usr/bin/python</span></span><br></pre></td></tr></table></figure>
+
+<p><a href="https://blog.csdn.net/u014749862/article/details/54430022">Python安装常见问题(1):zipimport.ZipImportError: can’t decompress data</a></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/269.html">https://leon-book.github.io/blog/index.php/archives/269.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/php/">php</a><a class="post-meta__tags" href="/blog/tags/centos/">centos</a></div><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/270.html" title="php7.2 使用xhprof 问题"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">php7.2 使用xhprof 问题</div></div><div class="info-2"><div class="info-item-1">  最近项目面临测试基本服务ok, 开始检查性能及流程问题. 使用xhprof可视化观察接口问题. 出现一些问题 1. 下载xhprof，这里下载吧 ：https://github.com/longxinH/xhprof.git 2. 安装 xhprof 扩展cd xhprof/extension//usr/local/php/bin/phpize ./configure --with-php-config=/opt/php-7.0.14/bin/php-config --enable-xhprofmake&amp;&amp;make install  3. 修改 php.ini 文件php -i | grep php.ini [xhprof]extension=xhprof.soxhprof.output_dir=/data/www/xhprof/save_output_dir //该目录自由定义即可,用来保存xhprof生成的源文件  4.安装dot (绘图工具)sudo yum install -y graphviz    如果遇到错误 failed to execute ...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/268.html" title="用protobuf编译时报错：protoc: error while loading shared libraries: libprotoc.so.9: cannot open shared object file: No such file or directory 的解决方法"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">用protobuf编译时报错：protoc: error while loading shared libraries: libprotoc.so.9: cannot open shared object file: No such file or directory 的解决方法</div></div><div class="info-2"><div class="info-item-1">  export LD_LIBRARY_PATH=/usr/local/lib [root@xxx ~]#protoc --php_out=/root/test_protobuf/ test.protoprotoc: error while loading shared libraries: libprotobuf.so.15: cannot open shared object file: No such file or directory[root@xxx ~]#export LD_LIBRARY_PATH=/usr/local/lib[root@xxx ~]#protoc --php_out=/root/test_protobuf/ test.proto  [root@xxx ~]#cd /root/test_protobuf/[root@xxx test_protobuf]#lltotal 16-rw-r--r-- 1 root root 1193 Mar  6 14:47 AddressBook.phpdrwxr-xr-x 2 root root 4096 Mar  6...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/index.php/archives/56.html" title="PHP设计模式：命令模式"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2015-12-24</div><div class="info-item-2">PHP设计模式：命令模式</div></div><div class="info-2"><div class="info-item-1">  概述命令模式是一种行为型设计模式，它将请求封装成一个独立的对象，从而使不同的请求可以被参数化，并且能够将请求的发起者与请求的接收者解耦。 适用场景命令模式适用于以下情况：  当需要将请求发送者和请求接收者解耦时。 当需要在不同的时间指定、排队和执行请求时。 当需要支持撤销和重做操作时。  结构命令模式由以下组件组成：  命令（Command）：命令接口定义了执行命令的方法。 具体命令（Concrete Command）：具体命令类实现了命令接口，并将命令和接收者对象进行绑定。 接收者（Receiver）：接收者对象负责执行命令所对应的操作。 请求者&#x2F;调用者（Invoker）：请求者对象持有一个命令对象，并在需要执行命令时调用命令对象的执行方法。  示例&lt;?php// 命令接口interface Command&#123;    public function execute();&#125;// 具体命令Aclass ConcreteCommandA implements Command&#123;    private $receiver;    publi...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/52.html" title="PHP设计模式：模板方法模式"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2015-12-19</div><div class="info-item-2">PHP设计模式：模板方法模式</div></div><div class="info-2"><div class="info-item-1">  设计模式在软件开发中扮演着重要的角色，它们提供了一种结构化的方法来解决特定问题并提高代码的可维护性和可重用性。在PHP开发中，模板方法模式是一种常用的设计模式，它允许您定义算法的骨架，而将某些步骤的具体实现推迟到子类中。 模板方法模式的基本概念模板方法模式是一种行为型设计模式，它定义了一个算法的骨架，将一些步骤的具体实现推迟到子类中。这意味着您可以在不改变算法结构的情况下，通过重写部分步骤的实现来改变算法的行为。 模板方法模式由以下组件组成：  抽象类（Abstract Class）：定义了算法的骨架，包含一个或多个抽象方法和模板方法。模板方法定义了算法的结构，而抽象方法则由子类实现。 具体类（Concrete Class）：继承自抽象类，并实现了抽象方法。具体类提供了对模板方法中步骤的具体实现。  模板方法模式在PHP中的应用在PHP开发中，模板方法模式可以用于许多场景，特别是在需要定义算法的骨架并允许子类提供某些实现细节的情况下。以下是一些使用模板方法模式的示例：  数据库访问：假设您正在开发一个数据库访问类，该类提供了一组方法来连接、查询和关闭数据库。您可以使用模板方法...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/607.html" title="PHP-webdriver自动化测试完成登录"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2023-10-07</div><div class="info-item-2">PHP-webdriver自动化测试完成登录</div></div><div class="info-2"><div class="info-item-1">  使用facebook- PHP-Webdriver自动化测试 ( 步骤请以github上wiki或者packagist文档上为准 ) a、安装chrome和chrome-driverb、安装java 并下载selenium的java server -- selenium-server-standalone-3.141.59（独立服务器），访问localhost:4444/wd/hub有响应标识成功java -jar selenium-server-standalone-2.39.0.jar  c、下载扩展包 - 运行php脚本&#123;    &quot;require&quot;: &#123;        &quot;facebook/webdriver&quot;: &quot;^1.6.0&quot;    &#125;&#125;  d、获取cookie用户登录凭证&lt;?php// 初始化require_once(&#x27;./vendor/autoload.php&#x27;);use Facebook\WebDriver\Remote\RemoteWe...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/515.html" title="Aws 非公开桶资源 PHP sdk 解决方案"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2022-01-04</div><div class="info-item-2">Aws 非公开桶资源 PHP sdk 解决方案</div></div><div class="info-2"><div class="info-item-1">  &lt;?phpuse Aws\S3\S3Client;use Model\Main\Config\DbModel;class AwsOss&#123;    const IMG = 1;    const MP4_VIDEO = 2;    /**     * 获取解密后 base64文件     * @cli php cli.php Test getObjectUrl     * @param string $url     * @param int $fileType 1 图片 2 mp4视频     * @return string     * @throws \Exception     */    public static function getUrlBase64(string $url, int $fileType)    &#123;        $config = DbModel::formatDbConfig(AwsOss::AWS_OSS_PUBLIC_TAG);        return self::getKycBase64File($url,...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/468.html" title="有限状态机"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2020-04-09</div><div class="info-item-2">有限状态机</div></div><div class="info-2"><div class="info-item-1">  收藏一下, 今天同学群众 有同学面试小米最后一题 有限状态机 我也是第一次听说…. 百度了一圈 https://baike.baidu.com/item/%E7%8A%B6%E6%80%81%E6%9C%BA/6548513?fr=aladdin 状态机由 状态寄存器 和 组合逻辑电路 构成，能够根据控制信号按照预先设定的状态进行状态转移，是协调相关信号动作、完成特定操作的控制中心。有限状态机简写为FSM（Finite State Machine），主要分为2大类： 第一类，若输出只和状态有关而与输入无关，则称为Moore状态机第二类，输出不仅和状态有关而且和输入有关系，则称为Mealy状态机 基本信息编辑 状态机由状态寄存器和组合逻辑电路构成，能够根据控制信号按照预先设定的状态进行状态转移，是协调相关信号动作,完成特定操作的控制中心。状态机分为摩尔（Moore）型状态机和米莉（Mealy）型状态机。 [1]状态机就是状态转移图。举个最简单的例子，人有三个状态：健康，感冒，康复中。触发的条件有淋雨（t1），吃药（t2），打针（t3），休息（t4）。所以状态机就是健康-（t4）...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/168.html" title="Contos7 Docker 阿里镜像加速"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2017-02-10</div><div class="info-item-2">Contos7 Docker 阿里镜像加速</div></div><div class="info-2"><div class="info-item-1">  Contos 7 Docker 阿里镜像加速引言Docker 是一个流行的容器化平台，用于打包、部署和运行应用程序。在使用 Docker 进行镜像下载和推送时，有时可能会遇到下载速度慢的问题。为了解决这个问题，我们可以使用阿里云提供的镜像加速服务来提高 Docker 镜像的下载速度。本文将介绍如何在 Contos 7 操作系统上配置阿里镜像加速，以加快 Docker 镜像的下载。 步骤1. 登录阿里云容器镜像服务首先，登录阿里云容器镜像服务（https://cr.console.aliyun.com/）。如果没有阿里云账号，需要先注册一个账号。 2. 获取阿里镜像加速地址在阿里云容器镜像服务页面，点击左侧导航栏中的「镜像加速器」，然后复制显示的镜像加速地址。这个地址将用于配置 Docker 的镜像加速器。 3. 配置 Docker 镜像加速器在 Contos 7 操作系统上，打开终端并使用 root 权限编辑 /etc/docker/daemon.json 文件： sudo vi /etc/docker/daemon.json  如果文件不存在，可以创建一个新文件。 在打开的...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%87%86%E5%A4%87%E5%B7%A5%E4%BD%9C"><span class="toc-number">1.</span> <span class="toc-text">准备工作:</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B-linux-%E7%89%88%E6%9C%AC"><span class="toc-number">1.1.</span> <span class="toc-text">查看 linux 版本</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%89%E8%A3%85%E4%BE%9D%E8%B5%96"><span class="toc-number">1.2.</span> <span class="toc-text">安装依赖:</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%9B%E5%BB%BA%E7%94%A8%E6%88%B7%E5%8F%8A%E7%94%A8%E6%88%B7%E7%BB%84"><span class="toc-number">1.3.</span> <span class="toc-text">创建用户及用户组</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Lua"><span class="toc-number">1.4.</span> <span class="toc-text">Lua</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%98%E7%BD%91%E5%9C%B0%E5%9D%80-http-www-lua-org-download-html"><span class="toc-number">1.4.1.</span> <span class="toc-text">官网地址: http:&#x2F;&#x2F;www.lua.org&#x2F;download.html</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Nginx"><span class="toc-number">1.5.</span> <span class="toc-text">Nginx</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%87%86%E5%A4%87%E6%A8%A1%E5%9D%97%E6%89%80%E9%9C%80"><span class="toc-number">1.5.1.</span> <span class="toc-text">准备模块所需 :</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Redis"><span class="toc-number">1.6.</span> <span class="toc-text">Redis</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Mysql"><span class="toc-number">1.7.</span> <span class="toc-text">Mysql</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8B%E8%BD%BDrpm%E5%8C%85"><span class="toc-number">1.7.1.</span> <span class="toc-text">下载rpm包</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%A3%E5%8E%8Btar"><span class="toc-number">1.7.2.</span> <span class="toc-text">解压tar</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BF%AE%E6%94%B9Mysql-%E5%AF%86%E7%A0%81"><span class="toc-number">1.7.3.</span> <span class="toc-text">修改Mysql 密码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%9B%E5%BB%BAmysql-%E7%94%A8%E6%88%B7%E6%95%B0%E6%8D%AE%E7%9B%AE%E5%BD%95"><span class="toc-number">1.7.4.</span> <span class="toc-text">创建mysql 用户数据目录</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Supervisor"><span class="toc-number">1.8.</span> <span class="toc-text">Supervisor</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%89%E8%A3%85supervisor"><span class="toc-number">1.8.1.</span> <span class="toc-text">安装supervisor</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#PHP"><span class="toc-number">1.9.</span> <span class="toc-text">PHP</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%89%E8%A3%85-libmcrypt-%E5%BA%93"><span class="toc-number">1.9.1.</span> <span class="toc-text">安装 libmcrypt 库</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%9B%E5%BB%BA%E7%9B%AE%E5%BD%95"><span class="toc-number">1.9.1.1.</span> <span class="toc-text">创建目录</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%89%E8%A3%85php7"><span class="toc-number">1.9.2.</span> <span class="toc-text">安装php7</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%89%E8%A3%85php5"><span class="toc-number">1.9.3.</span> <span class="toc-text">安装php5</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%89%E8%A3%85php%E6%89%A9%E5%B1%95"><span class="toc-number">1.9.4.</span> <span class="toc-text">安装php扩展</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8A%A0%E8%BD%BDPHP%E9%85%8D%E7%BD%AE"><span class="toc-number">1.9.4.1.</span> <span class="toc-text">加载PHP配置</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%90%AF%E7%94%A8php-fpm"><span class="toc-number">1.9.4.2.</span> <span class="toc-text">启用php-fpm</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%89%E8%A3%85Golang"><span class="toc-number">1.10.</span> <span class="toc-text">安装Golang</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AE%89%E8%A3%85NetCat"><span class="toc-number">1.10.1.</span> <span class="toc-text">安装NetCat</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%89%E8%A3%85Git"><span class="toc-number">1.11.</span> <span class="toc-text">安装Git</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%89%E8%A3%85MongoDB"><span class="toc-number">1.12.</span> <span class="toc-text">安装MongoDB</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%89%E8%A3%85-Leanote-%E4%BE%9D%E8%B5%96go-git%EF%BC%89"><span class="toc-number">1.13.</span> <span class="toc-text">安装 Leanote (依赖go git）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AF%95%E8%BF%90%E8%A1%8C-leanote"><span class="toc-number">1.13.1.</span> <span class="toc-text">试运行 leanote</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%85%8D%E7%BD%AE"><span class="toc-number">1.13.2.</span> <span class="toc-text">配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%89%E8%A3%85-apache-%E7%BB%84%E4%BB%B6-ab-htpasswd"><span class="toc-number">1.13.3.</span> <span class="toc-text">安装 apache 组件 (ab, htpasswd)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Python3-6-%E5%AE%89%E8%A3%85"><span class="toc-number">1.14.</span> <span class="toc-text">Python3.6 安装</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

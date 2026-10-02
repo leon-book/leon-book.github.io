@@ -1,0 +1,685 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>变基 git rebase | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Reapply commits on top of another base tip另一个基本提示上重新应用提交  如果需要获得更清晰的修订历史记录，可以使用 git rebase 命令集成分支。 变基至主分支假设我们有两个分支，其中包含 non-fast-forward 方案。  # 变基 rebase 与合并 merge 不同，是基于被 rebase 的 commit 上操作的# 切换至">
+<meta property="og:type" content="article">
+<meta property="og:title" content="变基 git rebase">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/606.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="Reapply commits on top of another base tip另一个基本提示上重新应用提交  如果需要获得更清晰的修订历史记录，可以使用 git rebase 命令集成分支。 变基至主分支假设我们有两个分支，其中包含 non-fast-forward 方案。  # 变基 rebase 与合并 merge 不同，是基于被 rebase 的 commit 上操作的# 切换至">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/migrated/6a749e8f8dad563d6067.png">
+<meta property="article:published_time" content="2023-10-05T21:52:00.000Z">
+<meta property="article:modified_time" content="2023-10-05T21:52:00.000Z">
+<meta property="article:author" content="leon">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/migrated/6a749e8f8dad563d6067.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "变基 git rebase",
+  "url": "https://leon-book.github.io/blog/index.php/archives/606.html",
+  "image": "https://leon-book.github.io/blog/assets/migrated/6a749e8f8dad563d6067.png",
+  "datePublished": "2023-10-05T21:52:00.000Z",
+  "dateModified": "2023-10-05T21:52:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/606.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '变基 git rebase',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/migrated/6a749e8f8dad563d6067.png);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">变基 git rebase</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">变基 git rebase</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2023-10-05T21:52:00.000Z" title="发表于 2023-10-06 06:52:00">2023-10-06</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2023-10-05T21:52:00.000Z" title="更新于 2023-10-06 06:52:00">2023-10-06</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E5%8D%8F%E8%AE%AE/">协议</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/606.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<blockquote>
+<p>Reapply commits on top of another base tip<br>另一个基本提示上重新应用提交</p>
+</blockquote>
+<p>如果需要获得更清晰的修订历史记录，可以使用 <code>git rebase</code> 命令集成分支。</p>
+<h1 id="变基至主分支"><a href="#变基至主分支" class="headerlink" title="变基至主分支"></a>变基至主分支</h1><p>假设我们有两个分支，其中包含 <code>non-fast-forward</code> 方案。</p>
+<p><img src="/blog/assets/migrated/6a749e8f8dad563d6067.png" alt="rebase\_branch\_001.1c56b036.png" title="rebase_branch_001.1c56b036.png"></p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"># 变基 rebase 与合并 merge 不同，是基于被 rebase 的 commit 上操作的</span><br><span class="line"># 切换至次分支</span><br><span class="line">git checkout bugfix</span><br><span class="line"># 变基至主分支</span><br><span class="line">git rebase master</span><br><span class="line"># 切换到主分支</span><br><span class="line">git checkout master</span><br><span class="line"># 再合并已经变基的 bugfix</span><br><span class="line">git merge bugfix</span><br></pre></td></tr></table></figure>
+
+<p>整个 <code>bugfix</code> 分支上的提交会移动到 <code>master</code> 分支的后面，有效地把所有 <code>master</code> 分支上新的提交并入过来。</p>
+<p>执行 <code>rebase</code> 命令将导致分支历史记录看起来类似于下面的图示。</p>
+<p><img src="/blog/assets/migrated/e01ffef942f6b1dcb42f.png" alt="rebase\_branch\_002.16966dd5.png" title="rebase_branch_002.16966dd5.png"><br>当您将错误修复分支重新绑定到主分支时，将修复来自错误修复分支的提交并将其附加到主分支的末尾。最终结果是 <code>bugfix</code> 分支历史记录一个简单 <code>commit</code> 流。</p>
+<p>如果在附加提交时发生代码冲突，<code>Git</code> 会要求您在继续重新设置其他提交之前修复冲突。</p>
+<p><img src="/blog/assets/migrated/0a25e0801c6f89a9d904.png" alt="rebase\_branch\_003.f160d580.png" title="rebase_branch_003.f160d580.png"><br><img src="data:image/png;base64,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"></p>
+<p><code>rebase</code> 不会移动 <code>master</code> 分支的位置。在任何情况下，您都可以在 <code>rebase</code> 后执行从 <code>bugfix</code> 到 <code>master</code> 的 <code>fast-forward</code> 或清除合并。</p>
+<p>对于 <code>merge</code> 和 <code>rebase</code> 的区别，实质上:</p>
+<ul>
+<li><code>merge</code> 是对目前分叉的两条分支的合并</li>
+<li><code>rebase</code> 是对当前分支记录基于任何 <code>commit</code> 节点（不限于当前分支上的节点）的变更<br><code>rebase</code> 的 <code>base</code> 不能理解为分叉的基点，而是整个 <code>git</code> 库中存在的所有 <code>commit</code> 节点:</li>
+<li>在 <code>git pull —-rebase</code> 的时候，这个当前分支是本地分支，<code>commit</code> 节点是远程分支的 <code>head</code></li>
+<li>在 <code>git rebase master</code> 的时候，这个当前分支是 <code>feature</code> 分支，<code>commit</code> 节点是 <code>master</code> 分支的 <code>head</code></li>
+<li>在 <code>git rebase -i</code> 的时候，这个当前分支就是当前工作分支，<code>commit</code> 节点是在 <code>-i</code> 后注明的 <code>commit</code></li>
+</ul>
+<h1 id="交互式变基"><a href="#交互式变基" class="headerlink" title="交互式变基"></a>交互式变基</h1><p>交互式变基允许你更改并入新分支的提交。这比自动的变基更加强大，因为它提供了对分支上提交历史完整的控制。一般来说，这被用于将 <code>feature</code> 分支并入 <code>master</code> 分支之前，清理混乱的历史。</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"># 语法</span><br><span class="line">git rebase -i [startpoint] [endpoint]</span><br><span class="line"># 示例</span><br><span class="line">git checkout feature</span><br><span class="line">git rebase -i master</span><br></pre></td></tr></table></figure>
+
+<p>它会打开一个文本编辑器，显示所有将被移动的提交：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">pick <span class="number">33</span>d5b7a Message <span class="keyword">for</span> commit #<span class="number">1</span></span><br><span class="line">pick <span class="number">9480b</span>3d Message <span class="keyword">for</span> commit #<span class="number">2</span></span><br><span class="line">pick <span class="number">5</span>c67e61 Message <span class="keyword">for</span> commit #<span class="number">3</span></span><br></pre></td></tr></table></figure>
+
+<p>然后 <code>wq</code> 保存退出后是注释修改，编辑完注释再 <code>wq</code> 保存完成 <code>commit</code> 合并。</p>
+<ul>
+<li><code>pick</code>：保留该 <code>commit</code></li>
+<li><code>reword</code>：保留该 <code>commit</code>，但我需要修改该 commit 的注释</li>
+<li><code>edit</code>：保留该 <code>commit</code>，但我要停下来修改该提交（不禁惊修改注释）</li>
+<li><code>squash</code>：将该 <code>commit</code> 和前一个 <code>commit</code> 合并</li>
+<li><code>fixup</code>：将该 <code>commit</code> 和前一个 <code>commit</code> 合并，但我不要保留该提交的注释信息</li>
+<li><code>exec</code>：执行 <code>shell</code> 命令</li>
+<li><code>drop</code>：我要丢弃该 <code>commit</code><br>忽略不重要的提交会让你的 <code>feature</code> 分支的历史更清晰易读，这是 <code>git merge</code> 做不到的。</li>
+</ul>
+<h1 id="分支合并"><a href="#分支合并" class="headerlink" title="分支合并"></a>分支合并</h1><p>被合并分支只有你自己使用。</p>
+<ol>
+<li>先从 <code>master</code> 分支切出一个 <code>feature</code> 分支，进行开发：git:(master) <code>git checkout -b feature</code></li>
+<li>这时同事完成一次 <code>hotfix</code>，且合并入 <code>master</code> 分支，此时 <code>master</code> 已经领先于你的 <code>feature</code> 分支</li>
+<li>使用 <code>git rebase master</code> 进行分支合并</li>
+</ol>
+<p><code>rebase</code> 原理：</p>
+<ol>
+<li>首先，git 会把 feature 分支里面的每个 commit 取消掉</li>
+<li>其次，把上面的操作临时保存成 patch 文件，存在 .git&#x2F;reabase 目录下</li>
+<li>然后，把 feature 分支更新到最新的 master 分支</li>
+<li>最后，把上面保存的 patch 文件应用到 feature 分支上</li>
+</ol>
+<p>在 <code>rebase</code> 过程中，出现冲突 conflict 后，git 会停止 rebase 并会让你解决冲突。解决完冲突后，用 <code>git add</code> 命令去更新这些内容，即执行 <code>git rebase --continue</code>。</p>
+<p>⚠️ 注意：你无需执行 <code>git commit</code>，只要执行 <code>git rebase --continue</code>。</p>
+<p>在任何时候，我们都可以用 <code>git rebase -abort</code> 来终止 <code>rebase</code> 的行动，并且分支会回到 <code>rebase</code> 开始前的状态。</p>
+<h1 id="黄金法则"><a href="#黄金法则" class="headerlink" title="黄金法则"></a>黄金法则</h1><blockquote>
+<p>永远不要对已经推到主干分支服务器或者团队其他成员的提交进行变基，我们选择变基还是合并的范围应该在自己当前工作范围内。</p>
+</blockquote>
+<p>原文地址 : <a href="https://tsejx.github.io/devops-guidebook/code/git/rebase/">https://tsejx.github.io/devops-guidebook/code/git/rebase/</a></p>
+<p><a href="https://juejin.im/post/58f97793a22b9d00658b15b6">📝 Git 由浅入深之细说变基</a><br><a href="https://juejin.im/post/5ed47d006fb9a047da363b62">📝 关于 Git Rebase 你必须要知道的几件事</a><br><a href="https://juejin.im/post/5a65ac67f265da3e330473f7">📝 从撤销 Rebase 谈谈 Git 原理</a><br><a href="https://juejin.im/post/6844903497645686797">📝 使用 git rebase 提高 PR 质量</a><br><a href="https://juejin.im/post/5e3d78d1f265da575632453e">📝 Merge 和 Rebase 区别与项目中的选择</a><br><a href="https://juejin.im/post/5af26c4d5188256728605809">📝 Git Merge 和 Rebase 分支合并命令的区别</a><br><a href="https://juejin.im/post/5cb20c45e51d456e2e656d11">📝 你根本不懂 rebase 使用 rebase 打造可读的 git graph</a><br><a href="https://juejin.im/post/5e9d21f26fb9a03c4e648412">📝 Git 应用详解第九讲：git cherry-pick 与 git rebase</a><br><a href="https://juejin.im/entry/59e5d7b051882521ae145b91/detail">📝 使用 Git Rebase 美化 GIt COmmit 流程</a></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/606.html">https://leon-book.github.io/blog/index.php/archives/606.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/blog/assets/migrated/6a749e8f8dad563d6067.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/607.html" title="PHP-webdriver自动化测试完成登录"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">PHP-webdriver自动化测试完成登录</div></div><div class="info-2"><div class="info-item-1">  使用facebook- PHP-Webdriver自动化测试 ( 步骤请以github上wiki或者packagist文档上为准 ) a、安装chrome和chrome-driverb、安装java 并下载selenium的java server -- selenium-server-standalone-3.141.59（独立服务器），访问localhost:4444/wd/hub有响应标识成功java -jar selenium-server-standalone-2.39.0.jar  c、下载扩展包 - 运行php脚本&#123;    &quot;require&quot;: &#123;        &quot;facebook/webdriver&quot;: &quot;^1.6.0&quot;    &#125;&#125;  d、获取cookie用户登录凭证&lt;?php// 初始化require_once(&#x27;./vendor/autoload.php&#x27;);use Facebook\WebDriver\Remote\RemoteWe...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/605.html" title="使用MySQL计算回撤率的简单方法"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">使用MySQL计算回撤率的简单方法</div></div><div class="info-2"><div class="info-item-1">  介绍：回撤率是衡量投资组合或交易策略风险的重要指标。在本篇博客中，我们将演示如何使用MySQL来计算交易回撤率。我们将建立一个交易记录表，并使用MySQL查询来计算资金曲线和回撤率。 步骤：创建交易记录表：我们首先需要创建一个包含交易记录的表。使用MySQL的CREATE TABLE语句创建一个名为”trades”的表。该表将包含交易日期、交易金额和盈亏标志等字段。 CREATE TABLE trades (  trade_date DATE,  amount DECIMAL(10, 2),  is_profit BOOLEAN);  插入交易记录：在”trades”表中插入实际的交易记录。每条记录应包含交易日期、交易金额和盈亏标志。这些记录将用于计算资金曲线和回撤率。 INSERT INTO trades (trade_date, amount, is_profit)VALUES  (&#x27;2021-01-01&#x27;, 100.00, TRUE),  (&#x27;2021-01-02&#x27;, -50.00, FALSE),  (&#x27;2021-01...</div></div></div></a></nav><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%8F%98%E5%9F%BA%E8%87%B3%E4%B8%BB%E5%88%86%E6%94%AF"><span class="toc-number">1.</span> <span class="toc-text">变基至主分支</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BA%A4%E4%BA%92%E5%BC%8F%E5%8F%98%E5%9F%BA"><span class="toc-number">2.</span> <span class="toc-text">交互式变基</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%88%86%E6%94%AF%E5%90%88%E5%B9%B6"><span class="toc-number">3.</span> <span class="toc-text">分支合并</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E9%BB%84%E9%87%91%E6%B3%95%E5%88%99"><span class="toc-number">4.</span> <span class="toc-text">黄金法则</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

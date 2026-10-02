@@ -1,0 +1,736 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>消息队列进阶：你必须掌握的六种队列模式 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="消息队列不只是”生产-消费”那么简单。在真实的业务场景中，我们需要面对消息消费失败、延时执行、顺序保障等各种复杂问题。本文梳理六种常见的队列模式，帮你建立完整的消息队列知识体系。   一、死信队列（Dead Letter Queue）是什么死信队列（DLQ）是用来存放无法被正常消费的消息的特殊队列。当一条消息反复消费失败、超过最大重试次数，或者因为格式错误无法解析时，它不会被直接丢弃，而是被">
+<meta property="og:type" content="article">
+<meta property="og:title" content="消息队列进阶：你必须掌握的六种队列模式">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/838.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="消息队列不只是”生产-消费”那么简单。在真实的业务场景中，我们需要面对消息消费失败、延时执行、顺序保障等各种复杂问题。本文梳理六种常见的队列模式，帮你建立完整的消息队列知识体系。   一、死信队列（Dead Letter Queue）是什么死信队列（DLQ）是用来存放无法被正常消费的消息的特殊队列。当一条消息反复消费失败、超过最大重试次数，或者因为格式错误无法解析时，它不会被直接丢弃，而是被">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2026-03-24T08:21:00.000Z">
+<meta property="article:modified_time" content="2026-03-24T08:21:00.000Z">
+<meta property="article:author" content="leon">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "消息队列进阶：你必须掌握的六种队列模式",
+  "url": "https://leon-book.github.io/blog/index.php/archives/838.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2026-03-24T08:21:00.000Z",
+  "dateModified": "2026-03-24T08:21:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/838.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '消息队列进阶：你必须掌握的六种队列模式',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">消息队列进阶：你必须掌握的六种队列模式</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">消息队列进阶：你必须掌握的六种队列模式</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-03-24T08:21:00.000Z" title="发表于 2026-03-24 17:21:00">2026-03-24</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-03-24T08:21:00.000Z" title="更新于 2026-03-24 17:21:00">2026-03-24</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E5%85%B6%E4%BB%96/">其他</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/838.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<blockquote>
+<p>消息队列不只是”生产-消费”那么简单。在真实的业务场景中，我们需要面对消息消费失败、延时执行、顺序保障等各种复杂问题。本文梳理六种常见的队列模式，帮你建立完整的消息队列知识体系。</p>
+</blockquote>
+<hr>
+<h2 id="一、死信队列（Dead-Letter-Queue）"><a href="#一、死信队列（Dead-Letter-Queue）" class="headerlink" title="一、死信队列（Dead Letter Queue）"></a>一、死信队列（Dead Letter Queue）</h2><h3 id="是什么"><a href="#是什么" class="headerlink" title="是什么"></a>是什么</h3><p>死信队列（DLQ）是用来存放<strong>无法被正常消费的消息</strong>的特殊队列。当一条消息反复消费失败、超过最大重试次数，或者因为格式错误无法解析时，它不会被直接丢弃，而是被转移到死信队列中”等待处理”。</p>
+<p>你可以把它理解为消息系统的”回收站”——消息没有被直接删除，而是被隔离到一个专门的地方，等人来处理。</p>
+<h3 id="什么时候触发"><a href="#什么时候触发" class="headerlink" title="什么时候触发"></a>什么时候触发</h3><p>消息变成”死信”通常有以下几种原因：</p>
+<ul>
+<li><strong>消费失败达到最大重试次数</strong>：比如设置了重试 3 次，3 次都失败就进入 DLQ</li>
+<li><strong>消息 TTL 过期</strong>：消息在队列中等待超过了设定的存活时间</li>
+<li><strong>队列满了</strong>：队列达到最大长度，新消息无法入队，老消息被挤到 DLQ</li>
+<li><strong>消息被消费者主动拒绝</strong>（reject&#x2F;nack 且不重新入队）</li>
+</ul>
+<h3 id="RabbitMQ-示例"><a href="#RabbitMQ-示例" class="headerlink" title="RabbitMQ 示例"></a>RabbitMQ 示例</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 声明死信交换机和队列</span></span><br><span class="line">channel.exchange_declare(exchange=<span class="string">&#x27;dlx_exchange&#x27;</span>, exchange_type=<span class="string">&#x27;direct&#x27;</span>)</span><br><span class="line">channel.queue_declare(queue=<span class="string">&#x27;dead_letter_queue&#x27;</span>)</span><br><span class="line">channel.queue_bind(queue=<span class="string">&#x27;dead_letter_queue&#x27;</span>, exchange=<span class="string">&#x27;dlx_exchange&#x27;</span>, routing_key=<span class="string">&#x27;dlx_key&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 声明业务队列，绑定死信策略</span></span><br><span class="line">args = &#123;</span><br><span class="line">    <span class="string">&#x27;x-dead-letter-exchange&#x27;</span>: <span class="string">&#x27;dlx_exchange&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;x-dead-letter-routing-key&#x27;</span>: <span class="string">&#x27;dlx_key&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;x-max-length&#x27;</span>: <span class="number">10000</span>,          <span class="comment"># 队列最大长度</span></span><br><span class="line">    <span class="string">&#x27;x-message-ttl&#x27;</span>: <span class="number">60000</span>          <span class="comment"># 消息 TTL 60 秒</span></span><br><span class="line">&#125;</span><br><span class="line">channel.queue_declare(queue=<span class="string">&#x27;business_queue&#x27;</span>, arguments=args)</span><br></pre></td></tr></table></figure>
+
+<h3 id="Kafka-的做法"><a href="#Kafka-的做法" class="headerlink" title="Kafka 的做法"></a>Kafka 的做法</h3><p>Kafka 本身没有内置 DLQ，需要在消费端自己实现：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@KafkaListener(topics = &quot;order-topic&quot;)</span></span><br><span class="line"><span class="keyword">public</span> <span class="type">void</span> <span class="title function_">consume</span><span class="params">(ConsumerRecord&lt;String, String&gt; record)</span> &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        processOrder(record.value());</span><br><span class="line">    &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">        retryCount++;</span><br><span class="line">        <span class="keyword">if</span> (retryCount &gt;= MAX_RETRY) &#123;</span><br><span class="line">            <span class="comment">// 发送到死信 topic</span></span><br><span class="line">            kafkaTemplate.send(<span class="string">&quot;order-topic-dlq&quot;</span>, record.key(), record.value());</span><br><span class="line">            log.error(<span class="string">&quot;消息进入死信队列: &#123;&#125;&quot;</span>, record.value());</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">throw</span> e; <span class="comment">// 触发重试</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="最佳实践"><a href="#最佳实践" class="headerlink" title="最佳实践"></a>最佳实践</h3><ul>
+<li>一定要有<strong>监控和告警</strong>，DLQ 中消息堆积说明业务有问题</li>
+<li>提供<strong>重新投递</strong>的能力，修复 bug 后可以把死信消息重新丢回原队列</li>
+<li>记录死信原因（异常堆栈、重试次数），方便排查</li>
+</ul>
+<hr>
+<h2 id="二、延迟队列（Delay-Queue）"><a href="#二、延迟队列（Delay-Queue）" class="headerlink" title="二、延迟队列（Delay Queue）"></a>二、延迟队列（Delay Queue）</h2><h3 id="是什么-1"><a href="#是什么-1" class="headerlink" title="是什么"></a>是什么</h3><p>延迟队列实现的效果是：<strong>消息发出后不会立即被消费，而是等待指定的时间后才能被消费者拉取到</strong>。</p>
+<p>典型场景：</p>
+<ul>
+<li>下单后 30 分钟未支付，自动关闭订单</li>
+<li>用户注册后 24 小时发送引导邮件</li>
+<li>会议开始前 15 分钟发送提醒通知</li>
+</ul>
+<h3 id="实现方案对比"><a href="#实现方案对比" class="headerlink" title="实现方案对比"></a>实现方案对比</h3><table><thead><tr><th>方案</th><th>优点</th><th>缺点</th></tr></thead><tbody><tr><td>RabbitMQ 延迟插件</td><td>原生支持，精度高</td><td>需安装插件</td></tr><tr><td>RabbitMQ TTL + DLQ</td><td>不需要插件</td><td>只能固定延迟时间</td></tr><tr><td>Redis ZSET</td><td>实现简单</td><td>需要轮询，不够精确</td></tr><tr><td>Kafka 时间轮</td><td>高吞吐</td><td>实现复杂</td></tr><tr><td>数据库轮询</td><td>最简单</td><td>性能差，延迟高</td></tr></tbody></table>
+
+<h3 id="RabbitMQ-TTL-死信实现延迟队列"><a href="#RabbitMQ-TTL-死信实现延迟队列" class="headerlink" title="RabbitMQ TTL + 死信实现延迟队列"></a>RabbitMQ TTL + 死信实现延迟队列</h3><p>原理：消息发到一个没有消费者的队列，设置 TTL。消息过期后自动进入死信队列，真正的消费者监听死信队列。</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Producer → [延迟队列 TTL=30min, 无消费者] → 过期 → [死信交换机] → [实际消费队列] → Consumer</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 延迟队列（没有消费者）</span></span><br><span class="line">args = &#123;</span><br><span class="line">    <span class="string">&#x27;x-dead-letter-exchange&#x27;</span>: <span class="string">&#x27;order_exchange&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;x-dead-letter-routing-key&#x27;</span>: <span class="string">&#x27;order_cancel&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;x-message-ttl&#x27;</span>: <span class="number">1800000</span>  <span class="comment"># 30 分钟</span></span><br><span class="line">&#125;</span><br><span class="line">channel.queue_declare(queue=<span class="string">&#x27;order_delay_30min&#x27;</span>, arguments=args)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 实际消费队列</span></span><br><span class="line">channel.queue_declare(queue=<span class="string">&#x27;order_cancel_queue&#x27;</span>)</span><br><span class="line">channel.queue_bind(queue=<span class="string">&#x27;order_cancel_queue&#x27;</span>, exchange=<span class="string">&#x27;order_exchange&#x27;</span>, routing_key=<span class="string">&#x27;order_cancel&#x27;</span>)</span><br></pre></td></tr></table></figure>
+
+<h3 id="Redis-ZSET-实现"><a href="#Redis-ZSET-实现" class="headerlink" title="Redis ZSET 实现"></a>Redis ZSET 实现</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> time</span><br><span class="line"><span class="keyword">import</span> redis</span><br><span class="line"><span class="keyword">import</span> json</span><br><span class="line"></span><br><span class="line">r = redis.Redis()</span><br><span class="line"></span><br><span class="line"><span class="comment"># 生产者：score 是期望执行的时间戳</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">delay_publish</span>(<span class="params">queue, message, delay_seconds</span>):</span><br><span class="line">    execute_at = time.time() + delay_seconds</span><br><span class="line">    r.zadd(queue, &#123;json.dumps(message): execute_at&#125;)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 消费者：轮询取出到期的消息</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">delay_consume</span>(<span class="params">queue</span>):</span><br><span class="line">    <span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">        now = time.time()</span><br><span class="line">        <span class="comment"># 取出所有 score &lt;= 当前时间的消息</span></span><br><span class="line">        messages = r.zrangebyscore(queue, <span class="number">0</span>, now, start=<span class="number">0</span>, num=<span class="number">10</span>)</span><br><span class="line">        <span class="keyword">for</span> msg <span class="keyword">in</span> messages:</span><br><span class="line">            <span class="keyword">if</span> r.zrem(queue, msg):  <span class="comment"># 原子删除，防止重复消费</span></span><br><span class="line">                process(json.loads(msg))</span><br><span class="line">        time.sleep(<span class="number">0.5</span>)  <span class="comment"># 轮询间隔</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="三、遗言队列（Last-Will-Queue）"><a href="#三、遗言队列（Last-Will-Queue）" class="headerlink" title="三、遗言队列（Last Will Queue）"></a>三、遗言队列（Last Will Queue）</h2><h3 id="是什么-2"><a href="#是什么-2" class="headerlink" title="是什么"></a>是什么</h3><p>遗言队列源自 MQTT 协议中的 <strong>Last Will and Testament（LWT）</strong> 机制。客户端在连接 Broker 时预先设置一条”遗言消息”，当客户端<strong>异常断开</strong>（非正常 disconnect）时，Broker 自动将这条遗言消息发布到指定的 Topic。</p>
+<p>就像真正的遗嘱一样——你活着的时候写好，死后由律师（Broker）帮你发出去。</p>
+<h3 id="适用场景"><a href="#适用场景" class="headerlink" title="适用场景"></a>适用场景</h3><ul>
+<li>IoT 设备离线检测：”设备 A 已离线”</li>
+<li>在线状态管理：用户异常掉线后通知其他用户</li>
+<li>分布式服务健康检测：节点挂了自动发出告警</li>
+</ul>
+<h3 id="MQTT-遗言消息示例"><a href="#MQTT-遗言消息示例" class="headerlink" title="MQTT 遗言消息示例"></a>MQTT 遗言消息示例</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> paho.mqtt.client <span class="keyword">as</span> mqtt</span><br><span class="line"></span><br><span class="line">client = mqtt.Client()</span><br><span class="line"></span><br><span class="line"><span class="comment"># 连接时设置遗言</span></span><br><span class="line">client.will_set(</span><br><span class="line">    topic=<span class="string">&quot;device/sensor-01/status&quot;</span>,</span><br><span class="line">    payload=<span class="string">&#x27;&#123;&quot;status&quot;: &quot;offline&quot;, &quot;timestamp&quot;: &quot;2026-03-24T10:00:00Z&quot;&#125;&#x27;</span>,</span><br><span class="line">    qos=<span class="number">1</span>,</span><br><span class="line">    retain=<span class="literal">True</span>   <span class="comment"># retain=True 保证新订阅者也能看到最后状态</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">client.connect(<span class="string">&quot;broker.example.com&quot;</span>, <span class="number">1883</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 正常运行时定期发布在线状态</span></span><br><span class="line"><span class="keyword">while</span> running:</span><br><span class="line">    client.publish(<span class="string">&quot;device/sensor-01/status&quot;</span>, <span class="string">&#x27;&#123;&quot;status&quot;: &quot;online&quot;&#125;&#x27;</span>, retain=<span class="literal">True</span>)</span><br><span class="line">    time.sleep(<span class="number">30</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 如果进程崩溃、网络断开，broker 自动发布遗言消息</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="触发条件"><a href="#触发条件" class="headerlink" title="触发条件"></a>触发条件</h3><p>遗言消息<strong>只在异常断开时触发</strong>，以下情况不会触发：</p>
+<ul>
+<li>客户端正常调用 <code>disconnect()</code></li>
+<li>客户端主动发送 DISCONNECT 报文</li>
+</ul>
+<p>以下情况会触发：</p>
+<ul>
+<li>网络连接中断（TCP 断开）</li>
+<li>Keep-Alive 超时无心跳</li>
+<li>进程崩溃</li>
+<li>服务器主动关闭连接</li>
+</ul>
+<hr>
+<h2 id="四、优先级队列（Priority-Queue）"><a href="#四、优先级队列（Priority-Queue）" class="headerlink" title="四、优先级队列（Priority Queue）"></a>四、优先级队列（Priority Queue）</h2><h3 id="是什么-3"><a href="#是什么-3" class="headerlink" title="是什么"></a>是什么</h3><p>普通队列是 FIFO（先进先出），而优先级队列允许<strong>高优先级的消息插队</strong>，优先被消费者处理。</p>
+<h3 id="场景"><a href="#场景" class="headerlink" title="场景"></a>场景</h3><ul>
+<li>VIP 用户的工单优先处理</li>
+<li>告警消息优先于普通日志</li>
+<li>紧急订单优先于普通订单</li>
+</ul>
+<h3 id="RabbitMQ-实现"><a href="#RabbitMQ-实现" class="headerlink" title="RabbitMQ 实现"></a>RabbitMQ 实现</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 声明优先级队列（最大优先级 10）</span></span><br><span class="line">channel.queue_declare(</span><br><span class="line">    queue=<span class="string">&#x27;ticket_queue&#x27;</span>,</span><br><span class="line">    arguments=&#123;<span class="string">&#x27;x-max-priority&#x27;</span>: <span class="number">10</span>&#125;</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 发送普通工单</span></span><br><span class="line">channel.basic_publish(</span><br><span class="line">    exchange=<span class="string">&#x27;&#x27;</span>,</span><br><span class="line">    routing_key=<span class="string">&#x27;ticket_queue&#x27;</span>,</span><br><span class="line">    body=<span class="string">&#x27;普通用户工单&#x27;</span>,</span><br><span class="line">    properties=pika.BasicProperties(priority=<span class="number">1</span>)</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 发送 VIP 工单</span></span><br><span class="line">channel.basic_publish(</span><br><span class="line">    exchange=<span class="string">&#x27;&#x27;</span>,</span><br><span class="line">    routing_key=<span class="string">&#x27;ticket_queue&#x27;</span>,</span><br><span class="line">    body=<span class="string">&#x27;VIP 用户工单&#x27;</span>,</span><br><span class="line">    properties=pika.BasicProperties(priority=<span class="number">9</span>)</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+
+<h3 id="注意事项"><a href="#注意事项" class="headerlink" title="注意事项"></a>注意事项</h3><ul>
+<li>优先级队列有性能开销，Broker 需要对消息重新排序</li>
+<li><code>x-max-priority</code> 建议设置为 1-10，太大会增加内存消耗</li>
+<li>只有在消费者来不及消费（消息有积压）时，优先级才会生效。如果消费速度大于生产速度，所有消息都是立即消费的，优先级没有意义</li>
+</ul>
+<hr>
+<h2 id="五、顺序队列（Sequential-FIFO-Queue）"><a href="#五、顺序队列（Sequential-FIFO-Queue）" class="headerlink" title="五、顺序队列（Sequential &#x2F; FIFO Queue）"></a>五、顺序队列（Sequential &#x2F; FIFO Queue）</h2><h3 id="是什么-4"><a href="#是什么-4" class="headerlink" title="是什么"></a>是什么</h3><p>顺序队列保证消息<strong>严格按照发送顺序被消费</strong>。听起来简单，但在分布式环境中实现起来相当棘手。</p>
+<h3 id="为什么难"><a href="#为什么难" class="headerlink" title="为什么难"></a>为什么难</h3><ul>
+<li>多个 Partition &#x2F; Queue 之间天然无序</li>
+<li>多个消费者并行消费，谁先处理完不确定</li>
+<li>消息重试可能打乱顺序</li>
+</ul>
+<h3 id="Kafka-的方案"><a href="#Kafka-的方案" class="headerlink" title="Kafka 的方案"></a>Kafka 的方案</h3><p>Kafka 只保证<strong>单个 Partition 内有序</strong>：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 方案一：相同业务 Key 的消息路由到同一个 Partition</span></span><br><span class="line"><span class="comment">// 同一个用户的所有订单消息一定有序</span></span><br><span class="line">producer.send(<span class="keyword">new</span> <span class="title class_">ProducerRecord</span>&lt;&gt;(</span><br><span class="line">    <span class="string">&quot;order-topic&quot;</span>,</span><br><span class="line">    userId,          <span class="comment">// key：按 userId 路由</span></span><br><span class="line">    orderJson        <span class="comment">// value</span></span><br><span class="line">));</span><br><span class="line"></span><br><span class="line"><span class="comment">// 方案二：整个 Topic 只设置 1 个 Partition（牺牲吞吐量）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="RocketMQ-的方案"><a href="#RocketMQ-的方案" class="headerlink" title="RocketMQ 的方案"></a>RocketMQ 的方案</h3><p>RocketMQ 提供了顺序消息的原生支持：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 发送顺序消息：同一个 orderId 的消息发到同一个 Queue</span></span><br><span class="line"><span class="type">SendResult</span> <span class="variable">result</span> <span class="operator">=</span> producer.send(msg, <span class="keyword">new</span> <span class="title class_">MessageQueueSelector</span>() &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">MessageQueue</span> <span class="title function_">select</span><span class="params">(List&lt;MessageQueue&gt; mqs, Message msg, Object arg)</span> &#123;</span><br><span class="line">        <span class="type">Long</span> <span class="variable">orderId</span> <span class="operator">=</span> (Long) arg;</span><br><span class="line">        <span class="type">int</span> <span class="variable">index</span> <span class="operator">=</span> (<span class="type">int</span>) (orderId % mqs.size());</span><br><span class="line">        <span class="keyword">return</span> mqs.get(index);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;, orderId);</span><br></pre></td></tr></table></figure>
+
+<h3 id="代价"><a href="#代价" class="headerlink" title="代价"></a>代价</h3><p>全局有序 &#x3D; 单队列 + 单消费者 &#x3D; <strong>吞吐量极低</strong>。实际业务中，通常只需要<strong>局部有序</strong>（比如同一个订单的消息有序即可），不追求全局有序。</p>
+<hr>
+<h2 id="六、重试队列（Retry-Queue）"><a href="#六、重试队列（Retry-Queue）" class="headerlink" title="六、重试队列（Retry Queue）"></a>六、重试队列（Retry Queue）</h2><h3 id="是什么-5"><a href="#是什么-5" class="headerlink" title="是什么"></a>是什么</h3><p>重试队列是消费失败后，<strong>将消息投递到不同延迟级别的重试队列</strong>，实现<strong>梯度重试</strong>（Exponential Backoff），而不是立刻重试或者直接丢进死信。</p>
+<h3 id="为什么需要梯度重试"><a href="#为什么需要梯度重试" class="headerlink" title="为什么需要梯度重试"></a>为什么需要梯度重试</h3><p>直接重试的问题：</p>
+<ul>
+<li>如果是下游服务宕机，立刻重试只会反复失败</li>
+<li>高频重试会对下游服务造成更大压力（雪崩效应）</li>
+<li>重试次数耗尽后进入死信，但也许多等几分钟就好了</li>
+</ul>
+<h3 id="典型的重试策略"><a href="#典型的重试策略" class="headerlink" title="典型的重试策略"></a>典型的重试策略</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">第 1 次重试 → 延迟 5 秒</span><br><span class="line">第 2 次重试 → 延迟 30 秒</span><br><span class="line">第 3 次重试 → 延迟 2 分钟</span><br><span class="line">第 4 次重试 → 延迟 10 分钟</span><br><span class="line">第 5 次重试 → 进入死信队列</span><br></pre></td></tr></table></figure>
+
+<h3 id="实现示例"><a href="#实现示例" class="headerlink" title="实现示例"></a>实现示例</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line">RETRY_DELAYS = [<span class="number">5</span>, <span class="number">30</span>, <span class="number">120</span>, <span class="number">600</span>]  <span class="comment"># 秒</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">on_consume_fail</span>(<span class="params">message, retry_count</span>):</span><br><span class="line">    <span class="keyword">if</span> retry_count &gt;= <span class="built_in">len</span>(RETRY_DELAYS):</span><br><span class="line">        <span class="comment"># 重试次数用完，进入死信队列</span></span><br><span class="line">        publish_to_dlq(message)</span><br><span class="line">        <span class="keyword">return</span></span><br><span class="line"></span><br><span class="line">    delay = RETRY_DELAYS[retry_count]</span><br><span class="line">    message.headers[<span class="string">&#x27;x-retry-count&#x27;</span>] = retry_count + <span class="number">1</span></span><br><span class="line"></span><br><span class="line">    <span class="comment"># 投递到对应延迟级别的重试队列</span></span><br><span class="line">    publish_to_delay_queue(</span><br><span class="line">        queue=<span class="string">f&#x27;retry_queue_<span class="subst">&#123;delay&#125;</span>s&#x27;</span>,</span><br><span class="line">        message=message,</span><br><span class="line">        delay_seconds=delay</span><br><span class="line">    )</span><br></pre></td></tr></table></figure>
+
+<h3 id="RocketMQ-原生支持"><a href="#RocketMQ-原生支持" class="headerlink" title="RocketMQ 原生支持"></a>RocketMQ 原生支持</h3><p>RocketMQ 内置了 18 个重试延迟级别：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h</span><br></pre></td></tr></table></figure>
+
+<p>消费失败后返回 <code>RECONSUME_LATER</code>，Broker 自动按照梯度延迟重新投递，无需手动实现。</p>
+<hr>
+<h2 id="总结：六种队列模式速查表"><a href="#总结：六种队列模式速查表" class="headerlink" title="总结：六种队列模式速查表"></a>总结：六种队列模式速查表</h2><table><thead><tr><th>队列类型</th><th>解决的问题</th><th>核心思想</th><th>典型场景</th></tr></thead><tbody><tr><td>死信队列</td><td>消费失败的消息去哪</td><td>隔离异常消息，防止阻塞</td><td>反复失败的订单消息</td></tr><tr><td>延迟队列</td><td>定时/延时执行</td><td>消息延迟投递</td><td>30 分钟未支付关闭订单</td></tr><tr><td>遗言队列</td><td>客户端异常断开检测</td><td>预设遗言，异常时自动发布</td><td>IoT 设备离线通知</td></tr><tr><td>优先级队列</td><td>重要消息优先处理</td><td>消息带优先级，高优先插队</td><td>VIP 工单插队处理</td></tr><tr><td>顺序队列</td><td>消息顺序保障</td><td>相同 Key 路由到同一分区</td><td>订单状态变更顺序消费</td></tr><tr><td>重试队列</td><td>优雅的失败重试</td><td>梯度延迟，避免雪崩</td><td>调用第三方 API 失败重试</td></tr></tbody></table>
+
+<p>这六种模式不是互斥的，实际生产中往往会<strong>组合使用</strong>。比如：重试队列 + 死信队列是标配组合，延迟队列本身就可以用死信队列来实现。理解了这些模式，面对大部分消息队列的场景设计都能游刃有余。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/838.html">https://leon-book.github.io/blog/index.php/archives/838.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/839.html" title="MySQL 8.0 升级 8.4：PHP 7.3 + Swoole 4.3 兼容性问题与修复方案"><img class="cover" src="/blog/assets/migrated/d764a650f2a6e4a2c2d0.png" onerror="onerror=null;src='/blog/img/404.jpg'" alt="cover of previous post"><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">MySQL 8.0 升级 8.4：PHP 7.3 + Swoole 4.3 兼容性问题与修复方案</div></div><div class="info-2"><div class="info-item-1">  MySQL 8.0 升级至 8.4，属于小版本跨越，但 8.4 是一个 LTS 版本，做了若干破坏性变更。结合 PHP 7.3 + Swoole 4.3 的实际情况，整理出以下兼容性问题和对应处理方案。   影响概览问题严重程度影响范围mysql_native_password 插件被移除🔴 高连接直接失败Swoole 连接池持久连接行为异常🔴 高协程环境下连接错乱ONLY_FULL_GROUP_BY 更严格🟡 中部分查询报错新增保留关键字🟡 中SQL 语法错误废弃配置项导致启动失败🟡 中MySQL 无法启动默认排序规则变更🟢 低JOIN 排序规则冲突   问题一：mysql_native_password 插件被正式移除问题描述MySQL 8.0 已将默认认证插件改为 caching_sha2_password，但 mysql_native_password 仍作为内置插件保留。8.4 将其彻底移除，不再默认加载，需显式启用。 如果 8.0 时期的用户账号是用 mysql_native_password 创建的，升级 8.4 后连接会直接报错： mysqli::...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/837.html" title="WebRTC P2P：浏览器间实时通信的底层原理与实践"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">WebRTC P2P：浏览器间实时通信的底层原理与实践</div></div><div class="info-2"><div class="info-item-1">  你有没有想过，当你和朋友视频通话时，视频流是怎么从你的摄像头传到对方屏幕的？在 WebRTC 出现之前，实时音视频通信依赖服务器中转，延迟高、带宽成本大。而 WebRTC（Web Real-Time Communication） 让浏览器可以直接建立点对点（P2P）连接，无需插件、无需服务器中转媒体流，彻底改变了 Web 实时通信的格局。 本文将从原理到代码，带你深入理解 WebRTC P2P 的完整技术体系。  一、什么是 WebRTC？WebRTC 是由 Google 主导、W3C 和 IETF 标准化的开放技术规范，允许浏览器和移动应用通过简单的 JavaScript API 实现：  🎥 音视频通话（点对点传输，低延迟） 📂 任意数据传输（DataChannel，可传文件、消息） 🖥️ 屏幕共享 🎮 实时游戏数据同步  它的核心优势在于 P2P：两端直接通信，媒体数据不经过服务器，带宽消耗小、延迟极低（通常 &lt; 100ms）。  二、WebRTC 的核心架构┌─────────────────────────────────────────────┐│ ...</div></div></div></a></nav><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%AD%BB%E4%BF%A1%E9%98%9F%E5%88%97%EF%BC%88Dead-Letter-Queue%EF%BC%89"><span class="toc-number">1.</span> <span class="toc-text">一、死信队列（Dead Letter Queue）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-number">1.1.</span> <span class="toc-text">是什么</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%80%E4%B9%88%E6%97%B6%E5%80%99%E8%A7%A6%E5%8F%91"><span class="toc-number">1.2.</span> <span class="toc-text">什么时候触发</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#RabbitMQ-%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.3.</span> <span class="toc-text">RabbitMQ 示例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Kafka-%E7%9A%84%E5%81%9A%E6%B3%95"><span class="toc-number">1.4.</span> <span class="toc-text">Kafka 的做法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5"><span class="toc-number">1.5.</span> <span class="toc-text">最佳实践</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E5%BB%B6%E8%BF%9F%E9%98%9F%E5%88%97%EF%BC%88Delay-Queue%EF%BC%89"><span class="toc-number">2.</span> <span class="toc-text">二、延迟队列（Delay Queue）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%98%AF%E4%BB%80%E4%B9%88-1"><span class="toc-number">2.1.</span> <span class="toc-text">是什么</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E7%8E%B0%E6%96%B9%E6%A1%88%E5%AF%B9%E6%AF%94"><span class="toc-number">2.2.</span> <span class="toc-text">实现方案对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#RabbitMQ-TTL-%E6%AD%BB%E4%BF%A1%E5%AE%9E%E7%8E%B0%E5%BB%B6%E8%BF%9F%E9%98%9F%E5%88%97"><span class="toc-number">2.3.</span> <span class="toc-text">RabbitMQ TTL + 死信实现延迟队列</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Redis-ZSET-%E5%AE%9E%E7%8E%B0"><span class="toc-number">2.4.</span> <span class="toc-text">Redis ZSET 实现</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E9%81%97%E8%A8%80%E9%98%9F%E5%88%97%EF%BC%88Last-Will-Queue%EF%BC%89"><span class="toc-number">3.</span> <span class="toc-text">三、遗言队列（Last Will Queue）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%98%AF%E4%BB%80%E4%B9%88-2"><span class="toc-number">3.1.</span> <span class="toc-text">是什么</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%82%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">3.2.</span> <span class="toc-text">适用场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#MQTT-%E9%81%97%E8%A8%80%E6%B6%88%E6%81%AF%E7%A4%BA%E4%BE%8B"><span class="toc-number">3.3.</span> <span class="toc-text">MQTT 遗言消息示例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%A6%E5%8F%91%E6%9D%A1%E4%BB%B6"><span class="toc-number">3.4.</span> <span class="toc-text">触发条件</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E4%BC%98%E5%85%88%E7%BA%A7%E9%98%9F%E5%88%97%EF%BC%88Priority-Queue%EF%BC%89"><span class="toc-number">4.</span> <span class="toc-text">四、优先级队列（Priority Queue）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%98%AF%E4%BB%80%E4%B9%88-3"><span class="toc-number">4.1.</span> <span class="toc-text">是什么</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9C%BA%E6%99%AF"><span class="toc-number">4.2.</span> <span class="toc-text">场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#RabbitMQ-%E5%AE%9E%E7%8E%B0"><span class="toc-number">4.3.</span> <span class="toc-text">RabbitMQ 实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-number">4.4.</span> <span class="toc-text">注意事项</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E9%A1%BA%E5%BA%8F%E9%98%9F%E5%88%97%EF%BC%88Sequential-FIFO-Queue%EF%BC%89"><span class="toc-number">5.</span> <span class="toc-text">五、顺序队列（Sequential &#x2F; FIFO Queue）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%98%AF%E4%BB%80%E4%B9%88-4"><span class="toc-number">5.1.</span> <span class="toc-text">是什么</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9A%BE"><span class="toc-number">5.2.</span> <span class="toc-text">为什么难</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Kafka-%E7%9A%84%E6%96%B9%E6%A1%88"><span class="toc-number">5.3.</span> <span class="toc-text">Kafka 的方案</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#RocketMQ-%E7%9A%84%E6%96%B9%E6%A1%88"><span class="toc-number">5.4.</span> <span class="toc-text">RocketMQ 的方案</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%A3%E4%BB%B7"><span class="toc-number">5.5.</span> <span class="toc-text">代价</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%87%8D%E8%AF%95%E9%98%9F%E5%88%97%EF%BC%88Retry-Queue%EF%BC%89"><span class="toc-number">6.</span> <span class="toc-text">六、重试队列（Retry Queue）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%98%AF%E4%BB%80%E4%B9%88-5"><span class="toc-number">6.1.</span> <span class="toc-text">是什么</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E6%A2%AF%E5%BA%A6%E9%87%8D%E8%AF%95"><span class="toc-number">6.2.</span> <span class="toc-text">为什么需要梯度重试</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B8%E5%9E%8B%E7%9A%84%E9%87%8D%E8%AF%95%E7%AD%96%E7%95%A5"><span class="toc-number">6.3.</span> <span class="toc-text">典型的重试策略</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E7%8E%B0%E7%A4%BA%E4%BE%8B"><span class="toc-number">6.4.</span> <span class="toc-text">实现示例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#RocketMQ-%E5%8E%9F%E7%94%9F%E6%94%AF%E6%8C%81"><span class="toc-number">6.5.</span> <span class="toc-text">RocketMQ 原生支持</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93%EF%BC%9A%E5%85%AD%E7%A7%8D%E9%98%9F%E5%88%97%E6%A8%A1%E5%BC%8F%E9%80%9F%E6%9F%A5%E8%A1%A8"><span class="toc-number">7.</span> <span class="toc-text">总结：六种队列模式速查表</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

@@ -1,0 +1,727 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>交易策略与高级委托 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="通俗科普：每种委托&#x2F;策略是什么、干什么用、解决什么痛点，配图直观理解。图为 SVG 图片（策略图&#x2F; 目录），在 Obsidian &#x2F; Typora &#x2F; GitHub &#x2F; VS Code 中均可正常显示。  图例：🟢 买入　🔴 卖出　🟡 关键价位线　⚫ 价格走势  先搞懂两件事 普通下单高级委托 &#x2F; 策略谁在操作你手动买卖系统按规则自动买卖是否盯盘">
+<meta property="og:type" content="article">
+<meta property="og:title" content="交易策略与高级委托">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/875.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="通俗科普：每种委托&#x2F;策略是什么、干什么用、解决什么痛点，配图直观理解。图为 SVG 图片（策略图&#x2F; 目录），在 Obsidian &#x2F; Typora &#x2F; GitHub &#x2F; VS Code 中均可正常显示。  图例：🟢 买入　🔴 卖出　🟡 关键价位线　⚫ 价格走势  先搞懂两件事 普通下单高级委托 &#x2F; 策略谁在操作你手动买卖系统按规则自动买卖是否盯盘">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/migrated/f1107933663955969e09.png">
+<meta property="article:published_time" content="2026-08-18T06:26:00.000Z">
+<meta property="article:modified_time" content="2026-08-18T06:26:00.000Z">
+<meta property="article:author" content="leon">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/migrated/f1107933663955969e09.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "交易策略与高级委托",
+  "url": "https://leon-book.github.io/blog/index.php/archives/875.html",
+  "image": "https://leon-book.github.io/blog/assets/migrated/f1107933663955969e09.png",
+  "datePublished": "2026-08-18T06:26:00.000Z",
+  "dateModified": "2026-08-18T06:26:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/875.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '交易策略与高级委托',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/migrated/f1107933663955969e09.png);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">交易策略与高级委托</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">交易策略与高级委托</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-08-18T06:26:00.000Z" title="发表于 2026-08-18 15:26:00">2026-08-18</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-08-18T06:26:00.000Z" title="更新于 2026-08-18 15:26:00">2026-08-18</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E4%BA%A7%E5%93%81/">产品</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/875.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<blockquote>
+<p>通俗科普：每种委托&#x2F;策略<strong>是什么、干什么用、解决什么痛点</strong>，配图直观理解。<br>图为 SVG 图片（<code>策略图/</code> 目录），在 Obsidian &#x2F; Typora &#x2F; GitHub &#x2F; VS Code 中均可正常显示。</p>
+</blockquote>
+<p><strong>图例</strong>：🟢 买入　🔴 卖出　🟡 关键价位线　⚫ 价格走势</p>
+<hr>
+<h2 id="先搞懂两件事"><a href="#先搞懂两件事" class="headerlink" title="先搞懂两件事"></a>先搞懂两件事</h2><table><thead><tr><th> </th><th>普通下单</th><th>高级委托 / 策略</th></tr></thead><tbody><tr><td>谁在操作</td><td>你手动买卖</td><td>系统按规则自动买卖</td></tr><tr><td>是否盯盘</td><td>全靠自己盯</td><td>7×24 自动盯</td></tr></tbody></table>
+
+<blockquote>
+<p>💡 <strong>核心痛点</strong>：人不可能一直盯着盘，情绪还容易上头——高级委托就是把”该在什么价位做什么”交给规则去执行。</p>
+</blockquote>
+<hr>
+<h2 id="1-止盈单-止损单-·-OCO-风控"><a href="#1-止盈单-止损单-·-OCO-风控" class="headerlink" title="1. 止盈单 &#x2F; 止损单 · OCO 　风控"></a>1. 止盈单 &#x2F; 止损单 · OCO 　<code>风控</code></h2><p><img src="/blog/assets/migrated/f1107933663955969e09.png" alt="image.png" title="image.png"></p>
+<blockquote>
+<p>价格上涨触及止盈线自动卖出；若下跌触及止损线则自动止损。OCO &#x3D; 两条线同时守，触发一条另一条自动取消。</p>
+</blockquote>
+<ul>
+<li><strong>是什么</strong>：设好价格，涨到就自动卖（止盈）、跌到就自动卖（止损）。</li>
+<li><strong>干什么</strong>：不用盯盘，价格到线系统自动执行。</li>
+<li><strong>解决痛点</strong>：怕半夜暴跌被套、怕赚了没跑又跌回去——两头都守着，睡觉也安心。</li>
+</ul>
+<hr>
+<h2 id="2-计划委托（条件单）-择时进场"><a href="#2-计划委托（条件单）-择时进场" class="headerlink" title="2. 计划委托（条件单）　择时进场"></a>2. 计划委托（条件单）　<code>择时进场</code></h2><p><img src="/blog/assets/migrated/e905d1691c2afcbd07c0.png" alt="image.png" title="image.png"></p>
+<blockquote>
+<p>现在不买，挂个条件单埋伏；价格跌到你设的位置，系统自动帮你抄底。</p>
+</blockquote>
+<ul>
+<li><strong>是什么</strong>：现在不下单，等价格到理想位置才自动买入&#x2F;卖出。</li>
+<li><strong>干什么</strong>：埋伏进场，等一个好价格。</li>
+<li><strong>解决痛点</strong>：想低吸又不想守屏幕——价格到了自动成交。</li>
+</ul>
+<hr>
+<h2 id="3-网格策略-·-震荡里自动搬砖-震荡行情"><a href="#3-网格策略-·-震荡里自动搬砖-震荡行情" class="headerlink" title="3. 网格策略 · 震荡里自动搬砖　震荡行情"></a>3. 网格策略 · 震荡里自动搬砖　<code>震荡行情</code></h2><p><img src="/blog/assets/migrated/e1a59996427f6169ee6b.png" alt="image.png" title="image.png"></p>
+<blockquote>
+<p>在区间内等距画格：价格每下穿一格买入🟢、每上穿一格卖出🔴，来回震荡就来回赚差价。</p>
+</blockquote>
+<ul>
+<li><strong>是什么</strong>：区间里”低买高卖”自动循环，赚来回波动的差价。</li>
+<li><strong>干什么</strong>：横盘震荡时自动做差价，<strong>不用判断涨跌方向</strong>。</li>
+<li><strong>解决痛点</strong>：行情天天上下但没大方向，手动买卖太累又抓不住节奏。</li>
+<li>⚠️ <strong>注意</strong>：单边暴跌冲出下限会越买越套，单边暴涨冲出上限会踏空——要设好区间。</li>
+</ul>
+<hr>
+<h2 id="4-马丁格尔-·-越跌越买摊平成本-⚠️高风险"><a href="#4-马丁格尔-·-越跌越买摊平成本-⚠️高风险" class="headerlink" title="4. 马丁格尔 · 越跌越买摊平成本　⚠️高风险"></a>4. 马丁格尔 · 越跌越买摊平成本　<code>⚠️高风险</code></h2><p><img src="/blog/assets/migrated/a529dd54285424e28d1c.png" alt="image.png" title="image.png"></p>
+<blockquote>
+<p>柱子 &#x3D; 每次买入量（<strong>逐次加倍</strong>）；金色虚线 &#x3D; 平均成本一路被拉低。价格反弹过成本线就整体盈利。</p>
+</blockquote>
+<ul>
+<li><strong>是什么</strong>：买了跌了就加倍继续买，摊低平均成本，小反弹即可回本。</li>
+<li><strong>干什么</strong>：赌”跌下去还会弹回来”，靠补仓快速解套获利。</li>
+<li><strong>解决痛点</strong>：一买就跌被套很难受——不用涨回原价就能回本。</li>
+<li>⚠️ <strong>注意</strong>：<strong>风险很高</strong>，一路单边下跌不反弹，加倍买入会很快烧光本金。务必设”最多补几次 + 总投入上限”。</li>
+</ul>
+<hr>
+<h2 id="5-冰山委托-·-大单藏在水下-大额-机构"><a href="#5-冰山委托-·-大单藏在水下-大额-机构" class="headerlink" title="5. 冰山委托 · 大单藏在水下　大额/机构"></a>5. 冰山委托 · 大单藏在水下　<code>大额/机构</code></h2><p><img src="/blog/assets/migrated/94a14f1d5f33454eac02.png" alt="image.png" title="image.png"></p>
+<blockquote>
+<p>大单只在盘口露出一小角，成交完自动补出下一批，真实的巨额意图藏在”水下”没人看得到。</p>
+</blockquote>
+<ul>
+<li><strong>是什么</strong>：大单拆小，盘口每次只显示一小部分，成交后自动补下一批。</li>
+<li><strong>干什么</strong>：大户&#x2F;机构悄悄分批成交，不暴露意图。</li>
+<li><strong>解决痛点</strong>：一次挂大单会把价格买高&#x2F;卖低（冲击成本），还会被人看穿抢跑——藏起来慢慢买更划算。</li>
+</ul>
+<hr>
+<h2 id="6-TWAP-VWAP-·-大单分批慢慢买-大额进出"><a href="#6-TWAP-VWAP-·-大单分批慢慢买-大额进出" class="headerlink" title="6. TWAP &#x2F; VWAP · 大单分批慢慢买　大额进出"></a>6. TWAP &#x2F; VWAP · 大单分批慢慢买　<code>大额进出</code></h2><p><img src="/blog/assets/migrated/3159a18479cb2821a2c8.png" alt="image.png" title="image.png"></p>
+<blockquote>
+<p>把一大笔切成很多小单，按时间（TWAP）或市场热度（VWAP）分批买，拿到接近平均价的成交。</p>
+</blockquote>
+<ul>
+<li><strong>是什么</strong>：大单自动切成许多小单，一段时间内分批成交。</li>
+<li><strong>干什么</strong>：超大额进出场时让成交价更平滑。</li>
+<li><strong>解决痛点</strong>：一把全买会砸出很差的价格——摊到时间里买，不惊动市场。</li>
+</ul>
+<hr>
+<h2 id="7-追踪委托-·-让利润奔跑-趋势行情"><a href="#7-追踪委托-·-让利润奔跑-趋势行情" class="headerlink" title="7. 追踪委托 · 让利润奔跑　趋势行情"></a>7. 追踪委托 · 让利润奔跑　<code>趋势行情</code></h2><p><img src="/blog/assets/migrated/40ddf788e3bac45f11f8.png" alt="image.png" title="image.png"></p>
+<blockquote>
+<p>价格涨，止盈线（金线）跟着往上抬；只有回落超过设定幅度才触发卖出，锁住利润又不过早离场。</p>
+</blockquote>
+<ul>
+<li><strong>是什么</strong>：止盈线跟着价格往上走，回落超过设定幅度才卖。</li>
+<li><strong>干什么</strong>：趋势上涨时一路跟涨，真回调了才落袋。</li>
+<li><strong>解决痛点</strong>：怕卖早错过大涨、又怕不卖利润回吐——自动跟涨、到位才卖。</li>
+</ul>
+<hr>
+<h2 id="8-定投-DCA-·-无脑长期买-长期投资"><a href="#8-定投-DCA-·-无脑长期买-长期投资" class="headerlink" title="8. 定投 &#x2F; DCA · 无脑长期买　长期投资"></a>8. 定投 &#x2F; DCA · 无脑长期买　<code>长期投资</code></h2><p><img src="/blog/assets/migrated/e59611d12a69c185edfb.png" alt="image.png" title="image.png"></p>
+<blockquote>
+<p>固定周期、固定金额自动买入，高点买得少、低点买得多，长期摊平成本。</p>
+</blockquote>
+<ul>
+<li><strong>是什么</strong>：每天&#x2F;每周固定金额自动买入，不择时。</li>
+<li><strong>干什么</strong>：长期慢慢建仓，摊平成本。</li>
+<li><strong>解决痛点</strong>：不会择时、也没精力研究——固定节奏买，避免一次买在最高点。</li>
+</ul>
+<hr>
+<h2 id="一张表快速选择"><a href="#一张表快速选择" class="headerlink" title="一张表快速选择"></a>一张表快速选择</h2><table><thead><tr><th>你的情况 / 需求</th><th>推荐用</th></tr></thead><tbody><tr><td>怕暴跌被套，想自动止损止盈</td><td>止损止盈 / OCO</td></tr><tr><td>想在低价埋伏进场</td><td>计划委托</td></tr><tr><td>行情天天横盘，想自动赚差价</td><td>网格</td></tr><tr><td>赌跌了会反弹，想加仓摊平快速回本</td><td>马丁（慎用）</td></tr><tr><td>大额买卖，不想惊动市场</td><td>冰山 / TWAP / VWAP</td></tr><tr><td>趋势上涨，想跟涨到顶再自动卖</td><td>追踪委托</td></tr><tr><td>长期看好，佛系定期买</td><td>定投 / DCA</td></tr></tbody></table>
+
+<hr>
+<h2 id="⚠️-风险提示"><a href="#⚠️-风险提示" class="headerlink" title="⚠️ 风险提示"></a>⚠️ 风险提示</h2><ul>
+<li><strong>没有稳赚的策略</strong>，每种策略都有适合的行情，用错场景反而亏更多。</li>
+<li><strong>网格怕单边、马丁怕暴跌</strong>，务必设好资金上限与止损。</li>
+<li>高级委托只是”自动执行工具”，盈亏最终取决于行情判断和风险控制。</li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/875.html">https://leon-book.github.io/blog/index.php/archives/875.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/blog/assets/migrated/f1107933663955969e09.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/876.html" title="需求评审 &amp; 研发交付规范"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">需求评审 & 研发交付规范</div></div><div class="info-2"><div class="info-item-1">   适用对象:产品、前端、后端、测试、研发小组长目的:让研发不追问就能开工、测试看完能写用例、金融需求不出资损维护:研发小组长   一、PRD 该写什么(产品交付标准)判断一份 PRD 是否合格的唯一标准:研发看完能估工时,测试看完能写用例。 做不到就是不合格,评审时打回。 必备模块#模块内容研发关注点1背景 / 目标为什么做、解决什么问题、衡量指标(如"发息成功率 99.99%")判断优先级2名词定义关键术语统一口径("持有天数""起息日"等)前后端理解一致3用户故事 / 场景流谁、什么场景、做什么、得到什么拆任务依据4功能清单 + 优先级P0/P1/P2,明确本期做 / 不做防范围蔓延5流程图 / 状态机有状态流转的必须画(申购→持有→赎回→结息)后端建模核心6页面原型 + 字段说明每字段:来源、格式、必填、校验、边界前端直接做7交互与异常加载态、空态、失败态、并发点击、超时前端最易漏8数据规则 / 计算逻辑公式、取整、时区、周期后端最易踩坑9权限 / 角色谁能看、谁能操作后端鉴权10埋点 / 数据需求统计什么前后端配合11非功能需求性能、并发量级、幂等、合规、审计架构决策...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/874.html" title="股票代币化产品分析 - 初版"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">股票代币化产品分析 - 初版</div></div><div class="info-2"><div class="info-item-1">  目录 执行摘要 产品分类与判断框架 用户决策清单 竞品规则与对照 市场时段、定价与风险控制 事故复盘 产品信息架构与文案规范 外链资料索引   1. 执行摘要名称中都带有“股票”的产品，可能属于完全不同的资产结构：传统证券账户中的股票、由托管资产支持的链上经济权益，或仅跟踪价格的永续合约。 因此，产品说明不能只写“支持股票交易”或“1:1 锚定股票”。必须明确：  用户持有的是股票、经济权益凭证，还是价格合约。 是否具有分红、投票、赎回和公司行动权益。 是否可转出，及其网络、合约地址、地区和平台兼容性限制。 是否有杠杆、资金费、强平与休市定价机制。 发行、托管、流动性、定价与交易平台分别承担什么责任。  1.1 核心边界不能直接划等号原因1:1 支持 = 登记股东支持方式可能是托管资产对应的经济权益，不当然赋予直接股权或投票权。可提钱包 = 跨平台通用目标平台还必须支持同一网络、同一合约资产与适用的合规范围。余额增加 = 现金分红余额变化可能来自再投资或 multiplier 调整。24/7 可交易 = 价格质量稳定传统市场关闭时，流动性、参考价与可对冲能力可能显著下降。股票...</div></div></div></a></nav><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%88%E6%90%9E%E6%87%82%E4%B8%A4%E4%BB%B6%E4%BA%8B"><span class="toc-number">1.</span> <span class="toc-text">先搞懂两件事</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E6%AD%A2%E7%9B%88%E5%8D%95-%E6%AD%A2%E6%8D%9F%E5%8D%95-%C2%B7-OCO-%E9%A3%8E%E6%8E%A7"><span class="toc-number">2.</span> <span class="toc-text">1. 止盈单 &#x2F; 止损单 · OCO 　风控</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E8%AE%A1%E5%88%92%E5%A7%94%E6%89%98%EF%BC%88%E6%9D%A1%E4%BB%B6%E5%8D%95%EF%BC%89-%E6%8B%A9%E6%97%B6%E8%BF%9B%E5%9C%BA"><span class="toc-number">3.</span> <span class="toc-text">2. 计划委托（条件单）　择时进场</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E7%BD%91%E6%A0%BC%E7%AD%96%E7%95%A5-%C2%B7-%E9%9C%87%E8%8D%A1%E9%87%8C%E8%87%AA%E5%8A%A8%E6%90%AC%E7%A0%96-%E9%9C%87%E8%8D%A1%E8%A1%8C%E6%83%85"><span class="toc-number">4.</span> <span class="toc-text">3. 网格策略 · 震荡里自动搬砖　震荡行情</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E9%A9%AC%E4%B8%81%E6%A0%BC%E5%B0%94-%C2%B7-%E8%B6%8A%E8%B7%8C%E8%B6%8A%E4%B9%B0%E6%91%8A%E5%B9%B3%E6%88%90%E6%9C%AC-%E2%9A%A0%EF%B8%8F%E9%AB%98%E9%A3%8E%E9%99%A9"><span class="toc-number">5.</span> <span class="toc-text">4. 马丁格尔 · 越跌越买摊平成本　⚠️高风险</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E5%86%B0%E5%B1%B1%E5%A7%94%E6%89%98-%C2%B7-%E5%A4%A7%E5%8D%95%E8%97%8F%E5%9C%A8%E6%B0%B4%E4%B8%8B-%E5%A4%A7%E9%A2%9D-%E6%9C%BA%E6%9E%84"><span class="toc-number">6.</span> <span class="toc-text">5. 冰山委托 · 大单藏在水下　大额&#x2F;机构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-TWAP-VWAP-%C2%B7-%E5%A4%A7%E5%8D%95%E5%88%86%E6%89%B9%E6%85%A2%E6%85%A2%E4%B9%B0-%E5%A4%A7%E9%A2%9D%E8%BF%9B%E5%87%BA"><span class="toc-number">7.</span> <span class="toc-text">6. TWAP &#x2F; VWAP · 大单分批慢慢买　大额进出</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E8%BF%BD%E8%B8%AA%E5%A7%94%E6%89%98-%C2%B7-%E8%AE%A9%E5%88%A9%E6%B6%A6%E5%A5%94%E8%B7%91-%E8%B6%8B%E5%8A%BF%E8%A1%8C%E6%83%85"><span class="toc-number">8.</span> <span class="toc-text">7. 追踪委托 · 让利润奔跑　趋势行情</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E5%AE%9A%E6%8A%95-DCA-%C2%B7-%E6%97%A0%E8%84%91%E9%95%BF%E6%9C%9F%E4%B9%B0-%E9%95%BF%E6%9C%9F%E6%8A%95%E8%B5%84"><span class="toc-number">9.</span> <span class="toc-text">8. 定投 &#x2F; DCA · 无脑长期买　长期投资</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E5%BC%A0%E8%A1%A8%E5%BF%AB%E9%80%9F%E9%80%89%E6%8B%A9"><span class="toc-number">10.</span> <span class="toc-text">一张表快速选择</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E2%9A%A0%EF%B8%8F-%E9%A3%8E%E9%99%A9%E6%8F%90%E7%A4%BA"><span class="toc-number">11.</span> <span class="toc-text">⚠️ 风险提示</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

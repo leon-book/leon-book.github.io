@@ -1,0 +1,703 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>【踩坑】服务端单进程阻塞导致大量 408 / 499 的根因分析与解决思路 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="在最近的一次线上问题排查中，我们遇到一个非常典型、但也非常容易被忽略的情况：接口在高峰时段出现大量 HTTP 408（Request Timeout） 和 HTTP 499（Client Closed Request）。这些错误看上去像是网络不稳或负载过高，但最终定位到的根因却是——服务端单进程阻塞。 本文将结合架构图与示意图，从现象、原因到解决方案进行说明，希望能帮助你快速识别并处理类似问题">
+<meta property="og:type" content="article">
+<meta property="og:title" content="【踩坑】服务端单进程阻塞导致大量 408 &#x2F; 499 的根因分析与解决思路">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/813.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="在最近的一次线上问题排查中，我们遇到一个非常典型、但也非常容易被忽略的情况：接口在高峰时段出现大量 HTTP 408（Request Timeout） 和 HTTP 499（Client Closed Request）。这些错误看上去像是网络不稳或负载过高，但最终定位到的根因却是——服务端单进程阻塞。 本文将结合架构图与示意图，从现象、原因到解决方案进行说明，希望能帮助你快速识别并处理类似问题">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2025-11-14T08:15:06.000Z">
+<meta property="article:modified_time" content="2025-11-14T08:15:06.000Z">
+<meta property="article:author" content="leon">
+<meta property="article:tag" content="nginx">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "【踩坑】服务端单进程阻塞导致大量 408 / 499 的根因分析与解决思路",
+  "url": "https://leon-book.github.io/blog/index.php/archives/813.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2025-11-14T08:15:06.000Z",
+  "dateModified": "2025-11-14T08:15:06.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/813.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '【踩坑】服务端单进程阻塞导致大量 408 / 499 的根因分析与解决思路',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">【踩坑】服务端单进程阻塞导致大量 408 / 499 的根因分析与解决思路</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">【踩坑】服务端单进程阻塞导致大量 408 / 499 的根因分析与解决思路</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2025-11-14T08:15:06.000Z" title="发表于 2025-11-14 17:15:06">2025-11-14</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2025-11-14T08:15:06.000Z" title="更新于 2025-11-14 17:15:06">2025-11-14</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E8%B8%A9%E5%9D%91%E6%95%99%E8%AE%AD/">踩坑教训</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/813.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<p>在最近的一次线上问题排查中，我们遇到一个非常典型、但也非常容易被忽略的情况：接口在高峰时段出现大量 <strong>HTTP 408（Request Timeout）</strong> 和 <strong>HTTP 499（Client Closed Request）</strong>。这些错误看上去像是网络不稳或负载过高，但最终定位到的根因却是——<strong>服务端单进程阻塞</strong>。</p>
+<p>本文将结合架构图与示意图，从现象、原因到解决方案进行说明，希望能帮助你快速识别并处理类似问题。</p>
+<hr>
+<h2 id="一、问题现象：请求量不算大，但-408-499-飙升"><a href="#一、问题现象：请求量不算大，但-408-499-飙升" class="headerlink" title="一、问题现象：请求量不算大，但 408 &#x2F; 499 飙升"></a>一、问题现象：请求量不算大，但 408 &#x2F; 499 飙升</h2><p>线上监控显示出两个异常指标：</p>
+<ul>
+<li><strong>408 Request Timeout</strong>：客户端等待超时</li>
+<li><strong>499 Client Closed Request</strong>：请求未完成前，客户端（或 Nginx）提前断开</li>
+</ul>
+<p>这些错误大多在流量上涨时集中爆发，而非持续出现。换句话说，不是一个“总量型问题”，而是一个“阻塞导致的瞬时雪崩”。</p>
+<hr>
+<h2 id="二、根因：服务端单进程（单线程）阻塞"><a href="#二、根因：服务端单进程（单线程）阻塞" class="headerlink" title="二、根因：服务端单进程（单线程）阻塞"></a>二、根因：服务端单进程（单线程）阻塞</h2><p>进一步排查后发现核心原因是：</p>
+<blockquote>
+<p><strong>服务端使用单进程模型，当某个请求执行过慢时，会阻塞整个处理队列，导致后续请求全被拖延。</strong></p>
+</blockquote>
+<h3 id="服务端整体处理流程示意图"><a href="#服务端整体处理流程示意图" class="headerlink" title="服务端整体处理流程示意图"></a>服务端整体处理流程示意图</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">        ┌──────────────┐</span><br><span class="line">        │   Client A   │</span><br><span class="line">        └──────┬───────┘</span><br><span class="line">               │</span><br><span class="line">               ▼</span><br><span class="line">┌────────────────────────────────────────┐</span><br><span class="line">│          单进程/单线程服务端          │</span><br><span class="line">│  ┌──────────────────────────────────┐  │</span><br><span class="line">│  │   Request Handler（一次只能处理1个） ││</span><br><span class="line">│  └──────────────────────────────────┘  │</span><br><span class="line">└────────────────────────────────────────┘</span><br><span class="line">               │</span><br><span class="line">               ▼</span><br><span class="line">        ┌──────────────┐</span><br><span class="line">        │   Response   │</span><br><span class="line">        └──────────────┘</span><br></pre></td></tr></table></figure>
+
+<p>只要某个请求耗时过长，例如：</p>
+<ul>
+<li>慢数据库查询</li>
+<li>第三方 API 卡住</li>
+<li>缓慢的磁盘 I&#x2F;O</li>
+<li>CPU 密集型逻辑</li>
+</ul>
+<p>整个服务端都会被“堵住”。</p>
+<hr>
+<h2 id="三、阻塞导致的队列堆积：408-499-是如何形成的？"><a href="#三、阻塞导致的队列堆积：408-499-是如何形成的？" class="headerlink" title="三、阻塞导致的队列堆积：408 &#x2F; 499 是如何形成的？"></a>三、阻塞导致的队列堆积：408 &#x2F; 499 是如何形成的？</h2><h3 id="当某个请求耗时过长时，所有请求都会排队等待"><a href="#当某个请求耗时过长时，所有请求都会排队等待" class="headerlink" title="当某个请求耗时过长时，所有请求都会排队等待"></a>当某个请求耗时过长时，所有请求都会排队等待</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">         请求进入顺序</span><br><span class="line">Client ──→ 1 → 2 → 3 → 4 → 5 → ...</span><br><span class="line">                    ▲</span><br><span class="line">                    |</span><br><span class="line">       （被前面的慢逻辑阻塞）</span><br></pre></td></tr></table></figure>
+
+<h3 id="队列堆积示意图（真实情况类似这样）"><a href="#队列堆积示意图（真实情况类似这样）" class="headerlink" title="队列堆积示意图（真实情况类似这样）"></a>队列堆积示意图（真实情况类似这样）</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">┌──────────────────────────────────────┐</span><br><span class="line">│      服务端请求队列（单进程）        │</span><br><span class="line">├──────────────────────────────────────┤</span><br><span class="line">│  #1 正在执行（耗时长 / 阻塞）        │ ← 卡住</span><br><span class="line">│  #2 等待中                           │</span><br><span class="line">│  #3 等待中                           │</span><br><span class="line">│  #4 等待中                           │</span><br><span class="line">│  #5 等待中                           │</span><br><span class="line">│  ...                                 │</span><br><span class="line">└──────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="队列堆积后会发生什么？"><a href="#队列堆积后会发生什么？" class="headerlink" title="队列堆积后会发生什么？"></a>队列堆积后会发生什么？</h3><h4 id="✔-客户端等不及-→-408"><a href="#✔-客户端等不及-→-408" class="headerlink" title="✔ 客户端等不及 → 408"></a>✔ 客户端等不及 → 408</h4><p>客户端通常会设置 5s、10s、30s 等 timeout。<br>一旦进程没空处理，客户端会主动断开，记录为 <strong>408 Request Timeout</strong>。</p>
+<h4 id="✔-Nginx-等不及-→-499"><a href="#✔-Nginx-等不及-→-499" class="headerlink" title="✔ Nginx 等不及 → 499"></a>✔ Nginx 等不及 → 499</h4><p>如果架构中有 Nginx（或网关）作为反向代理，它可能更早断掉连接：<br>超时后由 Nginx 记录为 <strong>499 Client Closed Request</strong>。</p>
+<h4 id="✔-最后导致一个典型特征："><a href="#✔-最后导致一个典型特征：" class="headerlink" title="✔ 最后导致一个典型特征："></a>✔ 最后导致一个典型特征：</h4><blockquote>
+<p><strong>CPU 不高、QPS 不高，但 408 &#x2F; 499 爆炸式增长。</strong></p>
+</blockquote>
+<hr>
+<h2 id="四、为什么单进程-单线程架构特别容易中招？"><a href="#四、为什么单进程-单线程架构特别容易中招？" class="headerlink" title="四、为什么单进程&#x2F;单线程架构特别容易中招？"></a>四、为什么单进程&#x2F;单线程架构特别容易中招？</h2><p>因为单进程模型的特性决定了：</p>
+<h3 id="1-一个慢请求会拖死所有请求"><a href="#1-一个慢请求会拖死所有请求" class="headerlink" title="1. 一个慢请求会拖死所有请求"></a>1. 一个慢请求会拖死所有请求</h3><p>例如：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#1 请求 500ms</span><br><span class="line">#2 请求 600ms</span><br><span class="line">#3 请求 40ms，但因为排队导致实际 600ms+</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-同步阻塞-→-全局阻塞"><a href="#2-同步阻塞-→-全局阻塞" class="headerlink" title="2. 同步阻塞 → 全局阻塞"></a>2. 同步阻塞 → 全局阻塞</h3><p>任何同步 I&#x2F;O 或耗时逻辑，都会阻塞整个事件循环。</p>
+<h3 id="3-恶性循环会出现"><a href="#3-恶性循环会出现" class="headerlink" title="3. 恶性循环会出现"></a>3. 恶性循环会出现</h3><p>慢 → 堆积 → 客户端超时 → 重试 → 负载更大 → 更慢</p>
+<p>最终导致雪崩现象。</p>
+<hr>
+<h2 id="五、解决方向（按常见场景总结）"><a href="#五、解决方向（按常见场景总结）" class="headerlink" title="五、解决方向（按常见场景总结）"></a>五、解决方向（按常见场景总结）</h2><h3 id="1-增加服务端并发能力（最直接有效）"><a href="#1-增加服务端并发能力（最直接有效）" class="headerlink" title="1. 增加服务端并发能力（最直接有效）"></a><strong>1. 增加服务端并发能力（最直接有效）</strong></h3><ul>
+<li>多进程（如 gunicorn workers）</li>
+<li>多线程</li>
+<li>Node.js PM2 cluster</li>
+<li>更大的线程池（Java &#x2F; Go）</li>
+</ul>
+<p><strong>好处：慢请求不再拖死整个服务。</strong></p>
+<hr>
+<h3 id="2-避免阻塞操作"><a href="#2-避免阻塞操作" class="headerlink" title="2. 避免阻塞操作"></a><strong>2. 避免阻塞操作</strong></h3><ul>
+<li>减少同步文件 I&#x2F;O</li>
+<li>优化数据库慢查询</li>
+<li>对第三方 API 增加缓存、超时和降级</li>
+</ul>
+<hr>
+<h3 id="3-将耗时任务后台化（异步化）"><a href="#3-将耗时任务后台化（异步化）" class="headerlink" title="3. 将耗时任务后台化（异步化）"></a><strong>3. 将耗时任务后台化（异步化）</strong></h3><ul>
+<li>使用 MQ（Kafka &#x2F; RabbitMQ）</li>
+<li>任务系统（Celery &#x2F; Sidekiq）</li>
+<li>异步 I&#x2F;O 框架（FastAPI &#x2F; aiohttp）</li>
+</ul>
+<hr>
+<h3 id="4-合理配置网关-反向代理超时"><a href="#4-合理配置网关-反向代理超时" class="headerlink" title="4. 合理配置网关&#x2F;反向代理超时"></a><strong>4. 合理配置网关&#x2F;反向代理超时</strong></h3><p>过短会导致大量 499，过长又容易让问题放大。</p>
+<hr>
+<h2 id="六、总结"><a href="#六、总结" class="headerlink" title="六、总结"></a>六、总结</h2><p>大量出现的 <strong>408 &#x2F; 499</strong> 并不只是“用户网络不好”或“流量突然增大”的问题，而往往指向：</p>
+<blockquote>
+<p><strong>服务端单进程阻塞，引发队列堆积，最终导致客户端或代理提前断开连接。</strong></p>
+</blockquote>
+<p>如果你的服务端经常出现：</p>
+<ul>
+<li>QPS 不变但响应时间越来越长</li>
+<li>CPU 不高但超时数量激增</li>
+<li>408 &#x2F; 499 在高峰期暴涨</li>
+</ul>
+<p>那么非常可能是某个阻塞操作拖住了整个处理流程。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/813.html">https://leon-book.github.io/blog/index.php/archives/813.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/nginx/">nginx</a></div><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/814.html" title="MQTT 协议简介（含 TCP 之上的协议结构）"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">MQTT 协议简介（含 TCP 之上的协议结构）</div></div><div class="info-2"><div class="info-item-1">  1. MQTT 的定位MQTT（Message Queuing Telemetry Transport）是一个轻量级发布&#x2F;订阅消息协议，专为 低带宽、低功耗、不稳定网络 设计，广泛用于物联网（IoT）。  2. MQTT 在网络协议栈中的位置MQTT 属于 应用层协议，其依赖关系如下： ┌───────────────────────┐│      MQTT 协议       │  ← 应用层└───────────────────────┘┌───────────────────────┐│        TCP 协议        │  ← 可靠的传输层└───────────────────────┘┌───────────────────────┐│      IP 协议（IPv4/6） │  ← 网络层└───────────────────────┘┌───────────────────────┐│  数据链路层（WiFi/以太网）│└───────────────────────┘  ⭐ MQTT 只能跑在 TCP 上（默认 1883 端口，TLS ...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/812.html" title="解决本地开发跨域问题：如何配置 Nginx 允许 `localhost` 调用后端接口"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">解决本地开发跨域问题：如何配置 Nginx 允许 `localhost` 调用后端接口</div></div><div class="info-2"><div class="info-item-1">  在前后端分离开发中，本地前端一般通过 http://localhost:3000、http://localhost:5173、http://localhost:8080 等地址运行，而后端接口常常部署在： https://api.example.com  由于协议、域名或端口不同，浏览器会触发 CORS（跨域访问限制），导致接口请求报错，例如： Access to fetch at &#x27;https://api.example.com&#x27; from origin &#x27;http://localhost:5173&#x27; has been blocked by CORS policy  要解决这个问题，我们可以在 Nginx 中为开发环境添加 跨域支持。  ✅ 正确理解：CORS 不允许写多个域名错误写法（无效）： add_header Access-Control-Allow-Origin http://localhost:5173, http://localhost:3000;  浏览器会直接忽略，因为 Access-Control-Allow-Or...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/index.php/archives/217.html" title="配置 Nginx 多核 CPU：worker_cpu_affinity 使用方法和范例"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2017-10-12</div><div class="info-item-2">配置 Nginx 多核 CPU：worker_cpu_affinity 使用方法和范例</div></div><div class="info-2"><div class="info-item-1">  在高负载的 Web 服务器环境中，充分利用多核 CPU 的性能是至关重要的。Nginx 提供了 worker_cpu_affinity 指令，使您能够将 Nginx 的 worker 进程与特定的 CPU 核心绑定，从而提高性能和响应速度。本文将介绍 worker_cpu_affinity 的使用方法以及一个配置示例。 1. 什么是 worker_cpu_affinity？worker_cpu_affinity 是 Nginx 的一个指令，用于设置 Nginx worker 进程与 CPU 核心之间的绑定关系。通过将 worker 进程绑定到特定的 CPU 核心，可以减少上下文切换，提高 CPU 的缓存命中率，从而提升整体性能。 2. 指令语法worker_cpu_affinity &lt;mask&gt; [&lt;mask&gt; ...];   &lt;mask&gt;：用十六进制或二进制形式表示 CPU 核心的掩码。例如，01 表示第一个核心，03 表示前两个核心（核心 0 和核心 1）。  3. 配置步骤3.1 确定可用 CPU 核心在 Linux 系统中，您可以使...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/549.html" title="[踩坑] Nginx 配置 WebScoket 未配置 proxy_http_version 导致长连接变短连接"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2022-07-14</div><div class="info-item-2">[踩坑] Nginx 配置 WebScoket 未配置 proxy_http_version 导致长连接变短连接</div></div><div class="info-2"><div class="info-item-1">  今天 搭建 Webscoket 服务, 测试 内网IP + 端口, 客户端连接没有任何问题. 运维同学配置了公网域名后, 测试 客户端连接 公网域名 你 4:27:10等待服务器Websocket握手包...你 4:27:12收到服务器Websocket握手包.服务器 4:27:12Websocket连接已建立，正在等待数据...服务器 4:27:12和服务器断开连接！就像上面一样 一直 握手 -&gt; 连接建立 -&gt; 断开.  问题是 我服务端 进到 onOpen 事件 想要主动回包给 客户端都做不到.$server-&gt;exist($fd) 返回的是false, 发现客户端行为不是长连接, 比较像短连接请求,更过分的是断连不挥手. 排除了一些可能后想到 是不是 运维的 Nginx 配置出错了. server &#123;    listen       80;    server_name  xxxx.xxx.com;                                                                        ...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/145.html" title="解决Nginx &quot;zero size shared memory zone &#39;one&#39;&quot;错误"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2016-12-26</div><div class="info-item-2">解决Nginx &quot;zero size shared memory zone &#39;one&#39;&quot;错误</div></div><div class="info-2"><div class="info-item-1">  解决Nginx “zero size shared memory zone ‘one’”错误引言在Nginx服务器中，共享内存是一种重要的机制，用于提高性能和效率。它允许多个进程在同一块内存区域中共享数据，从而避免了进程间频繁的数据拷贝和通信开销。然而，当Nginx的配置文件中出现”zero size shared memory zone ‘one’”错误时，意味着我们在定义共享内存区域时犯了一些错误。 问题分析该错误的原因是我们在Nginx配置文件中定义的共享内存区域的大小设置为零。共享内存区域是通过Nginx的shared_memory_zone指令来定义的，它指定了内存区域的名称和大小。例如，我们可能有以下的配置： http &#123;    ...    shared_memory_zone one $size;    ...&#125;  在这个例子中，$size应该设置为一个大于零的合适值，以确保共享内存区域的正常运行。然而，如果我们错误地将其设置为零，就会导致”zero size shared memory zone ‘one’”错误的出现。 解决方案要解决这...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/615.html" title="[踩坑] 解决nginx反向代理proxy不能转发header报头"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2023-11-04</div><div class="info-item-2">[踩坑] 解决nginx反向代理proxy不能转发header报头</div></div><div class="info-2"><div class="info-item-1">  今天发现生产环境自定义透传字段 头部转发IP, 错误. 观察了下 获取IP 方式并没有问题. 开发环境ok 的. 区别在于开发环境是直连的, 而生产是 Nginx Proxy server &#123;        listen 8080;        server_name localhost;        access_log  /data/log/nginx/asset-access.log  main;        error_log /data/log/nginx/asset-error.log error;        location / &#123;                set $mode &quot;test&quot;;                if ($request_uri ~* xxxx=([0-9a-z]+)) &#123;                        set $mode $1;                &#125;                proxy_pass http://swoole_a...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/297.html" title="Nginx 中 &#96;$request_uri&#96; 参数与哈希负载均衡"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2018-09-07</div><div class="info-item-2">Nginx 中 &#96;$request_uri&#96; 参数与哈希负载均衡</div></div><div class="info-2"><div class="info-item-1">  在 Nginx 的负载均衡配置中，使用请求相关变量可以实现更灵活的流量管理。其中，$request_uri 是一个非常重要的变量，可以用于哈希负载均衡。本文将深入探讨 $request_uri 的用法及其在负载均衡中的应用。 什么是 $request_uri？$request_uri 是 Nginx 提供的一个内置变量，它包含了客户端请求的完整 URI，包括查询参数。这使得该变量在负载均衡时非常有用，因为它可以帮助我们基于请求的路径和参数将流量分配到不同的后端服务器。 $request_uri 的结构 示例请求: GET /path/to/resource?param=value HTTP/1.1 对应的 $request_uri 值: /path/to/resource?param=value  哈希负载均衡哈希负载均衡根据请求的某一部分（如 URI、IP 地址等）计算出一个哈希值，从而确定请求应该被转发到哪个后端服务器。这种方式可以确保同一请求总是被转发到同一台服务器，从而保持会话的一致性。 使用 $request_uri 的哈希负载均衡配置示例以下是一个使用 $requ...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/173.html" title="Nginx常用代理配置"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2017-02-21</div><div class="info-item-2">Nginx常用代理配置</div></div><div class="info-2"><div class="info-item-1">  Nginx常用代理配置在Web开发和运维中，Nginx是一个广泛使用的反向代理服务器，它可以用于代理HTTP、HTTPS、TCP和UDP请求。在本篇博客中，我们将介绍一些常用的Nginx代理配置，帮助您更好地理解和配置Nginx。 正向代理正向代理是指代理服务器位于客户端和目标服务器之间，以代表客户端向目标服务器发送请求。以下是一个常见的正向代理配置示例： http &#123;    server &#123;        listen 80;        location / &#123;            proxy_pass http://example.com;        &#125;    &#125;&#125;  在上面的配置中，Nginx监听80端口，并将所有请求转发到http://example.com。这样，当客户端发送请求到Nginx时，Nginx会将请求转发给目标服务器，并将响应返回给客户端。 反向代理反向代理是指代理服务器位于目标服务器和客户端之间，以代表目标服务器处理客户端的请求。以下是一个常见的反向代理配置示例： http &#12...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E9%97%AE%E9%A2%98%E7%8E%B0%E8%B1%A1%EF%BC%9A%E8%AF%B7%E6%B1%82%E9%87%8F%E4%B8%8D%E7%AE%97%E5%A4%A7%EF%BC%8C%E4%BD%86-408-499-%E9%A3%99%E5%8D%87"><span class="toc-number">1.</span> <span class="toc-text">一、问题现象：请求量不算大，但 408 &#x2F; 499 飙升</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%A0%B9%E5%9B%A0%EF%BC%9A%E6%9C%8D%E5%8A%A1%E7%AB%AF%E5%8D%95%E8%BF%9B%E7%A8%8B%EF%BC%88%E5%8D%95%E7%BA%BF%E7%A8%8B%EF%BC%89%E9%98%BB%E5%A1%9E"><span class="toc-number">2.</span> <span class="toc-text">二、根因：服务端单进程（单线程）阻塞</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%8D%E5%8A%A1%E7%AB%AF%E6%95%B4%E4%BD%93%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B%E7%A4%BA%E6%84%8F%E5%9B%BE"><span class="toc-number">2.1.</span> <span class="toc-text">服务端整体处理流程示意图</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E9%98%BB%E5%A1%9E%E5%AF%BC%E8%87%B4%E7%9A%84%E9%98%9F%E5%88%97%E5%A0%86%E7%A7%AF%EF%BC%9A408-499-%E6%98%AF%E5%A6%82%E4%BD%95%E5%BD%A2%E6%88%90%E7%9A%84%EF%BC%9F"><span class="toc-number">3.</span> <span class="toc-text">三、阻塞导致的队列堆积：408 &#x2F; 499 是如何形成的？</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BD%93%E6%9F%90%E4%B8%AA%E8%AF%B7%E6%B1%82%E8%80%97%E6%97%B6%E8%BF%87%E9%95%BF%E6%97%B6%EF%BC%8C%E6%89%80%E6%9C%89%E8%AF%B7%E6%B1%82%E9%83%BD%E4%BC%9A%E6%8E%92%E9%98%9F%E7%AD%89%E5%BE%85"><span class="toc-number">3.1.</span> <span class="toc-text">当某个请求耗时过长时，所有请求都会排队等待</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%98%9F%E5%88%97%E5%A0%86%E7%A7%AF%E7%A4%BA%E6%84%8F%E5%9B%BE%EF%BC%88%E7%9C%9F%E5%AE%9E%E6%83%85%E5%86%B5%E7%B1%BB%E4%BC%BC%E8%BF%99%E6%A0%B7%EF%BC%89"><span class="toc-number">3.2.</span> <span class="toc-text">队列堆积示意图（真实情况类似这样）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%98%9F%E5%88%97%E5%A0%86%E7%A7%AF%E5%90%8E%E4%BC%9A%E5%8F%91%E7%94%9F%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="toc-number">3.3.</span> <span class="toc-text">队列堆积后会发生什么？</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E2%9C%94-%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%AD%89%E4%B8%8D%E5%8F%8A-%E2%86%92-408"><span class="toc-number">3.3.1.</span> <span class="toc-text">✔ 客户端等不及 → 408</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E2%9C%94-Nginx-%E7%AD%89%E4%B8%8D%E5%8F%8A-%E2%86%92-499"><span class="toc-number">3.3.2.</span> <span class="toc-text">✔ Nginx 等不及 → 499</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E2%9C%94-%E6%9C%80%E5%90%8E%E5%AF%BC%E8%87%B4%E4%B8%80%E4%B8%AA%E5%85%B8%E5%9E%8B%E7%89%B9%E5%BE%81%EF%BC%9A"><span class="toc-number">3.3.3.</span> <span class="toc-text">✔ 最后导致一个典型特征：</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E4%B8%BA%E4%BB%80%E4%B9%88%E5%8D%95%E8%BF%9B%E7%A8%8B-%E5%8D%95%E7%BA%BF%E7%A8%8B%E6%9E%B6%E6%9E%84%E7%89%B9%E5%88%AB%E5%AE%B9%E6%98%93%E4%B8%AD%E6%8B%9B%EF%BC%9F"><span class="toc-number">4.</span> <span class="toc-text">四、为什么单进程&#x2F;单线程架构特别容易中招？</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E4%B8%80%E4%B8%AA%E6%85%A2%E8%AF%B7%E6%B1%82%E4%BC%9A%E6%8B%96%E6%AD%BB%E6%89%80%E6%9C%89%E8%AF%B7%E6%B1%82"><span class="toc-number">4.1.</span> <span class="toc-text">1. 一个慢请求会拖死所有请求</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%90%8C%E6%AD%A5%E9%98%BB%E5%A1%9E-%E2%86%92-%E5%85%A8%E5%B1%80%E9%98%BB%E5%A1%9E"><span class="toc-number">4.2.</span> <span class="toc-text">2. 同步阻塞 → 全局阻塞</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E6%81%B6%E6%80%A7%E5%BE%AA%E7%8E%AF%E4%BC%9A%E5%87%BA%E7%8E%B0"><span class="toc-number">4.3.</span> <span class="toc-text">3. 恶性循环会出现</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E8%A7%A3%E5%86%B3%E6%96%B9%E5%90%91%EF%BC%88%E6%8C%89%E5%B8%B8%E8%A7%81%E5%9C%BA%E6%99%AF%E6%80%BB%E7%BB%93%EF%BC%89"><span class="toc-number">5.</span> <span class="toc-text">五、解决方向（按常见场景总结）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E5%A2%9E%E5%8A%A0%E6%9C%8D%E5%8A%A1%E7%AB%AF%E5%B9%B6%E5%8F%91%E8%83%BD%E5%8A%9B%EF%BC%88%E6%9C%80%E7%9B%B4%E6%8E%A5%E6%9C%89%E6%95%88%EF%BC%89"><span class="toc-number">5.1.</span> <span class="toc-text">1. 增加服务端并发能力（最直接有效）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E9%81%BF%E5%85%8D%E9%98%BB%E5%A1%9E%E6%93%8D%E4%BD%9C"><span class="toc-number">5.2.</span> <span class="toc-text">2. 避免阻塞操作</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E5%B0%86%E8%80%97%E6%97%B6%E4%BB%BB%E5%8A%A1%E5%90%8E%E5%8F%B0%E5%8C%96%EF%BC%88%E5%BC%82%E6%AD%A5%E5%8C%96%EF%BC%89"><span class="toc-number">5.3.</span> <span class="toc-text">3. 将耗时任务后台化（异步化）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E5%90%88%E7%90%86%E9%85%8D%E7%BD%AE%E7%BD%91%E5%85%B3-%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86%E8%B6%85%E6%97%B6"><span class="toc-number">5.4.</span> <span class="toc-text">4. 合理配置网关&#x2F;反向代理超时</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">6.</span> <span class="toc-text">六、总结</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

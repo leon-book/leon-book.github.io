@@ -1,0 +1,664 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>MySQL 实时查看性能的技巧 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="在数据库管理中，实时监控 MySQL 的性能是确保系统高效运行的关键。通过观察性能指标，可以及时发现并解决性能瓶颈，确保数据库的稳定性和响应速度。本文将介绍一些实用的方法和工具，帮助你实时查看 MySQL 的性能。 为什么监控 MySQL 性能？ 性能优化: 通过监控性能指标，可以识别瓶颈并优化查询。 资源管理: 了解资源使用情况，合理分配服务器资源。 故障排查: 实时监控可以帮助迅速定位问题">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MySQL 实时查看性能的技巧">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/301.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="在数据库管理中，实时监控 MySQL 的性能是确保系统高效运行的关键。通过观察性能指标，可以及时发现并解决性能瓶颈，确保数据库的稳定性和响应速度。本文将介绍一些实用的方法和工具，帮助你实时查看 MySQL 的性能。 为什么监控 MySQL 性能？ 性能优化: 通过监控性能指标，可以识别瓶颈并优化查询。 资源管理: 了解资源使用情况，合理分配服务器资源。 故障排查: 实时监控可以帮助迅速定位问题">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2018-10-15T11:12:00.000Z">
+<meta property="article:modified_time" content="2018-10-15T11:12:00.000Z">
+<meta property="article:author" content="leon">
+<meta property="article:tag" content="mysql">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "MySQL 实时查看性能的技巧",
+  "url": "https://leon-book.github.io/blog/index.php/archives/301.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2018-10-15T11:12:00.000Z",
+  "dateModified": "2018-10-15T11:12:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/301.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'MySQL 实时查看性能的技巧',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">MySQL 实时查看性能的技巧</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">MySQL 实时查看性能的技巧</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2018-10-15T11:12:00.000Z" title="发表于 2018-10-15 20:12:00">2018-10-15</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2018-10-15T11:12:00.000Z" title="更新于 2018-10-15 20:12:00">2018-10-15</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/301.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<p>在数据库管理中，实时监控 MySQL 的性能是确保系统高效运行的关键。通过观察性能指标，可以及时发现并解决性能瓶颈，确保数据库的稳定性和响应速度。本文将介绍一些实用的方法和工具，帮助你实时查看 MySQL 的性能。</p>
+<h2 id="为什么监控-MySQL-性能？"><a href="#为什么监控-MySQL-性能？" class="headerlink" title="为什么监控 MySQL 性能？"></a>为什么监控 MySQL 性能？</h2><ul>
+<li><strong>性能优化</strong>: 通过监控性能指标，可以识别瓶颈并优化查询。</li>
+<li><strong>资源管理</strong>: 了解资源使用情况，合理分配服务器资源。</li>
+<li><strong>故障排查</strong>: 实时监控可以帮助迅速定位问题，减少停机时间。</li>
+</ul>
+<h2 id="实时查看性能的工具"><a href="#实时查看性能的工具" class="headerlink" title="实时查看性能的工具"></a>实时查看性能的工具</h2><h3 id="1-MySQL-命令行工具"><a href="#1-MySQL-命令行工具" class="headerlink" title="1. MySQL 命令行工具"></a>1. MySQL 命令行工具</h3><h4 id="SHOW-STATUS"><a href="#SHOW-STATUS" class="headerlink" title="SHOW STATUS"></a><code>SHOW STATUS</code></h4><p>使用 <code>SHOW STATUS</code> 命令可以查看 MySQL 服务器的状态变量，包括连接数、查询数、慢查询等信息。</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SHOW</span> <span class="keyword">GLOBAL</span> STATUS;</span><br></pre></td></tr></table></figure>
+
+<h4 id="SHOW-PROCESSLIST"><a href="#SHOW-PROCESSLIST" class="headerlink" title="SHOW PROCESSLIST"></a><code>SHOW PROCESSLIST</code></h4><p><code>SHOW PROCESSLIST</code> 命令可以查看当前正在执行的查询，包括执行时间和状态。这对于识别长时间运行的查询非常有用。</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SHOW</span> PROCESSLIST;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-MySQL-Performance-Schema"><a href="#2-MySQL-Performance-Schema" class="headerlink" title="2. MySQL Performance Schema"></a>2. MySQL Performance Schema</h3><p>Performance Schema 是 MySQL 内置的监控工具，提供了丰富的性能数据。可以通过以下查询获取实时的监控信息：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> performance_schema.events_statements_current;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-MySQL-Enterprise-Monitor"><a href="#3-MySQL-Enterprise-Monitor" class="headerlink" title="3. MySQL Enterprise Monitor"></a>3. MySQL Enterprise Monitor</h3><p>如果你使用的是 MySQL Enterprise Edition，可以利用 MySQL Enterprise Monitor 提供的图形界面实时监控性能。它提供了丰富的监控指标和警报功能，可以帮助管理员及时发现问题。</p>
+<h2 id="使用-mysqladmin-工具"><a href="#使用-mysqladmin-工具" class="headerlink" title="使用 mysqladmin 工具"></a>使用 <code>mysqladmin</code> 工具</h2><p><code>mysqladmin</code> 是 MySQL 自带的命令行工具，可以用来查看服务器状态和性能指标。以下是一些常用命令：</p>
+<h3 id="查看服务器状态"><a href="#查看服务器状态" class="headerlink" title="查看服务器状态"></a>查看服务器状态</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">mysqladmin -u root -p status</span><br></pre></td></tr></table></figure>
+
+<h3 id="查看当前连接数"><a href="#查看当前连接数" class="headerlink" title="查看当前连接数"></a>查看当前连接数</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">mysqladmin -u root -p processlist</span><br></pre></td></tr></table></figure>
+
+<h2 id="使用第三方监控工具"><a href="#使用第三方监控工具" class="headerlink" title="使用第三方监控工具"></a>使用第三方监控工具</h2><h3 id="1-Prometheus-Grafana"><a href="#1-Prometheus-Grafana" class="headerlink" title="1. Prometheus + Grafana"></a>1. Prometheus + Grafana</h3><p>Prometheus 是一个开源监控系统，可以与 Grafana 集成以实现可视化。通过配置 MySQL Exporter，可以实时收集 MySQL 性能数据并通过 Grafana 展示。</p>
+<h3 id="2-Percona-Monitoring-and-Management-PMM"><a href="#2-Percona-Monitoring-and-Management-PMM" class="headerlink" title="2. Percona Monitoring and Management (PMM)"></a>2. Percona Monitoring and Management (PMM)</h3><p>PMM 是 Percona 提供的一款开源监控工具，专门用于监控 MySQL 和 MongoDB。它提供了丰富的监控仪表板，能够实时显示数据库的性能指标。</p>
+<h2 id="性能指标分析"><a href="#性能指标分析" class="headerlink" title="性能指标分析"></a>性能指标分析</h2><p>监控 MySQL 性能时，以下是一些关键指标需要关注：</p>
+<ul>
+<li><strong>查询响应时间</strong>: 高响应时间可能表明存在性能瓶颈。</li>
+<li><strong>连接数</strong>: 监控当前连接数，确保不会超过最大连接数限制。</li>
+<li><strong>慢查询</strong>: 记录慢查询以进行后续优化。</li>
+<li><strong>内存和 CPU 使用率</strong>: 了解资源消耗情况，确保系统稳定。</li>
+</ul>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>实时监控 MySQL 性能是数据库管理的重要组成部分。通过使用内置命令、性能模式和第三方监控工具，可以有效地识别和解决性能瓶颈，确保数据库的高可用性和高性能。</p>
+<h3 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h3><ul>
+<li><a href="https://dev.mysql.com/doc/refman/8.0/en/performance-schema.html">MySQL 官方文档 - Performance Schema</a></li>
+<li><a href="https://dev.mysql.com/doc/refman/8.0/en/mysqladmin.html">MySQL 官方文档 - mysqladmin</a></li>
+<li><a href="https://prometheus.io/docs/introduction/overview/">Prometheus 官方文档</a></li>
+<li><a href="https://www.percona.com/pmms">Percona Monitoring and Management</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/301.html">https://leon-book.github.io/blog/index.php/archives/301.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/mysql/">mysql</a></div><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/302.html" title="Mac brew 代替 apt-get , yum, rpm 安装brew图形界面"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Mac brew 代替 apt-get , yum, rpm 安装brew图形界面</div></div><div class="info-2"><div class="info-item-1">  十一在家 研究 mac 下 docker , 困难重重呀..装一个 php+swoole 的容器 结果内部缺少很多扩展, 重新源码编译一个又缺少了很多基础包.正常我就 yum 批量装了; brew 着实费劲 各种限制 不允许…….. 不说了 百度一下装个 brew 图形界面 brew cask install cakebrew  如果不能下载直接上官网下载dmg包进行安装。 </div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/300.html" title="PHP 信号量关闭进程"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">PHP 信号量关闭进程</div></div><div class="info-2"><div class="info-item-1">  今天修改写脚本需要用到信号量控制脚本下面是信号量控制类 &lt;?php    /** * Class Signal * 信号量 */class Signal&#123;    private static $signal;    private static $runing = true;    /**     * Signal constructor.     * @throws     */    private function __construct()    &#123;        if (PHP_SAPI != &#x27;cli&#x27;) &#123;            throw new \Exception(&#x27;Must CLI Model&#x27;);        &#125;        static::pcntl_signal();    &#125;    /**     * 安装信号处理器 kill 2     */    private static function pcntl_signal()    &#123; ...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/index.php/archives/579.html" title="Mysql索引合并: 一条sql可以使用多个索引"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2023-04-25</div><div class="info-item-2">Mysql索引合并: 一条sql可以使用多个索引</div></div><div class="info-2"><div class="info-item-1">  MySQL索引合并：一条SQL可以使用多个索引引言在MySQL数据库中，索引是提高查询性能的关键因素。通常情况下，一条SQL语句只能使用一个索引来加速查询。然而，在某些情况下，MySQL的查询优化器可以使用多个索引来执行查询操作，这被称为索引合并。本文将介绍索引合并的概念、使用场景和注意事项，并探讨其在提升查询性能方面的作用。 1. 索引合并概述索引合并是指MySQL查询优化器在执行查询时，同时使用多个索引来满足查询条件的过程。通过合并多个索引，查询优化器可以更有效地定位符合查询条件的数据，从而提高查询性能。 2. 索引合并的使用场景索引合并通常在以下两种情况下发生： 2.1 联合索引合并当一个查询条件涉及到多个列，并且这些列中的每一列都有单独的索引时，MySQL查询优化器可以通过联合索引合并来加速查询。例如，考虑以下查询语句： SELECT * FROM table_name WHERE column1 = value1 AND column2 = value2;  如果column1和column2分别有单独的索引，查询优化器可以合并这两个索引，以减少数据的扫描并快速定位...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/278.html" title="MySQL 模糊查询 LIKE 效率及更高效的写法"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2018-06-03</div><div class="info-item-2">MySQL 模糊查询 LIKE 效率及更高效的写法</div></div><div class="info-2"><div class="info-item-1">  在 MySQL 数据库中，模糊查询是一个常见的操作，尤其是在需要根据部分字符串匹配记录时。模糊查询通常使用 LIKE 关键字来实现。然而，使用 LIKE 进行查询可能会影响数据库性能，特别是在大数据集上。本文将探讨 LIKE 查询的效率，并提供一些更高效的替代方案。 1. LIKE 查询的基本用法LIKE 操作符用于在 WHERE 子句中进行模糊匹配。基本语法如下： SELECT * FROM table_name WHERE column_name LIKE &#x27;pattern&#x27;;  其中，pattern 可以包含以下通配符：  %：表示零个或多个字符。 _：表示单个字符。  示例SELECT * FROM users WHERE name LIKE &#x27;John%&#x27;;  -- 匹配以 &quot;John&quot; 开头的所有记录SELECT * FROM users WHERE email LIKE &#x27;%@gmail.com&#x27;;  -- 匹配所有 Gmail 用户  2. LIKE 查询的性能问题2.1 查询速度...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/827.html" title="[踩坑] Swoole 常驻进程中使用 mysqli 的那些坑与正确姿势"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-01-28</div><div class="info-item-2">[踩坑] Swoole 常驻进程中使用 mysqli 的那些坑与正确姿势</div></div><div class="info-2"><div class="info-item-1">   关键词：Swoole、mysqli、MySQL、errno&#x3D;110、send of 5 bytes failed、连接复用、死连接  在 PHP-FPM 时代，mysqli 几乎不会暴露什么“连接管理问题”。但一旦进入 Swoole &#x2F; 常驻进程 &#x2F; RPC 服务，很多团队会突然遇到类似这样的错误： send of 5 bytes failed with errno=110 Connection timed out  而且往往具备以下特征：  ❌ 不是高并发 ❌ 不是慢 SQL ❌ 不是攻击 ✅ 每天稳定、零散出现 ✅ 重试一次就恢复  本文结合真实生产案例，讲清楚 为什么会出现、为什么“你明明重连了还有报错”、以及如何正确处理。  一、错误现象解析典型错误日志： Links\Db::getMysql(): send of 5 bytes failed with errno=110 Connection timed out  关键信息拆解 errno&#x3D;110Linux 网络错误码：ETIMEDOUT，TCP 发送超时  send of...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/776.html" title="Database Error: Conversion from collation utf8mb3_general_ci into utf8mb4_general_ci impossible ...."><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-01-18</div><div class="info-item-2">Database Error: Conversion from collation utf8mb3_general_ci into utf8mb4_general_ci impossible ....</div></div><div class="info-2"><div class="info-item-1">  今天 程序遇到下述 : Database Error: Conversion from collation utf8mb3_general_ci into utf8mb4_general_ci impossible for parameter3988  场景时 我的接口程序需要插入 emoji 😅😅😉😉😉, 但插入时代码抛错. 我这边也是 DBA 将 Mysql5.7 才升级到 mysql8 之前就遇到很多默认编码不同的问题. DBA 批量将我们的表字段编码都改为 utf8mb4 字符集排序 utf8mb4_general_ci CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci  PHP 程序连接 mysql 的 chatset &#x3D; ‘utf8’; 因为之前有遇到个类似问题. 之前排故 都是各种找 表 &#x2F; 库 &#x2F; 字段 的编码字符集是否正常.最后找到的原因是 连接时字符集出了问题. 升级了mysql8, PHP mysql 客户端 utf8 对应的字符集 在mysql服务端那边变成了 ut...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/532.html" title="Mysql 批量替换数据库中某个字段内容的sql语句"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2022-04-25</div><div class="info-item-2">Mysql 批量替换数据库中某个字段内容的sql语句</div></div><div class="info-2"><div class="info-item-1">  近年来由于我国新广告法的实施，大量企业网站充斥着违法违规敏感广告词，导致企业被市场监查部门罚款，那么我们企业网站中存在的违法违规敏感广告词可不可以一键替换呢？答案是可以的，下面我们以织梦dedecms程序为例，如何利用织梦数据SQL命令语句一键替换。例如织梦数据库中某个字段包含有违法违规敏感广告词，我们需要把这些广告词进行替换，大兵给大家提供一段SQL命令语句： UPDATE `表名` SET `字段名` = replace (`字段名`,’需要被替换字符’,’将要替换成的字符’);  例如：我要将body字段中所有“最”，全部替换为“较”，如下图所示：表名：zmy_addonarticle字段名称：body 点击SQL命令，输入以下SQL命令语句： update zmy_addonarticle set body=replace(body,’最’,’较’)  最后点击左下角的“执行”命令，body字段中所有“最”，就全都被替换为“较”了，最后在织梦网站后台更新全站内容，再看看前台页面内容变了没有。 </div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/856.html" title="行式、列式、向量数据库怎么选?一篇写给工程师的选型指南"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-06-06</div><div class="info-item-2">行式、列式、向量数据库怎么选?一篇写给工程师的选型指南</div></div><div class="info-2"><div class="info-item-1">   面向有经验的后端&#x2F;数据&#x2F;平台工程师。本文不堆术语,只讲清楚三类数据库各自擅长什么、在什么场景下会踩坑,以及真实业务里怎么组合使用。原理部分点到为止,深入链接放在文末。  数据库选型这件事,八成的争论其实源于一个误会:把”存储模型”当成了”产品好坏”来比。行式、列式、向量,本质是三种不同的数据组织方式,各自为一类访问模式做了极致优化。选错的代价不是”慢一点”,而是整个架构跑偏。 下面按”它怎么存 → 适合什么 → 什么时候别用 → 真实案例”的结构,逐个拆开。  一、行式数据库:为”一次操作一条记录”而生它怎么存行式数据库把一整条记录的所有字段连续存放在磁盘上: Block 1: [1, 张三, 25, 北京] [2, 李四, 30, 上海]Block 2: [3, 王五, 28, 广州] [4, 赵六, 35, 深圳]  读一条完整记录,一次磁盘 IO 就能拿全所有字段。  📊 建议配图:行式存储 vs 列式存储的磁盘布局对比图(可搜索 “row vs columnar storage layout”)  适合什么场景行式数据库的统治区是 OLTP(在...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E7%9B%91%E6%8E%A7-MySQL-%E6%80%A7%E8%83%BD%EF%BC%9F"><span class="toc-number">1.</span> <span class="toc-text">为什么监控 MySQL 性能？</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9E%E6%97%B6%E6%9F%A5%E7%9C%8B%E6%80%A7%E8%83%BD%E7%9A%84%E5%B7%A5%E5%85%B7"><span class="toc-number">2.</span> <span class="toc-text">实时查看性能的工具</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-MySQL-%E5%91%BD%E4%BB%A4%E8%A1%8C%E5%B7%A5%E5%85%B7"><span class="toc-number">2.1.</span> <span class="toc-text">1. MySQL 命令行工具</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#SHOW-STATUS"><span class="toc-number">2.1.1.</span> <span class="toc-text">SHOW STATUS</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#SHOW-PROCESSLIST"><span class="toc-number">2.1.2.</span> <span class="toc-text">SHOW PROCESSLIST</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-MySQL-Performance-Schema"><span class="toc-number">2.2.</span> <span class="toc-text">2. MySQL Performance Schema</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-MySQL-Enterprise-Monitor"><span class="toc-number">2.3.</span> <span class="toc-text">3. MySQL Enterprise Monitor</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8-mysqladmin-%E5%B7%A5%E5%85%B7"><span class="toc-number">3.</span> <span class="toc-text">使用 mysqladmin 工具</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%8A%B6%E6%80%81"><span class="toc-number">3.1.</span> <span class="toc-text">查看服务器状态</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B%E5%BD%93%E5%89%8D%E8%BF%9E%E6%8E%A5%E6%95%B0"><span class="toc-number">3.2.</span> <span class="toc-text">查看当前连接数</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E7%AC%AC%E4%B8%89%E6%96%B9%E7%9B%91%E6%8E%A7%E5%B7%A5%E5%85%B7"><span class="toc-number">4.</span> <span class="toc-text">使用第三方监控工具</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-Prometheus-Grafana"><span class="toc-number">4.1.</span> <span class="toc-text">1. Prometheus + Grafana</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-Percona-Monitoring-and-Management-PMM"><span class="toc-number">4.2.</span> <span class="toc-text">2. Percona Monitoring and Management (PMM)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%A7%E8%83%BD%E6%8C%87%E6%A0%87%E5%88%86%E6%9E%90"><span class="toc-number">5.</span> <span class="toc-text">性能指标分析</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">6.</span> <span class="toc-text">总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">6.1.</span> <span class="toc-text">参考资料</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

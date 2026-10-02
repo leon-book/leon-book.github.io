@@ -1,0 +1,666 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>MySQL `GROUP_CONCAT` 使用及注意事项 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="GROUP_CONCAT 是 MySQL 中一个非常有用的聚合函数，用于将分组结果中的多个值连接成一个字符串。它通常用于将同一组中的多个行合并为一行，适用于报告和数据分析场景。 1. GROUP_CONCAT 的基本用法1.1 语法GROUP_CONCAT([DISTINCT] column_name [ORDER BY ...] [SEPARATOR &#x27;separator&amp;#x27">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MySQL &#96;GROUP_CONCAT&#96; 使用及注意事项">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/384.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="GROUP_CONCAT 是 MySQL 中一个非常有用的聚合函数，用于将分组结果中的多个值连接成一个字符串。它通常用于将同一组中的多个行合并为一行，适用于报告和数据分析场景。 1. GROUP_CONCAT 的基本用法1.1 语法GROUP_CONCAT([DISTINCT] column_name [ORDER BY ...] [SEPARATOR &#x27;separator&amp;#x27">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2019-06-08T14:37:00.000Z">
+<meta property="article:modified_time" content="2019-06-08T14:37:00.000Z">
+<meta property="article:author" content="leon">
+<meta property="article:tag" content="mysql">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "MySQL `GROUP_CONCAT` 使用及注意事项",
+  "url": "https://leon-book.github.io/blog/index.php/archives/384.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2019-06-08T14:37:00.000Z",
+  "dateModified": "2019-06-08T14:37:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/384.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'MySQL `GROUP_CONCAT` 使用及注意事项',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">MySQL `GROUP_CONCAT` 使用及注意事项</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">MySQL `GROUP_CONCAT` 使用及注意事项</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2019-06-08T14:37:00.000Z" title="发表于 2019-06-08 23:37:00">2019-06-08</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2019-06-08T14:37:00.000Z" title="更新于 2019-06-08 23:37:00">2019-06-08</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/384.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<p><code>GROUP_CONCAT</code> 是 MySQL 中一个非常有用的聚合函数，用于将分组结果中的多个值连接成一个字符串。它通常用于将同一组中的多个行合并为一行，适用于报告和数据分析场景。</p>
+<h2 id="1-GROUP-CONCAT-的基本用法"><a href="#1-GROUP-CONCAT-的基本用法" class="headerlink" title="1. GROUP_CONCAT 的基本用法"></a>1. <code>GROUP_CONCAT</code> 的基本用法</h2><h3 id="1-1-语法"><a href="#1-1-语法" class="headerlink" title="1.1 语法"></a>1.1 语法</h3><figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">GROUP_CONCAT([<span class="keyword">DISTINCT</span>] column_name [<span class="keyword">ORDER</span> <span class="keyword">BY</span> ...] [SEPARATOR <span class="string">&#x27;separator&#x27;</span>])</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong><code>DISTINCT</code></strong>：可选，用于消除重复值。</li>
+<li><strong><code>ORDER BY</code></strong>：可选，用于指定连接值的顺序。</li>
+<li><strong><code>SEPARATOR</code></strong>：可选，指定连接值之间的分隔符，默认是逗号（<code>,</code>）。</li>
+</ul>
+<h3 id="1-2-示例"><a href="#1-2-示例" class="headerlink" title="1.2 示例"></a>1.2 示例</h3><p>假设有一个名为 <code>employees</code> 的表，结构如下：</p>
+<table><thead><tr><th>id</th><th>name</th><th>department</th></tr></thead><tbody><tr><td>1</td><td>Alice</td><td>HR</td></tr><tr><td>2</td><td>Bob</td><td>IT</td></tr><tr><td>3</td><td>Charlie</td><td>HR</td></tr><tr><td>4</td><td>David</td><td>IT</td></tr></tbody></table>
+
+<h4 id="连接同一部门的员工姓名"><a href="#连接同一部门的员工姓名" class="headerlink" title="连接同一部门的员工姓名"></a>连接同一部门的员工姓名</h4><figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> department, GROUP_CONCAT(name SEPARATOR <span class="string">&#x27;, &#x27;</span>) <span class="keyword">AS</span> employee_names</span><br><span class="line"><span class="keyword">FROM</span> employees</span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span> department;</span><br></pre></td></tr></table></figure>
+
+<h3 id="结果"><a href="#结果" class="headerlink" title="结果"></a>结果</h3><table><thead><tr><th>department</th><th>employee_names</th></tr></thead><tbody><tr><td>HR</td><td>Alice, Charlie</td></tr><tr><td>IT</td><td>Bob, David</td></tr></tbody></table>
+
+<h2 id="2-GROUP-CONCAT-的注意事项"><a href="#2-GROUP-CONCAT-的注意事项" class="headerlink" title="2. GROUP_CONCAT 的注意事项"></a>2. <code>GROUP_CONCAT</code> 的注意事项</h2><h3 id="2-1-结果长度限制"><a href="#2-1-结果长度限制" class="headerlink" title="2.1 结果长度限制"></a>2.1 结果长度限制</h3><ul>
+<li>默认情况下，<code>GROUP_CONCAT</code> 结果的最大长度为 1024 字节。可以通过设置系统变量 <code>group_concat_max_len</code> 增加这个限制。</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SET</span> SESSION group_concat_max_len <span class="operator">=</span> <span class="number">10000</span>;  <span class="comment">-- 增加最大长度</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-数据类型"><a href="#2-2-数据类型" class="headerlink" title="2.2 数据类型"></a>2.2 数据类型</h3><ul>
+<li><code>GROUP_CONCAT</code> 返回的数据类型是字符串。如果连接的字段是数字类型，MySQL 会隐式转换为字符串，可能导致意外的结果。</li>
+</ul>
+<h3 id="2-3-NULL-值处理"><a href="#2-3-NULL-值处理" class="headerlink" title="2.3 NULL 值处理"></a>2.3 NULL 值处理</h3><ul>
+<li>如果分组中的某个值为 <code>NULL</code>，<code>GROUP_CONCAT</code> 会忽略该值。确保数据中没有意外的 <code>NULL</code> 值，以免影响结果。</li>
+</ul>
+<h3 id="2-4-字符编码"><a href="#2-4-字符编码" class="headerlink" title="2.4 字符编码"></a>2.4 字符编码</h3><ul>
+<li>如果连接的字段包含不同的字符集或编码，可能会导致结果中的字符显示不正确。确保所有字段的字符集一致。</li>
+</ul>
+<h3 id="2-5-使用-DISTINCT"><a href="#2-5-使用-DISTINCT" class="headerlink" title="2.5 使用 DISTINCT"></a>2.5 使用 <code>DISTINCT</code></h3><ul>
+<li>使用 <code>DISTINCT</code> 时，可能会增加查询的复杂度和执行时间。仅在必要时使用。</li>
+</ul>
+<h3 id="2-6-性能问题"><a href="#2-6-性能问题" class="headerlink" title="2.6 性能问题"></a>2.6 性能问题</h3><ul>
+<li>对于大数据集，使用 <code>GROUP_CONCAT</code> 可能会影响查询性能。尽量优化查询条件，避免不必要的全表扫描。</li>
+</ul>
+<h2 id="3-综合示例"><a href="#3-综合示例" class="headerlink" title="3. 综合示例"></a>3. 综合示例</h2><p>以下是一个更复杂的示例，结合了多个注意事项：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SET</span> SESSION group_concat_max_len <span class="operator">=</span> <span class="number">10000</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">SELECT</span> department, </span><br><span class="line">       GROUP_CONCAT(<span class="keyword">DISTINCT</span> name <span class="keyword">ORDER</span> <span class="keyword">BY</span> name SEPARATOR <span class="string">&#x27;, &#x27;</span>) <span class="keyword">AS</span> employee_names</span><br><span class="line"><span class="keyword">FROM</span> employees</span><br><span class="line"><span class="keyword">WHERE</span> department <span class="keyword">IS</span> <span class="keyword">NOT NULL</span></span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span> department;</span><br></pre></td></tr></table></figure>
+
+<h2 id="4-总结"><a href="#4-总结" class="headerlink" title="4. 总结"></a>4. 总结</h2><p><code>GROUP_CONCAT</code> 是一个强大的工具，用于将多个行数据合并为一行字符串。通过了解其用法和注意事项，您可以更加有效地利用这个函数来处理和分析数据。在使用时，请注意结果长度限制、NULL 值处理、字符编码等问题，以避免潜在的坑位。希望这些信息对您有所帮助！</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/384.html">https://leon-book.github.io/blog/index.php/archives/384.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/mysql/">mysql</a></div><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/385.html" title="PHP 中 file_get_contents($url) 设置超时"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">PHP 中 file_get_contents($url) 设置超时</div></div><div class="info-2"><div class="info-item-1">  在 PHP 中，使用 file_get_contents($url) 函数进行网络请求时，默认情况下没有超时设置。如果请求的远程 URL 响应时间过长，可能会导致脚本挂起。为了解决这个问题，可以使用 stream_context_create 函数来设置超时参数。 以下是如何设置超时的具体步骤和示例代码。 1. 设置超时的基本方法使用 stream_context_create 创建一个流上下文，并设置 http 选项中的 timeout 参数。 示例代码&lt;?php$url = &quot;http://www.example.com&quot;;// 设置超时为 5 秒$options = [    &quot;http&quot; =&gt; [        &quot;timeout&quot; =&gt; 5 // 超时时间（秒）    ]];$context = stream_context_create($options);// 获取内容$response = @file_get_contents($url, false, $context);if ($r...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/383.html" title="MySQL SQL 查询优化：使用 `USE`, `IGNORE`, `FORCE` 关键字"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">MySQL SQL 查询优化：使用 `USE`, `IGNORE`, `FORCE` 关键字</div></div><div class="info-2"><div class="info-item-1">  在 MySQL 中，优化查询性能是提高数据库应用效率的重要部分。USE, IGNORE, 和 FORCE 关键词可以在特定情况下增强查询的灵活性。以下是对这三个关键词的详细介绍及其使用场景。 1. USE 关键字1.1 概述USE 关键字用于指定查询所使用的数据库。如果您在一个 MySQL 服务器上有多个数据库，使用 USE 可以确保在正确的数据库上下文中执行查询。 1.2 示例USE my_database;SELECT * FROM my_table;  1.3 注意事项 确保在执行查询之前已选择正确的数据库，避免使用错误的表。  2. IGNORE 关键字2.1 概述IGNORE 关键字用于在执行某些操作时忽略错误。例如，在插入操作中，如果遇到重复键错误，使用 IGNORE 可以跳过该记录并继续执行。 2.2 示例INSERT IGNORE INTO my_table (id, name) VALUES (1, &#x27;John&#x27;);  在这个示例中，如果 id 为 1 的记录已经存在，那么这条插入语句不会抛出错误，而是简单地忽略该操作。 2.3 使用场景...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/index.php/archives/827.html" title="[踩坑] Swoole 常驻进程中使用 mysqli 的那些坑与正确姿势"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-01-28</div><div class="info-item-2">[踩坑] Swoole 常驻进程中使用 mysqli 的那些坑与正确姿势</div></div><div class="info-2"><div class="info-item-1">   关键词：Swoole、mysqli、MySQL、errno&#x3D;110、send of 5 bytes failed、连接复用、死连接  在 PHP-FPM 时代，mysqli 几乎不会暴露什么“连接管理问题”。但一旦进入 Swoole &#x2F; 常驻进程 &#x2F; RPC 服务，很多团队会突然遇到类似这样的错误： send of 5 bytes failed with errno=110 Connection timed out  而且往往具备以下特征：  ❌ 不是高并发 ❌ 不是慢 SQL ❌ 不是攻击 ✅ 每天稳定、零散出现 ✅ 重试一次就恢复  本文结合真实生产案例，讲清楚 为什么会出现、为什么“你明明重连了还有报错”、以及如何正确处理。  一、错误现象解析典型错误日志： Links\Db::getMysql(): send of 5 bytes failed with errno=110 Connection timed out  关键信息拆解 errno&#x3D;110Linux 网络错误码：ETIMEDOUT，TCP 发送超时  send of...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/551.html" title="在MySQL中阻止UPDATE, DELETE 语句的执行，在没有添加WHERE条件"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2022-07-17</div><div class="info-item-2">在MySQL中阻止UPDATE, DELETE 语句的执行，在没有添加WHERE条件</div></div><div class="info-2"><div class="info-item-1">  如果在生产环境中使用UPDATE，DELETE语句操作数据，此时如果忘记携带本应该添加的WHERE条件，后果可能不堪设想。在正常的业务情况，也不会更新或者删除所有的记录 1. 阻止update设置（sql_safe_updates）sql_safe_updates这个MySQL自带的参数就可以完美的解决我们的问题，并且该参数是可以在线变更的哦~当该参数开启的情况下，你必须要在UPDATE语句后携带WHERE条件，否则就会报出ERROR。。  sql_safe_updates=0,即未开启  $ set sql_safe_updates=0;Query OK, 0 rows affected (0.00 sec) $ show variables like &#x27;sql_safe_updates&#x27;Variable_name            Valuesql_safe_updates    OFF  如上属的例子所示，当参数sql_safe_updates开启的时候，UPDATE语句不携带WHERE条件将会爆出一个错误。 2. 阻止delete设置直接限制m...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/275.html" title="Mysql 解除正在死锁方法"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2018-04-01</div><div class="info-item-2">Mysql 解除正在死锁方法</div></div><div class="info-2"><div class="info-item-1">  今天线下测试 for update 结果把 测试机mysql 锁了 上网找了篇文章 亲测可用     # 查询是否锁表                mysql&gt; show OPEN TABLES where In_use &gt; 0;    +-----------------+------------+--------+-------------+    | Database        | Table      | In_use | Name_locked |    +-----------------+------------+--------+-------------+    | xx_trade_xx     | trust      |     47 |           0 |    | xx_trade_xx     | user_xx    |      3 |           0 |    +-----------------+------------+--------+-------------+    找到了 user_xx 锁了三...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/278.html" title="MySQL 模糊查询 LIKE 效率及更高效的写法"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2018-06-03</div><div class="info-item-2">MySQL 模糊查询 LIKE 效率及更高效的写法</div></div><div class="info-2"><div class="info-item-1">  在 MySQL 数据库中，模糊查询是一个常见的操作，尤其是在需要根据部分字符串匹配记录时。模糊查询通常使用 LIKE 关键字来实现。然而，使用 LIKE 进行查询可能会影响数据库性能，特别是在大数据集上。本文将探讨 LIKE 查询的效率，并提供一些更高效的替代方案。 1. LIKE 查询的基本用法LIKE 操作符用于在 WHERE 子句中进行模糊匹配。基本语法如下： SELECT * FROM table_name WHERE column_name LIKE &#x27;pattern&#x27;;  其中，pattern 可以包含以下通配符：  %：表示零个或多个字符。 _：表示单个字符。  示例SELECT * FROM users WHERE name LIKE &#x27;John%&#x27;;  -- 匹配以 &quot;John&quot; 开头的所有记录SELECT * FROM users WHERE email LIKE &#x27;%@gmail.com&#x27;;  -- 匹配所有 Gmail 用户  2. LIKE 查询的性能问题2.1 查询速度...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/582.html" title="MySql 之 json_extract 函数处理json字段"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2023-05-15</div><div class="info-item-2">MySql 之 json_extract 函数处理json字段</div></div><div class="info-2"><div class="info-item-1">  MySQL中的json_extract函数处理JSON字段引言MySQL是一种流行的关系型数据库管理系统，从MySQL 5.7版本开始，引入了对JSON数据类型的支持。json_extract函数是MySQL提供的用于操作和提取JSON字段数据的函数之一。本文将介绍json_extract函数的用法和示例，并探讨其在处理JSON字段中的应用。 1. json_extract函数概述json_extract函数用于从JSON字段中提取特定的数据。它的语法如下： json_extract(json_doc, path[, path]...)  其中，json_doc是要提取数据的JSON字段，path是一个或多个用于指定所需数据位置的JSON路径表达式。 2. 使用示例下面是一些json_extract函数的使用示例： 2.1 提取单个值假设有一个名为data的JSON字段，其值为{&quot;name&quot;: &quot;John&quot;, &quot;age&quot;: 25, &quot;city&quot;: &quot;New York&quot;}。要提取...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/878.html" title="MySQL 8.4 升级踩坑：列级权限与表级权限混用，导致新增表级权限对长连接不生效"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-08-20</div><div class="info-item-2">MySQL 8.4 升级踩坑：列级权限与表级权限混用，导致新增表级权限对长连接不生效</div></div><div class="info-2"><div class="info-item-1">  在将 MySQL 从旧版本升级到 8.4 后，我们遇到了一次由权限管理引发的线上事故：账号同时存在列级权限和表级权限时，新增的表级 INSERT 权限对已经建立的长连接（TCP 长连接）不生效，直到重启使用该连接的服务、重建连接后才恢复正常。短连接（如 Cron 定时任务）则不受影响，因为每次执行都会重新建立连接。 本文记录事故的发现过程、排查思路、根因分析，以及最终采用的治标和治本方案，供同样在做 8.4 升级评估的团队参考。  说明：截至本文撰写时，我们没有在 Oracle 官方 bugs.mysql.com 和 8.4 Release Notes 中找到与本文现象完全吻合、且被官方明确确认的 bug 记录。下文”根因分析”部分是基于 MySQL 权限校验机制做出的技术推断，并非官方定论。我们已按复现步骤向官方提交 bug 报告，等待确认。  背景 数据库版本：从 MySQL 8.0.x 升级到 8.4.x（LTS） 升级前，业务账号的权限历史上是列级权限和表级权限混用的：部分表只授予了列级权限（如 GRANT INSERT (col1, col2) ON db.tabl...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-GROUP-CONCAT-%E7%9A%84%E5%9F%BA%E6%9C%AC%E7%94%A8%E6%B3%95"><span class="toc-number">1.</span> <span class="toc-text">1. GROUP_CONCAT 的基本用法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E8%AF%AD%E6%B3%95"><span class="toc-number">1.1.</span> <span class="toc-text">1.1 语法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.2.</span> <span class="toc-text">1.2 示例</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%BF%9E%E6%8E%A5%E5%90%8C%E4%B8%80%E9%83%A8%E9%97%A8%E7%9A%84%E5%91%98%E5%B7%A5%E5%A7%93%E5%90%8D"><span class="toc-number">1.2.1.</span> <span class="toc-text">连接同一部门的员工姓名</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%93%E6%9E%9C"><span class="toc-number">1.3.</span> <span class="toc-text">结果</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-GROUP-CONCAT-%E7%9A%84%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-number">2.</span> <span class="toc-text">2. GROUP_CONCAT 的注意事项</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E7%BB%93%E6%9E%9C%E9%95%BF%E5%BA%A6%E9%99%90%E5%88%B6"><span class="toc-number">2.1.</span> <span class="toc-text">2.1 结果长度限制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"><span class="toc-number">2.2.</span> <span class="toc-text">2.2 数据类型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-NULL-%E5%80%BC%E5%A4%84%E7%90%86"><span class="toc-number">2.3.</span> <span class="toc-text">2.3 NULL 值处理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-%E5%AD%97%E7%AC%A6%E7%BC%96%E7%A0%81"><span class="toc-number">2.4.</span> <span class="toc-text">2.4 字符编码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-5-%E4%BD%BF%E7%94%A8-DISTINCT"><span class="toc-number">2.5.</span> <span class="toc-text">2.5 使用 DISTINCT</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-6-%E6%80%A7%E8%83%BD%E9%97%AE%E9%A2%98"><span class="toc-number">2.6.</span> <span class="toc-text">2.6 性能问题</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E7%BB%BC%E5%90%88%E7%A4%BA%E4%BE%8B"><span class="toc-number">3.</span> <span class="toc-text">3. 综合示例</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E6%80%BB%E7%BB%93"><span class="toc-number">4.</span> <span class="toc-text">4. 总结</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

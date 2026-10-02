@@ -1,0 +1,645 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>PHP四种序列化方案 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="PHP四种序列化方案引言在PHP开发中，序列化是一种常见的数据处理方式，用于将数据转换为可存储或传输的格式。PHP提供了多种序列化方案，每种方案都有其特点和适用场景。本文将介绍PHP中的四种主要序列化方案，并讨论它们的优缺点。 1. PHP序列化PHP序列化是PHP内置的序列化机制，通过serialize()函数将PHP对象转换为字符串表示形式，并使用unserialize()函数将其还原为原">
+<meta property="og:type" content="article">
+<meta property="og:title" content="PHP四种序列化方案">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/595.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="PHP四种序列化方案引言在PHP开发中，序列化是一种常见的数据处理方式，用于将数据转换为可存储或传输的格式。PHP提供了多种序列化方案，每种方案都有其特点和适用场景。本文将介绍PHP中的四种主要序列化方案，并讨论它们的优缺点。 1. PHP序列化PHP序列化是PHP内置的序列化机制，通过serialize()函数将PHP对象转换为字符串表示形式，并使用unserialize()函数将其还原为原">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2023-08-01T00:32:00.000Z">
+<meta property="article:modified_time" content="2023-08-01T00:32:00.000Z">
+<meta property="article:author" content="leon">
+<meta property="article:tag" content="php">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "PHP四种序列化方案",
+  "url": "https://leon-book.github.io/blog/index.php/archives/595.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2023-08-01T00:32:00.000Z",
+  "dateModified": "2023-08-01T00:32:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/595.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'PHP四种序列化方案',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">PHP四种序列化方案</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">PHP四种序列化方案</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2023-08-01T00:32:00.000Z" title="发表于 2023-08-01 09:32:00">2023-08-01</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2023-08-01T00:32:00.000Z" title="更新于 2023-08-01 09:32:00">2023-08-01</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/">编程语言</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/595.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<h1 id="PHP四种序列化方案"><a href="#PHP四种序列化方案" class="headerlink" title="PHP四种序列化方案"></a>PHP四种序列化方案</h1><h2 id="引言"><a href="#引言" class="headerlink" title="引言"></a>引言</h2><p>在PHP开发中，序列化是一种常见的数据处理方式，用于将数据转换为可存储或传输的格式。PHP提供了多种序列化方案，每种方案都有其特点和适用场景。本文将介绍PHP中的四种主要序列化方案，并讨论它们的优缺点。</p>
+<h2 id="1-PHP序列化"><a href="#1-PHP序列化" class="headerlink" title="1. PHP序列化"></a>1. PHP序列化</h2><p>PHP序列化是PHP内置的序列化机制，通过<code>serialize()</code>函数将PHP对象转换为字符串表示形式，并使用<code>unserialize()</code>函数将其还原为原始对象。这种方案可以序列化PHP对象及其属性，并支持大多数PHP数据类型。然而，PHP序列化的字符串表示形式不易读懂，且不适合与其他编程语言进行交互。</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="variable">$data</span> = [<span class="string">&#x27;name&#x27;</span> =&gt; <span class="string">&#x27;John&#x27;</span>, <span class="string">&#x27;age&#x27;</span> =&gt; <span class="number">30</span>];</span><br><span class="line"><span class="variable">$serializedData</span> = <span class="title function_ invoke__">serialize</span>(<span class="variable">$data</span>);</span><br><span class="line"><span class="keyword">echo</span> <span class="variable">$serializedData</span>;</span><br><span class="line"></span><br><span class="line"><span class="variable">$unserializedData</span> = <span class="title function_ invoke__">unserialize</span>(<span class="variable">$serializedData</span>);</span><br><span class="line"><span class="title function_ invoke__">print_r</span>(<span class="variable">$unserializedData</span>);</span><br></pre></td></tr></table></figure>
+
+<p>引用文献：<a href="https://www.php.net/manual/en/function.serialize.php">PHP: serialize - Manual</a></p>
+<h2 id="2-JSON序列化"><a href="#2-JSON序列化" class="headerlink" title="2. JSON序列化"></a>2. JSON序列化</h2><p>JSON（JavaScript Object Notation）是一种轻量级的数据交换格式，广泛应用于跨语言数据传输。在PHP中，可以使用<code>json_encode()</code>函数将PHP数据转换为JSON字符串，使用<code>json_decode()</code>函数将JSON字符串还原为PHP数据。JSON序列化方案具有良好的可读性和跨平台兼容性，但只能序列化基本数据类型和一些特定的PHP对象。</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="variable">$data</span> = [<span class="string">&#x27;name&#x27;</span> =&gt; <span class="string">&#x27;John&#x27;</span>, <span class="string">&#x27;age&#x27;</span> =&gt; <span class="number">30</span>];</span><br><span class="line"><span class="variable">$serializedData</span> = <span class="title function_ invoke__">json_encode</span>(<span class="variable">$data</span>);</span><br><span class="line"><span class="keyword">echo</span> <span class="variable">$serializedData</span>;</span><br><span class="line"></span><br><span class="line"><span class="variable">$unserializedData</span> = <span class="title function_ invoke__">json_decode</span>(<span class="variable">$serializedData</span>, <span class="literal">true</span>);</span><br><span class="line"><span class="title function_ invoke__">print_r</span>(<span class="variable">$unserializedData</span>);</span><br></pre></td></tr></table></figure>
+
+<p>引用文献：<a href="https://www.php.net/manual/en/function.json-encode.php">PHP: json_encode - Manual</a></p>
+<h2 id="3-XML序列化"><a href="#3-XML序列化" class="headerlink" title="3. XML序列化"></a>3. XML序列化</h2><p>XML（eXtensible Markup Language）是一种用于表示结构化数据的标记语言。在PHP中，可以使用<code>SimpleXMLElement</code>类和相关方法来创建XML文档，并将PHP数据转换为XML格式。XML序列化方案适用于与其他系统进行数据交换，但相对于JSON来说，XML序列化的数据量较大且处理起来相对繁琐。</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="variable">$data</span> = [<span class="string">&#x27;name&#x27;</span> =&gt; <span class="string">&#x27;John&#x27;</span>, <span class="string">&#x27;age&#x27;</span> =&gt; <span class="number">30</span>];</span><br><span class="line"><span class="variable">$xml</span> = <span class="keyword">new</span> <span class="title class_">SimpleXMLElement</span>(<span class="string">&#x27;&lt;root/&gt;&#x27;</span>);</span><br><span class="line"><span class="title function_ invoke__">array_walk_recursive</span>(<span class="variable">$data</span>, [<span class="variable">$xml</span>, <span class="string">&#x27;addChild&#x27;</span>]);</span><br><span class="line"><span class="variable">$serializedData</span> = <span class="variable">$xml</span>-&gt;<span class="title function_ invoke__">asXML</span>();</span><br><span class="line"><span class="keyword">echo</span> <span class="variable">$serializedData</span>;</span><br><span class="line"></span><br><span class="line"><span class="variable">$unserializedData</span> = <span class="title function_ invoke__">simplexml_load_string</span>(<span class="variable">$serializedData</span>);</span><br><span class="line"><span class="title function_ invoke__">print_r</span>(<span class="variable">$unserializedData</span>);</span><br></pre></td></tr></table></figure>
+
+<p>引用文献：<a href="https://www.php.net/manual/en/class.simplexmlelement.php">PHP: SimpleXMLElement - Manual</a></p>
+<h2 id="4-MessagePack序列化"><a href="#4-MessagePack序列化" class="headerlink" title="4. MessagePack序列化"></a>4. MessagePack序列化</h2><p>MessagePack是一种高效的二进制序列化格式，具有较小的数据体积和较快的编码&#x2F;解码速度。在PHP中，可以使用<code>msgpack_serialize()</code>和<code>msgpack_unserialize()</code>函数来进行MessagePack序列化和反序列化。MessagePack序列化方案适用于需要高性能和紧凑数据表示的场景，但由于其二进制格式，可读性较差。</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="variable">$data</span> = [<span class="string">&#x27;name&#x27;</span> =&gt; <span class="string">&#x27;John&#x27;</span>, <span class="string">&#x27;age&#x27;</span> =&gt; <span class="number">30</span>];</span><br><span class="line"><span class="variable">$serializedData</span> = <span class="title function_ invoke__">msgpack_serialize</span>(<span class="variable">$data</span>);</span><br><span class="line"><span class="keyword">echo</span> <span class="title function_ invoke__">base64_encode</span>(<span class="variable">$serializedData</span>);</span><br><span class="line"></span><br><span class="line"><span class="variable">$unserializedData</span> = <span class="title function_ invoke__">msgpack_unserialize</span>(<span class="title function_ invoke__">base64_decode</span>(<span class="variable">$serializedData</span>));</span><br><span class="line"><span class="title function_ invoke__">print_r</span>(<span class="variable">$unserializedData</span>);</span><br></pre></td></tr></table></figure>
+
+<p>引用文献：<a href="https://msgpack.org/">MessagePack</a></p>
+<h2 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h2><p>PHP提供了多种序列化方案，包括PHP序列化、JSON序列化、XML序列化和MessagePack序列化。选择适当的序列化方案取决于应用的需求和场景。如果需要与其他语言进行数据交互，JSON或XML序列化是较好的选择。对于高性能和紧凑数据表示，MessagePack是一个优秀的方案。因此，在开发过程中，根据实际需求选择合适的序列化方案是很重要的。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/595.html">https://leon-book.github.io/blog/index.php/archives/595.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/php/">php</a></div><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/596.html" title="Macs Fan Control 好用的Mac风扇调节工具"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Macs Fan Control 好用的Mac风扇调节工具</div></div><div class="info-2"><div class="info-item-1">  Macs Fan Control允许您监视和控制计算机风扇的几乎所有方面，并支持控制风扇速度，温度传感器窗格，菜单栏图标以及使用系统选项自动启动。 正版激活码： 邮箱: macwk.com@gmail.com 许可证: MPD8G-XGA1C-WMDYE-WYCYY-FPX6W-TS1J8-P9P71-7GTPB-V6RAH-2B42R-PD1C8  亲测有效 存储下安装包地址:https://lemon.qq.com/lab/app/Macs_Fan_Control.html </div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/594.html" title="PHP 数据序列化 msgpack 扩展安装及使用"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">PHP 数据序列化 msgpack 扩展安装及使用</div></div><div class="info-2"><div class="info-item-1">  PHP 数据序列化 msgpack 扩展安装及使用 要安装和使用PHP的msgpack扩展，你需要按照以下步骤进行操作：  检查系统要求：确保你的系统满足安装msgpack扩展的要求。msgpack扩展需要PHP版本为7.0.0或更高版本，并且需要安装msgpack C扩展库。  安装msgpack C扩展库：首先，你需要安装msgpack C扩展库。具体的安装方式取决于你的操作系统。例如，在Ubuntu上，可以使用以下命令安装： sudo apt-get install php-msgpack  在其他操作系统上，你需要查找适合你系统的安装方法。  安装PHP的msgpack扩展：安装C扩展库后，你可以通过PECL（PHP Extension Community Library）安装msgpack扩展。运行以下命令： sudo pecl install msgpack  如果提示选择msgpack版本，选择最新版本即可。  配置PHP加载msgpack扩展：编辑PHP的配置文件（通常为php.ini），添加以下行： extension=msgpack.so  保存并关闭配置...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/index.php/archives/39.html" title="布隆过滤器：高效的数据查找算法及其在 PHP 中的实现"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2015-11-11</div><div class="info-item-2">布隆过滤器：高效的数据查找算法及其在 PHP 中的实现</div></div><div class="info-2"><div class="info-item-1">  在计算机科学领域，布隆过滤器（Bloom Filter）是一种概率型数据结构，用于快速判断一个元素是否属于一个集合。它以极低的存储空间和高效的查找速度而著名，适用于大规模数据的快速过滤和查询。在本篇博客中，我们将介绍布隆过滤器的原理，并讨论如何在 PHP 中实现布隆过滤器。 1. 布隆过滤器原理布隆过滤器基于哈希函数和位数组实现。它包含一个位数组（通常由比特位组成）和多个哈希函数。当一个元素被加入到布隆过滤器中时，通过多个哈希函数对元素进行哈希运算，并将对应的位数组位置置为1。当判断一个元素是否存在时，同样使用多个哈希函数对该元素进行哈希运算，并检查对应的位数组位置是否为1。 2. PHP 实现布隆过滤器在 PHP 中，可以使用扩展库 php-bloom-filter 来实现布隆过滤器。下面是一个简单的示例： 首先，安装 php-bloom-filter 扩展库。可以使用 Composer 进行安装： composer require ssc/php-bloom-filter  然后，使用以下代码创建一个布隆过滤器并添加元素： use SSC\BloomFilter\Bloo...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/329.html" title="PHP 大整数 &#x2F; 科学计数法 转 字符串"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2019-01-07</div><div class="info-item-2">PHP 大整数 &#x2F; 科学计数法 转 字符串</div></div><div class="info-2"><div class="info-item-1">  json 数据格式 中 大整数解开 会被转换为科学计数法 使用 JSON_BIGINT_AS_STRING json_decode 官方文档 json_decode($var, true, &#x27;512&#x27;, JSON_BIGINT_AS_STRING)  PHP 科学计数法转字符串&lt;?PHP function ScToNum($num) &#123;    $numer = strtoupper($num);    $parts = explode(&#x27;E&#x27;, $numer);    list($int, $ex_str) = $parts;    $exp = $ex_str[0];    $var = substr($ex_str, 1);    if ($exp == &#x27;+&#x27;) &#123;        return bcmul($int, bcpow(10, $var));    &#125;    return bcdiv($int, bcpow(10, $var));&#125; </div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/592.html" title="PHP 事务中锁等待超时 读数据异常问题 for update"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2023-07-27</div><div class="info-item-2">PHP 事务中锁等待超时 读数据异常问题 for update</div></div><div class="info-2"><div class="info-item-1">  在PHP中，默认情况下，当一个事务因为锁等待超时而失败时，MySQL扩展不会抛出异常或错误，而是简单地返回一个空的结果集。这对于应用程序来说可能并不方便，因为无法区分是数据本身为空，还是因为锁等待超时导致读不到数据。 网上给的结局方案 都不是很靠谱 可能是场景不同吧.延长锁等待时间,治标不治本 innodb_lock_wait_timeout. 我的遇到的场景是允许抛错异常中断操作的. 并发场景下 我们需要锁定一条记录 for update 排他锁. 如果锁的久了其他请求会等待锁解开.默认锁等待50秒, 超时后PHP 并不会抛出异常. 找了很多方法 , 根本捕获不了 , 修改 innodb_rollback_on_timeout=ON也没有什么卵用. 最后自己的解决方案是: 通过记录响应时长 超过50秒则在代码中抛错. </div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/600.html" title="[踩坑] PHP file_get_contents() returns &quot;failed to open stream: HTTP request failed!&quot;"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2023-08-21</div><div class="info-item-2">[踩坑] PHP file_get_contents() returns &quot;failed to open stream: HTTP request failed!&quot;</div></div><div class="info-2"><div class="info-item-1">  从此拒绝再使用 file_get_contents 请求网络地址. PHP file_get_contents() returns &quot;failed to open stream: HTTP request failed!&quot;  今天你发现通服务下 php_error.log 大量抛出错误 [21-Aug-2023 16:59:42 Asia/Shanghai] PHP Warning:  file_get_contents(http://127.0.0.1?xxx): failed to open stream: HTTP request failed! in /data/1.php on line 36  本来想着是 ulimit 被限制了. ulimit -n 输出 :102400 已经非常大了. 还增加了访问服务器的进程.but 并解决不了问题. 最后只能替换掉 file_get_contents 方法 使用 curl 替换后 问题得到解决了. 相关内容很早前就有说明, 具体原因不详 应该就是文件打开受限制了. 没权限设置无限大, 那就只能平替 htt...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/263.html" title="CSV 转 PHP 数组格式"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2018-01-16</div><div class="info-item-2">CSV 转 PHP 数组格式</div></div><div class="info-2"><div class="info-item-1">  更新下代码 原来写的有坑 这个测试使用 需要注意不同操作系统平台换行符不同 &lt;?php// 铺单csv 文件解析生成sql$csvFile = &#x27;/Users/admin/Desktop/铺单Sql.csv&#x27;;/** * @param $csvFile * @param string $eol 根据平台选择 * windows平台相当于         &quot;\r\n&quot;; * unix\linux平台相当于      &quot;\n&quot;; * mac平台相当于             &quot;\r&quot;; * @return mixed * ------------------------------------------------------------ */function csvFileToArray($csvFile, $isHead = true, $eol = &quot;\r&quot;)&#123;    $contents = file_get_contents($csvFile);    /...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/42.html" title="PHP 开发常见151 个问题汇总"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2015-12-01</div><div class="info-item-2">PHP 开发常见151 个问题汇总</div></div><div class="info-2"><div class="info-item-1">  作为一名 PHP 开发人员，我们经常会遇到各种各样的问题和挑战。在本篇博客中，我们将汇总一些常见的 PHP 开发问题，并提供相应的解决方案，帮助您更好地应对这些问题。下面是一些常见问题及其解决方案的列表： 注：本篇博客为问题列表，详细解决方案请参考相关技术文档或进行进一步的搜索和学习。 1. 语言基础 如何定义和使用变量？ 如何进行字符串连接？ 如何使用条件语句（if-else）？ 如何使用循环语句（for、while）？ 如何处理数组和关联数组？ 如何定义和调用函数？ 如何处理日期和时间？ 如何使用文件操作函数？ 如何处理异常和错误？  2. 数据库操作 如何连接和选择数据库？ 如何执行查询语句？ 如何插入、更新和删除数据？ 如何处理数据库事务？ 如何处理数据库连接错误和超时？  3. 表单处理 如何获取和处理表单数据？ 如何验证用户输入？ 如何防止 SQL 注入攻击？ 如何防止跨站脚本攻击（XSS）？  4. 文件上传 如何处理文件上传？ 如何限制文件类型和大小？ 如何保存上传的文件到服务器？  5. 图像处理 如何调整图像尺寸和比例？ 如何添加水印到图像？ 如何生成缩略...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#PHP%E5%9B%9B%E7%A7%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%96%B9%E6%A1%88"><span class="toc-number">1.</span> <span class="toc-text">PHP四种序列化方案</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BC%95%E8%A8%80"><span class="toc-number">1.1.</span> <span class="toc-text">引言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-PHP%E5%BA%8F%E5%88%97%E5%8C%96"><span class="toc-number">1.2.</span> <span class="toc-text">1. PHP序列化</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-JSON%E5%BA%8F%E5%88%97%E5%8C%96"><span class="toc-number">1.3.</span> <span class="toc-text">2. JSON序列化</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-XML%E5%BA%8F%E5%88%97%E5%8C%96"><span class="toc-number">1.4.</span> <span class="toc-text">3. XML序列化</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-MessagePack%E5%BA%8F%E5%88%97%E5%8C%96"><span class="toc-number">1.5.</span> <span class="toc-text">4. MessagePack序列化</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BB%93%E8%AE%BA"><span class="toc-number">1.6.</span> <span class="toc-text">结论</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

@@ -1,0 +1,770 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>MySQL — InnoDB 缓冲池 Buffer Pool | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="缓冲池 通过前面几篇文章，我们已经了解到 InnoDB 存储引擎是基于磁盘存储的，并将其中的记录按照页的方式进行管理。但由于CPU速度与磁盘速度之间的鸿沟，通常都会将数据加载到内存中来操作数据，以此提高数据库的整体性能。InnoDB 设计了一个缓冲池（Buffer Pool），当需要访问某个页时，就会把这一页的数据全部加载到缓冲池中，这样就可以在内存中进行读写访问了。对于数据库中页的修改操作，">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MySQL — InnoDB 缓冲池 Buffer Pool">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/511.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="缓冲池 通过前面几篇文章，我们已经了解到 InnoDB 存储引擎是基于磁盘存储的，并将其中的记录按照页的方式进行管理。但由于CPU速度与磁盘速度之间的鸿沟，通常都会将数据加载到内存中来操作数据，以此提高数据库的整体性能。InnoDB 设计了一个缓冲池（Buffer Pool），当需要访问某个页时，就会把这一页的数据全部加载到缓冲池中，这样就可以在内存中进行读写访问了。对于数据库中页的修改操作，">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/migrated/e5f040af4100a031c435.png">
+<meta property="article:published_time" content="2021-10-16T13:11:00.000Z">
+<meta property="article:modified_time" content="2021-10-16T13:11:00.000Z">
+<meta property="article:author" content="leon">
+<meta property="article:tag" content="mysql">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/migrated/e5f040af4100a031c435.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "MySQL — InnoDB 缓冲池 Buffer Pool",
+  "url": "https://leon-book.github.io/blog/index.php/archives/511.html",
+  "image": "https://leon-book.github.io/blog/assets/migrated/e5f040af4100a031c435.png",
+  "datePublished": "2021-10-16T13:11:00.000Z",
+  "dateModified": "2021-10-16T13:11:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/511.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'MySQL — InnoDB 缓冲池 Buffer Pool',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/migrated/e5f040af4100a031c435.png);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">MySQL — InnoDB 缓冲池 Buffer Pool</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">MySQL — InnoDB 缓冲池 Buffer Pool</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2021-10-16T13:11:00.000Z" title="发表于 2021-10-16 22:11:00">2021-10-16</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2021-10-16T13:11:00.000Z" title="更新于 2021-10-16 22:11:00">2021-10-16</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/511.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<h1 id="缓冲池"><a href="#缓冲池" class="headerlink" title="缓冲池"></a>缓冲池</h1><hr>
+<p>通过前面几篇文章，我们已经了解到 <code>InnoDB</code> 存储引擎是基于磁盘存储的，并将其中的记录按照页的方式进行管理。但由于CPU速度与磁盘速度之间的鸿沟，通常都会将数据加载到内存中来操作数据，以此提高数据库的整体性能。<br><code>InnoDB</code> 设计了一个缓冲池（<code>Buffer Pool</code>），当需要访问某个页时，就会把这一页的数据全部加载到缓冲池中，这样就可以在内存中进行读写访问了。对于数据库中页的修改操作，也是先修改在缓冲池中的页，然后再以一定的频率刷新到磁盘上。有了缓冲池，就可以省去很多磁盘IO的开销了，从而提升数据库性能。</p>
+<p>注意即使只访问页中的一条记录，也需要把整个页的数据加载到内存中。前面有说过，通过索引只能定位到磁盘中的页，而不能定位到页中的一条记录。将页加载到内存后，就可以通过页目录（<code>Page Directory</code>）去定位到某条具体的记录。</p>
+<h1 id="Buffer-Pool-结构"><a href="#Buffer-Pool-结构" class="headerlink" title="Buffer Pool 结构"></a>Buffer Pool 结构</h1><hr>
+<p><code>MySQL</code>服务器启动的时候就会向操作系统申请一片连续的内存，即 <code>Buffer Pool</code>。默认配置下 <code>Buffer Pool</code> 只有<code>128MB</code> 大小，我们可以调整 <code>innodb_buffer_pool_size</code> 参数来设置 <code>Buffer Pool</code> 的大小。</p>
+<p>例如下面设置了<code>1GB</code>的内存，单位是字节：</p>
+<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">[server]</span><br><span class="line">innodb_buffer_pool_size = 1073741824</span><br></pre></td></tr></table></figure>
+
+<p><code>Buffer Pool</code> 也是按页来划分的，默认和磁盘上的页一样，都是 <code>16KB</code> 大小。<code>Buffer Pool</code> 中不只缓存了数据页，还包括索引页、undo页、插入缓冲、自适应哈希索引、InnoDB存储的锁信息、数据字典信息等。</p>
+<p>为了管理 <code>Buffer Pool</code> 中的缓存页，<code>InnoDB</code> 为每一个缓存页都创建了一些描述信息（元数据），用来描述这个缓存页。描述信息主要包括该页所属的表空间编号、页号、缓存页的地址、链表节点信息、锁信息、LSN信息等等。</p>
+<p>这个描述信息本身也是一块数据，它们占用的内存大小都是相同的。在 <code>Buffer Pool</code> 中，每个缓存页的描述信息放在最前面，各个缓存页在后面。看起来就像下图这个样子。</p>
+<p><img src="/blog/assets/migrated/e5f040af4100a031c435.png" alt="Xnip2024-02-29\_09-25-10.png" title="Xnip2024-02-29_09-25-10.png"></p>
+<p>另外需要注意下，每个描述数据大约相当于缓存页大小的 <code>5%</code>，也就是<code>800字节</code>左右的样子。而我们设置的 <code>innodb_buffer_pool_size</code> 并不包含描述数据的大小，实际上 <code>Buffer Pool</code> 的大小会超出这个值。比如默认配置 <code>128MB</code>，那么<code>InnoDB</code>在为 <code>Buffer Pool</code> 申请连续的内存空间时，会申请差不多 <code>128 + 128*5% ≈ 134MB</code> 大小的空间。</p>
+<p><code>Buffer Pool</code> 中划分缓存页的时候，会让所有的缓存页和描述数据块都紧密的挨在一起，前面是描述数据块，后面是缓存页，尽可能减少内存浪费。但是划分完后，可能还剩一点点的内存，这点内存放不下任何一个缓存页了，这就是图中的碎片空间了。</p>
+<h1 id="Free-链表"><a href="#Free-链表" class="headerlink" title="Free 链表"></a>Free 链表</h1><hr>
+<p><code>MySQL</code> 数据库启动的时候，<code>InnoDB</code> 就会为 <code>Buffer Pool</code> 申请一片连续的内存空间，然后按照默认的16KB的大小划分出一个个的页来，还会按照800字节左右的大小划分出页对应的描述数据来。</p>
+<p>划分完成后，<code>Buffer Pool</code> 中的缓存页都是空的，等执行增删改查等操作时，才会把数据对应的页从磁盘加载到 <code>Buffer Pool</code> 中的页来。</p>
+<p>那怎么知道哪些页是空闲的呢？<code>InnoDB</code> 设计了一个 <code>free</code> 链表，它是一个双向链表数据结构，这个链表的每个节点就是一个空闲缓存页的描述信息。</p>
+<p>实际上，每个描述信息中有 <code>free_pre</code>、<code>free_next</code> 两个指针，Free链表 就是由这两个指针连接起来形成的一个双向链表。然后 Free链表 有一个基础节点，这个基础节点存放了链表的头节点地址、尾节点地址，以及当前链表中节点数的信息。</p>
+<p><code>Free</code>链表 看起来就像下图这样：<br><img src="/blog/assets/migrated/53d66238796ebf9da627.png" alt="Xnip2024-02-29\_09-27-17.png" title="Xnip2024-02-29_09-27-17.png"></p>
+<p>需要注意的是，链表的基础节点占用的内存空间并不包含在 <code>Buffer Pool</code> 之内，而是单独申请的一块内存空间，每个基节点只占用40字节大小。后边介绍的其它链表的基础节点也是一样的，都是单独申请的一块40字节大小的内存空间。</p>
+<p>有了这个 <code>Free</code>链表 之后，当需要从磁盘加载一个页到 Buffer Pool 时，就从 Free链表 中取出一个描述数据块，然后将页写入这个描述数据块对应的空闲缓存页中。并把一些描述数据写入描述数据块中，比如页的表空间号、页号之类的。最后，把缓存页对应的描述数据块从 Free链表 中移除，表示该缓存页已被使用了。</p>
+<p>可以看到，从磁盘加载一个页到缓存页后，缓存页对应的描述信息块就从Free链表移除了。</p>
+<p><img src="/blog/assets/migrated/64adf830b2be58a9857c.png" alt="Xnip2024-02-29\_09-28-05.png" title="Xnip2024-02-29_09-28-05.png"></p>
+<h1 id="缓存页哈希表"><a href="#缓存页哈希表" class="headerlink" title="缓存页哈希表"></a>缓存页哈希表</h1><hr>
+<p>有些数据页被加载到 <code>Buffer Pool</code> 的缓存页中了，那怎么知道一个数据页有没有被缓存呢？</p>
+<p>所以<code>InnoDB</code>还会有一个哈希表数据结构，它用 <code>表空间号+数据页号</code> 作key，value 就是缓存页的地址。</p>
+<p>当使用一个数据页的时候，会先通过表 <code>空间号+数据页号</code> 作为key去这个哈希表里查一下，如果没有就从磁盘读取数据页，如果已经有了，就直接使用该缓存页。</p>
+<h1 id="LRU-链表"><a href="#LRU-链表" class="headerlink" title="LRU 链表"></a>LRU 链表</h1><hr>
+<p>前面已经知道 <code>Free链表</code>管理着所有空闲的缓存页，当使用了一个缓存页后，那个缓存页就从 Free链表 移除了，那它对应的控制块到哪里去了呢？</p>
+<p>这时就有另外一个 <code>LRU 链表</code> 来管理已经使用了的缓存页。LRU链表与 Free链表的结构是类似的，都会有一个基础节点来指向链表的首、尾描述信息块，加入LRU链表中的描述信息块就通过 <code>free_pre</code> 和 <code>free_next</code> 两个指针连接起来行程一个双向链表。</p>
+<p>例如查询数据的时候，首先从索引找到数据所在的数据页，再根据 表空间号+页号 去缓存页哈希表查找页是否已经在 Buffer Pool 中了，如果在就直接使用，不在就从磁盘加载页，然后从 Free链表 取出一个空闲页加入到 LRU链表，再把数据页放到缓存页中，并以表空间号+页号作为 key，缓存页地址作为 value，放入缓存页哈希表。</p>
+<p>可以通过下图来理解 <code>Free链表</code> 和 <code>LRU链表</code>，注意缓存页没有画出，描述信息块是保存了缓存页的地址的。</p>
+<p><img src="/blog/assets/migrated/e4dfaa25d25f8f071f45.png" alt="Xnip2024-02-29\_09-30-02.png" title="Xnip2024-02-29_09-30-02.png"></p>
+<h1 id="简单-LRU-链表"><a href="#简单-LRU-链表" class="headerlink" title="简单 LRU 链表"></a>简单 LRU 链表</h1><hr>
+<p><code>LRU 链表</code>，就是所谓的 <code>Least Recently Used</code>，最近最少使用的意思。因为缓冲池大小是有限的，不可能一直加载数据到缓冲池中，对于一些频繁访问的数据可以一直留在缓冲池中，而一些很少访问的数据，当缓存页快用完了的时候，就可以淘汰掉一些。这时就可以使用 LRU链表 来管理已使用的缓存页，这样就可以知道哪些页最常使用，哪些页最少使用了。</p>
+<p>按照正常对<code>LRU链表</code>的理解，一个新的数据页从磁盘加载到缓存页时，对应的描述信息块应该是放到 <code>LRU链表</code> 的头部，每次查询、修改了一个页，也将这个页对应的描述信息块移到 LRU链表 的头部，也就是说最近被访问过的缓存页都在 LRU 链表的头部。然后当 Free链表 用完了之后，就可以从 LRU链表的尾部找一些最少使用的页刷入磁盘，腾出一些空闲页来。</p>
+<p>但是这种 <code>LRU链表</code> 有几个问题：</p>
+<p>1、InnoDB 有一个<code>预读机制</code>，就是从磁盘上加载一个数据页的时候，可能连带着把这个数据页相邻的其它数据页都加载到缓存里去。虽然预读了其它页，但可能都没用上，但是这些页如果都往 LRU 头部放，就会导致原本经常访问的页往后移，然后被淘汰掉。这种情况属于加载到 Buffer Pool 中的页不一定被用到导致缓存命中率降低。</p>
+<p>2、如果我们写了一个<code>全表扫描</code>的查询语句，一下就将整个表的页加载到了 LRU 的头部，如果表记录很多的话，可能 LRU 链表中之前经常被访问的页一下就淘汰了很多，而留下来的数据可能并不会被经常访问到。这种就是加载了大量使用频率很低的页到 Buffer Pool，然后淘汰掉使用频率很高的页，从而导致缓存命中率降低。</p>
+<blockquote>
+<p>缓存命中率：假设一共访问了n次页，那么被访问的页已经在缓存中的次数除以n就是所谓的缓存命中率，缓存命中率肯定是越高越好</p>
+</blockquote>
+<h1 id="冷热数据分离的-LRU-链表"><a href="#冷热数据分离的-LRU-链表" class="headerlink" title="冷热数据分离的 LRU 链表"></a>冷热数据分离的 LRU 链表</h1><hr>
+<p>为了解决简单 LRU 链表的问题，InnoDB在设计 LRU 链表的时候，实际上是采取冷热数据分离的思想，LRU链表会被拆成两部分，一部分是 <code>热数据</code>（又称 <code>new列表</code>），一部分是<code>冷数据</code>（又称<code>old列表</code>）。如下图所示。</p>
+<p><img src="/blog/assets/migrated/ea9f34353bf804d24122.png" alt="Xnip2024-02-29\_09-32-15.png" title="Xnip2024-02-29_09-32-15.png"></p>
+<p>这个冷热数据的位置并不固定，是一个比例，由参数 <code>innodb_old_blocks_pct</code> 来控制，默认比例是 <code>37</code>，也就是冷数据占 <code>37%</code>，大约占 LRU链表 <code>3/8</code> 的样子。</p>
+<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">mysql&gt; SHOW VARIABLES LIKE <span class="string">&#x27;innodb_old_blocks_pct&#x27;</span>;</span><br><span class="line">+-----------------------+-------+</span><br><span class="line">| Variable_name         | Value |</span><br><span class="line">+-----------------------+-------+</span><br><span class="line">| innodb_old_blocks_pct | 37    |</span><br><span class="line">+-----------------------+-------+</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>基于冷热分离的LRU链表，这时新加载一个缓存页时，就不是直接放到LRU的头部了，而是放到<code>冷数据区域</code>的头部。那什么时候将冷数据区域的页移到热数据区域呢？也许你会认为访问了一次或几次页就会移到热数据区域的头部，其实不是这样的。</p>
+<p>如果是预读机制加载了一些不用的页，慢慢的被淘汰掉就行了。但如果是全表扫描加载了大量的页进来，必然是会被读取至少一次的，而且一页包含很多条记录，可能会被访问多次。所以这时就将冷数据区域的页移到热数据区域也是不太合理的。</p>
+<p>所以 InnoDB 设置了一个规则，在第一次访问冷数据区域的缓存页的时候，就在它对应的描述信息块中记录第一次访问的时间，默认要间隔<code>1秒</code>后再访问这个页，才会被移到热数据区域的头部。也就是从第一次加载到冷数据区域后，1秒内多次访问都不会移动到热数据区域，基本上全表扫描查询缓存页的操作1秒内就结束了。</p>
+<p>这个间隔时间是由参数 <code>innodb_old_blocks_time</code> 控制的，默认是 <code>1000毫秒</code>。如果我们把这个参数值设置为0，那么每次访问一个页面时就会把该页面放到热数据区域的头部。</p>
+<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">mysql&gt; SHOW VARIABLES LIKE <span class="string">&#x27;innodb_old_blocks_time&#x27;</span>;</span><br><span class="line">+------------------------+-------+</span><br><span class="line">| Variable_name          | Value |</span><br><span class="line">+------------------------+-------+</span><br><span class="line">| innodb_old_blocks_time | 1000  |</span><br><span class="line">+------------------------+-------+</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>之后缓存页不够用的时候，就会优先从冷数据区域的尾部淘汰掉一些不常用的页，频繁访问的数据页还是会留在热数据区域，不会受到影响。而冷数据区域停留超过1秒的页，被再次访问时就会移到热数据区域的头部。</p>
+<p>热数据区域中的页是每访问一次就移到头部吗？也不是的，热数据区域是最频繁访问的数据，如果频繁的对LRU链表进行节点移动操作也是不合理的。所以 InnoDB 就规定只有在访问了热数据区域的 <code>后3/4</code> 的缓存页才会被移动到链表头部，访问 <code>前1/4</code> 中的缓存页是不会移动的。</p>
+<p>下面对冷热数据分离的LRU链表总结下：</p>
+<ul>
+<li>LRU链表分为冷、热数据区域，前 63% 为热数据区域，后 37% 为冷数据区域，加载缓存页先放到冷数据区域头部。</li>
+<li>冷数据区域的缓存页第一次访问超过1秒后，再次访问时才会被移动到热数据区域头部。</li>
+<li>热数据区域中，只有后 3&#x2F;4 的缓存页被访问才会移到头部，前 1&#x2F;4 被访问到不会移动。</li>
+<li>淘汰数据优先淘汰冷数据区域尾部的缓存页。</li>
+</ul>
+<h1 id="Flush-链表"><a href="#Flush-链表" class="headerlink" title="Flush 链表"></a>Flush 链表</h1><hr>
+<p>当我们执行增删改的时候，肯定是去更新了 Buffer Pool 中的某些缓存页，那这些被更新了的缓存页就和磁盘上的数据页不一致了，就变成了脏页。这些脏页最终肯定会被刷回到磁盘中，但并不是所有的缓存页都需要刷回到磁盘，因为有些页只是被查询了，但并没有被增删改过。</p>
+<p>那怎么知道哪些页是脏页呢？这时就引入了另一个链表，<code>Flush 链表</code>。Flush链表 跟前面两个链表一样，也有一个基础节点，如果一个缓存页被修改了，就会加入到 Flush链表 中。但是不像 LRU链表 是从 Free链表 中来的，描述信息块中还有两个指针 <code>flush_pre</code>、<code>flush_next</code>用来连接形成 flush 链表，所以 Flush链表 中的缓存页一定是在 LRU 链表中的，而 LRU 链表中不在 Flush链表 中的缓存页就是未修改过的页。可以通过下图来理解 LRU 链表和 Flsuh链表。</p>
+<p>可以看到，脏页既存在于 LRU链表 中，也存在于 Flush链表 中。LRU链表 用来管理 Buffer Pool 中页的可用性，Flush链表 用来管理将页刷新回磁盘，二者互不影响。</p>
+<p><img src="/blog/assets/migrated/b196716528f0b692a473.png" alt="Xnip2024-02-29\_09-35-28.png" title="Xnip2024-02-29_09-35-28.png"></p>
+<h1 id="刷新脏页到磁盘"><a href="#刷新脏页到磁盘" class="headerlink" title="刷新脏页到磁盘"></a>刷新脏页到磁盘</h1><hr>
+<p>前面我们已经知道，LRU链表分为冷热数据区域，这样就可以在空闲缓存页不够的用的时候，可以将LRU链表尾部的磁盘页刷回磁盘，腾出一些空闲页来，还有 Flush链表 中的脏页，在某些时刻也会刷回磁盘中。那将脏页刷回磁盘的时机有哪些呢？</p>
+<ul>
+<li>定时从 LRU链表 尾部刷新一部分脏页到磁盘</li>
+</ul>
+<p>后台有专门的线程会定时从<code>LRU链表</code>尾部扫描一些缓存页，扫描的数量可以通过参数 <code>innodb_lru_scan_depth</code> 来设置。如果有脏页，就会把它们刷回磁盘，然后释放掉，不是脏页就直接释放掉，再把它们加回<code>Free链表</code>中。这种刷新页面的方式被称之为 <code>BUF_FLUSH_LRU</code>。</p>
+<ul>
+<li>定时把 Flush链表 中的一些脏页刷回磁盘</li>
+</ul>
+<p>后台线程会在MySQL不怎么繁忙的时候，将 Flush 链表中的一些脏页刷到磁盘，这样LRU热数据区域的一些脏页就会被刷回磁盘。这种刷新页面的方式被称之为 <code>BUF_FLUSH_LIST</code>。</p>
+<ul>
+<li>没有空闲页的时候刷新页</li>
+</ul>
+<p>前面两种方式是后台线程定时运行，并不是在缓存页满的时候才去刷新脏页，这种方式不会影响用户线程处理正常的请求。<br>但可能要加载一个数据页到 Buffer Pool 时，没有空闲页了，这时就会从 LRU链表 尾部找一个缓存页，如果是脏页就刷回磁盘，如果不是脏页就释放掉，然后放入Free链表中，再将数据页放入这个腾出来的空闲页中。如果要刷新脏页，这时就会降低处理用户请求的速度，毕竟和磁盘交互是很慢的。这种刷新单个页面到磁盘中的刷新方式被称之为 <code>BUF_FLUSH_SINGLE_PAGE</code>。</p>
+<h1 id="查看-Buffer-Pool-状态"><a href="#查看-Buffer-Pool-状态" class="headerlink" title="查看 Buffer Pool 状态"></a>查看 Buffer Pool 状态</h1><hr>
+<p>我们可以通过 <code>SHOW ENGINE INNODB STATUS;</code> 来查看 InnoDB 的状态信息。但是要注意，状态并不是当前的状态，而是过去某个时间范围内 InnoDB 存储引擎的状态，例如从下面一次输出中可以看到是过去15秒内的一个状态。</p>
+<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">=====================================</span><br><span class="line">2021-04-30 09:20:24 0x7f39a34a7700 INNODB MONITOR OUTPUT</span><br><span class="line">=====================================</span><br><span class="line">Per second averages calculated from the last 15 seconds</span><br><span class="line"></span><br><span class="line">Buffer Pool和内存状态</span><br></pre></td></tr></table></figure>
+
+<h2 id="Buffer-Pool和内存状态"><a href="#Buffer-Pool和内存状态" class="headerlink" title="Buffer Pool和内存状态"></a>Buffer Pool和内存状态</h2><p>从输出的内容中，可以找到 <code>BUFFER POOL AND MEMORY</code> 这段关于缓冲池和内存的状态信息。</p>
+<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">----------------------</span><br><span class="line">BUFFER POOL AND MEMORY</span><br><span class="line">----------------------</span><br><span class="line">Total large memory allocated 1099431936</span><br><span class="line">Dictionary memory allocated 8281957</span><br><span class="line">Buffer pool size   65535</span><br><span class="line">Free buffers       1029</span><br><span class="line">Database pages     63508</span><br><span class="line">Old database pages 23423</span><br><span class="line">Modified db pages  80</span><br><span class="line">Pending reads      0</span><br><span class="line">Pending writes: LRU 0, flush list 0, single page 0</span><br><span class="line">Pages made young 15278983, not young 2027514654</span><br><span class="line">0.00 youngs/s, 0.00 non-youngs/s</span><br><span class="line">Pages <span class="built_in">read</span> 83326150, created 1809368, written 21840503</span><br><span class="line">0.00 reads/s, 0.00 creates/s, 0.00 writes/s</span><br><span class="line">Buffer pool hit rate 1000 / 1000, young-making rate 1 / 1000 not 0 / 1000</span><br><span class="line">Pages <span class="built_in">read</span> ahead 0.00/s, evicted without access 0.00/s, Random <span class="built_in">read</span> ahead 0.00/s</span><br><span class="line">LRU len: 63508, unzip_LRU len: 0</span><br><span class="line">I/O <span class="built_in">sum</span>[833]:cur[0], unzip <span class="built_in">sum</span>[0]:cur[0]</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>其中信息如下：</p>
+<ul>
+<li>Total large memory allocated：Buffer Pool向操作系统申请的内存空间大小，包括全部控制块、缓存页、以及碎片的大小。</li>
+<li>Dictionary memory allocated：为数据字典信息分配的内存空间大小，这个内存空间和Buffer Pool没啥关系，不包括在Total large memory allocated中。</li>
+<li>Buffer pool size：缓存池页的数量，所以缓冲池大小为 65535 * 16KB &#x3D; 1G。</li>
+<li>Free buffers：Free链表中的空闲缓存页数量。</li>
+<li>Database pages：LRU链表中的缓存页数量。需要注意的是，Database pages + Free buffers 可能不等于 Buffer pool size，因为缓冲池中的页还可能分配给自适应哈希索引、Lock信息、Insert Buffer等，而这部分不需要LRU来管理。</li>
+<li>Old database pages：LRU冷数据区域（old列表）的缓存页数量，23423&#x2F;63508&#x3D;36.88%，约等于 37%。</li>
+<li>Modified db pages：修改过的页，这就是 Flush链表中的脏页数量。</li>
+<li>Pending reads：正在等待从磁盘上加载到Buffer Pool中的页面数量。当准备从磁盘中加载某个页面时，会先为这个页面在Buffer Pool中分配一个缓存页以及它对应的控制块，然后把这个控制块添加到LRU的冷数据区域的头部，但是这个时候真正的磁盘页并没有被加载进来，所以 Pending reads 的值会加1。</li>
+<li>Pending writes：从LRU链表中刷新到磁盘中的页面数量，其实就对应着前面说的三种刷盘的时机：BUF_FLUSH_LRU、BUF_FLUSH_LIST、BUF_FLUSH_SINGLE_PAGE。</li>
+<li>Pages made young：显示了页从LRU的冷数据区域移到热数据区域头部的次数。注意如果是热数据区域后3&#x2F;4被访问移动到头部是不会增加这个值的。</li>
+<li>Pages made not young：这个是由于 innodb_old_blocks_time 的设置导致页没有从冷数据区域移到热数据区域的页数，可以看到这个值减少了很多不常用的页被移到热数据区域。</li>
+<li>xx youngs&#x2F;s, xx non-youngs&#x2F;s：表示 made young 和 not young 这两类每秒的操作次数。</li>
+<li>xx reads&#x2F;s, xx creates&#x2F;s, xx writes&#x2F;s：代表读取，创建，写入的速率。</li>
+<li>Buffer pool hit rate xx&#x2F;1000：表示在过去某段时间，平均访问1000次页面，有多少次该页面已经被缓存到Buffer Pool了，表示缓存命中率。这里显示的就是 100%，说明缓冲池运行良好。这是一个重要的观察变量，通常该值不应该小于 95%，否则我们应该看下是否有全表扫描引起LRU链表被污染的问题。</li>
+<li>young-making rate xx&#x2F;1000 not xx&#x2F;1000：表示在过去某段时间，平均访问1000次页面，有多少次访问使页面移动到热数据区域的头部了，以及没移动的缓存页数量。</li>
+<li>LRU len：LRU 链表中节点的数量。</li>
+<li>I&#x2F;O sum[xx]:cur[xx]：最近50s读取磁盘页的总数，现在正在读取的磁盘页数量。</li>
+</ul>
+<h2 id="查看LRU链表信息"><a href="#查看LRU链表信息" class="headerlink" title="查看LRU链表信息"></a>查看LRU链表信息</h2><p>我们还可以查询 <code>information_schema</code> 下的 <code>INNODB_BUFFER_PAGE_LRU</code> 来观察LRU链表中每个页的具体信息。</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">mysql<span class="operator">&gt;</span> <span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> information_schema.INNODB_BUFFER_PAGE_LRU <span class="keyword">WHERE</span> TABLE_NAME <span class="operator">=</span> <span class="string">&#x27;`hzero_platform`.`iam_role`&#x27;</span>;</span><br><span class="line"><span class="operator">+</span><span class="comment">---------+--------------+-------+-------------+-----------+------------+-----------+-----------+---------------------+---------------------+-------------+-----------------------------+-------------+----------------+-----------+-----------------+------------+---------+--------+-----------------+</span></span><br><span class="line"><span class="operator">|</span> POOL_ID <span class="operator">|</span> LRU_POSITION <span class="operator">|</span> SPACE <span class="operator">|</span> PAGE_NUMBER <span class="operator">|</span> PAGE_TYPE <span class="operator">|</span> FLUSH_TYPE <span class="operator">|</span> FIX_COUNT <span class="operator">|</span> IS_HASHED <span class="operator">|</span> NEWEST_MODIFICATION <span class="operator">|</span> OLDEST_MODIFICATION <span class="operator">|</span> ACCESS_TIME <span class="operator">|</span> TABLE_NAME                  <span class="operator">|</span> INDEX_NAME  <span class="operator">|</span> NUMBER_RECORDS <span class="operator">|</span> DATA_SIZE <span class="operator">|</span> COMPRESSED_SIZE <span class="operator">|</span> COMPRESSED <span class="operator">|</span> IO_FIX  <span class="operator">|</span> IS_OLD <span class="operator">|</span> FREE_PAGE_CLOCK <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">---------+--------------+-------+-------------+-----------+------------+-----------+-----------+---------------------+---------------------+-------------+-----------------------------+-------------+----------------+-----------+-----------------+------------+---------+--------+-----------------+</span></span><br><span class="line"><span class="operator">|</span>       <span class="number">0</span> <span class="operator">|</span>         <span class="number">7938</span> <span class="operator">|</span> <span class="number">14261</span> <span class="operator">|</span>          <span class="number">66</span> <span class="operator">|</span> INDEX     <span class="operator">|</span>          <span class="number">1</span> <span class="operator">|</span>         <span class="number">0</span> <span class="operator">|</span> <span class="keyword">NO</span>        <span class="operator">|</span>        <span class="number">287769805005</span> <span class="operator">|</span>                   <span class="number">0</span> <span class="operator">|</span>  <span class="number">1178342949</span> <span class="operator">|</span> `hzero_platform`.`iam_role` <span class="operator">|</span> <span class="keyword">PRIMARY</span>     <span class="operator">|</span>             <span class="number">57</span> <span class="operator">|</span>     <span class="number">14956</span> <span class="operator">|</span>               <span class="number">0</span> <span class="operator">|</span> <span class="keyword">NO</span>         <span class="operator">|</span> IO_NONE <span class="operator">|</span> YES    <span class="operator">|</span>               <span class="number">0</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span>       <span class="number">0</span> <span class="operator">|</span>         <span class="number">7973</span> <span class="operator">|</span> <span class="number">14261</span> <span class="operator">|</span>          <span class="number">39</span> <span class="operator">|</span> INDEX     <span class="operator">|</span>          <span class="number">1</span> <span class="operator">|</span>         <span class="number">0</span> <span class="operator">|</span> YES       <span class="operator">|</span>        <span class="number">287769773866</span> <span class="operator">|</span>                   <span class="number">0</span> <span class="operator">|</span>  <span class="number">1036433373</span> <span class="operator">|</span> `hzero_platform`.`iam_role` <span class="operator">|</span> <span class="keyword">PRIMARY</span>     <span class="operator">|</span>             <span class="number">48</span> <span class="operator">|</span>     <span class="number">15102</span> <span class="operator">|</span>               <span class="number">0</span> <span class="operator">|</span> <span class="keyword">NO</span>         <span class="operator">|</span> IO_NONE <span class="operator">|</span> YES    <span class="operator">|</span>        <span class="number">85389982</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span>       <span class="number">0</span> <span class="operator">|</span>         <span class="number">7974</span> <span class="operator">|</span> <span class="number">14261</span> <span class="operator">|</span>          <span class="number">12</span> <span class="operator">|</span> INDEX     <span class="operator">|</span>          <span class="number">1</span> <span class="operator">|</span>         <span class="number">0</span> <span class="operator">|</span> YES       <span class="operator">|</span>        <span class="number">287769585186</span> <span class="operator">|</span>                   <span class="number">0</span> <span class="operator">|</span>  <span class="number">1176755165</span> <span class="operator">|</span> `hzero_platform`.`iam_role` <span class="operator">|</span> <span class="keyword">PRIMARY</span>     <span class="operator">|</span>             <span class="number">55</span> <span class="operator">|</span>     <span class="number">15036</span> <span class="operator">|</span>               <span class="number">0</span> <span class="operator">|</span> <span class="keyword">NO</span>         <span class="operator">|</span> IO_NONE <span class="operator">|</span> YES    <span class="operator">|</span>        <span class="number">85389982</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span>       <span class="number">0</span> <span class="operator">|</span>         <span class="number">7975</span> <span class="operator">|</span> <span class="number">14261</span> <span class="operator">|</span>          <span class="number">65</span> <span class="operator">|</span> INDEX     <span class="operator">|</span>          <span class="number">1</span> <span class="operator">|</span>         <span class="number">0</span> <span class="operator">|</span> YES       <span class="operator">|</span>        <span class="number">287769796826</span> <span class="operator">|</span>                   <span class="number">0</span> <span class="operator">|</span>  <span class="number">1176755230</span> <span class="operator">|</span> `hzero_platform`.`iam_role` <span class="operator">|</span> <span class="keyword">PRIMARY</span>     <span class="operator">|</span>             <span class="number">52</span> <span class="operator">|</span>     <span class="number">15097</span> <span class="operator">|</span>               <span class="number">0</span> <span class="operator">|</span> <span class="keyword">NO</span>         <span class="operator">|</span> IO_NONE <span class="operator">|</span> YES    <span class="operator">|</span>        <span class="number">85389982</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span>       <span class="number">0</span> <span class="operator">|</span>         <span class="number">8034</span> <span class="operator">|</span> <span class="number">14261</span> <span class="operator">|</span>           <span class="number">9</span> <span class="operator">|</span> INDEX     <span class="operator">|</span>          <span class="number">1</span> <span class="operator">|</span>         <span class="number">0</span> <span class="operator">|</span> <span class="keyword">NO</span>        <span class="operator">|</span>        <span class="number">287769569861</span> <span class="operator">|</span>                   <span class="number">0</span> <span class="operator">|</span>  <span class="number">1176811763</span> <span class="operator">|</span> `hzero_platform`.`iam_role` <span class="operator">|</span> <span class="keyword">PRIMARY</span>     <span class="operator">|</span>             <span class="number">52</span> <span class="operator">|</span>     <span class="number">14958</span> <span class="operator">|</span>               <span class="number">0</span> <span class="operator">|</span> <span class="keyword">NO</span>         <span class="operator">|</span> IO_NONE <span class="operator">|</span> YES    <span class="operator">|</span>        <span class="number">85389982</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span>       <span class="number">0</span> <span class="operator">|</span>         <span class="number">8035</span> <span class="operator">|</span> <span class="number">14261</span> <span class="operator">|</span>          <span class="number">11</span> <span class="operator">|</span> INDEX     <span class="operator">|</span>          <span class="number">1</span> <span class="operator">|</span>         <span class="number">0</span> <span class="operator">|</span> <span class="keyword">NO</span>        <span class="operator">|</span>        <span class="number">287769577285</span> <span class="operator">|</span>                   <span class="number">0</span> <span class="operator">|</span>  <span class="number">1177589383</span> <span class="operator">|</span> `hzero_platform`.`iam_role` <span class="operator">|</span> <span class="keyword">PRIMARY</span>     <span class="operator">|</span>             <span class="number">52</span> <span class="operator">|</span>     <span class="number">15040</span> <span class="operator">|</span>               <span class="number">0</span> <span class="operator">|</span> <span class="keyword">NO</span>         <span class="operator">|</span> IO_NONE <span class="operator">|</span> YES    <span class="operator">|</span>        <span class="number">85389982</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span>       <span class="number">0</span> <span class="operator">|</span>         <span class="number">8036</span> <span class="operator">|</span> <span class="number">14261</span> <span class="operator">|</span>          <span class="number">13</span> <span class="operator">|</span> INDEX     <span class="operator">|</span>          <span class="number">1</span> <span class="operator">|</span>         <span class="number">0</span> <span class="operator">|</span> <span class="keyword">NO</span>        <span class="operator">|</span>        <span class="number">287769592932</span> <span class="operator">|</span>                   <span class="number">0</span> <span class="operator">|</span>  <span class="number">1177589384</span> <span class="operator">|</span> `hzero_platform`.`iam_role` <span class="operator">|</span> <span class="keyword">PRIMARY</span>     <span class="operator">|</span>             <span class="number">54</span> <span class="operator">|</span>     <span class="number">15011</span> <span class="operator">|</span>               <span class="number">0</span> <span class="operator">|</span> <span class="keyword">NO</span>         <span class="operator">|</span> IO_NONE <span class="operator">|</span> YES    <span class="operator">|</span>        <span class="number">85389982</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span>       <span class="number">0</span> <span class="operator">|</span>         <span class="number">8037</span> <span class="operator">|</span> <span class="number">14261</span> <span class="operator">|</span>          <span class="number">14</span> <span class="operator">|</span> INDEX     <span class="operator">|</span>          <span class="number">1</span> <span class="operator">|</span>         <span class="number">0</span> <span class="operator">|</span> <span class="keyword">NO</span>        <span class="operator">|</span>        <span class="number">287769599951</span> <span class="operator">|</span>                   <span class="number">0</span> <span class="operator">|</span>  <span class="number">1177589384</span> <span class="operator">|</span> `hzero_platform`.`iam_role` <span class="operator">|</span> <span class="keyword">PRIMARY</span>     <span class="operator">|</span>             <span class="number">49</span> <span class="operator">|</span>     <span class="number">15170</span> <span class="operator">|</span>               <span class="number">0</span> <span class="operator">|</span> <span class="keyword">NO</span>         <span class="operator">|</span> IO_NONE <span class="operator">|</span> YES    <span class="operator">|</span>        <span class="number">85389982</span> <span class="operator">|</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>其中的一些信息如下：</p>
+<ul>
+<li>POOL_ID：缓冲池ID，我们是可以设置多个缓冲池的。</li>
+<li>SPACE：页所属表空间ID，表空间ID也可以从 information_schema.INNODB_SYS_TABLES 去查看。</li>
+<li>PAGE_NUMBER：页号。</li>
+<li>PAGE_TYPE：页类型，INDEX就是数据页。</li>
+<li>NEWEST_MODIFICATION、OLDEST_MODIFICATION：LRU热数据区域和冷数据区域被修改的记录，如果想查询脏页的数量，可以加上条件 (NEWEST_MODIFICATION &gt; 0 or OLDEST_MODIFICATION &gt; 0)。</li>
+<li>NUMBER_RECORDS：这一页中的记录数。</li>
+<li>COMPRESSED：是否压缩了。</li>
+</ul>
+<p>从 <code>INNODB_SYS_TABLES</code> 查看表信息：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">mysql<span class="operator">&gt;</span> <span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> information_schema.INNODB_SYS_TABLES <span class="keyword">WHERE</span> NAME <span class="operator">=</span> <span class="string">&#x27;hzero_platform/iam_role&#x27;</span>;</span><br><span class="line"><span class="operator">+</span><span class="comment">----------+-------------------------+------+--------+-------+-------------+------------+---------------+------------+</span></span><br><span class="line"><span class="operator">|</span> TABLE_ID <span class="operator">|</span> NAME                    <span class="operator">|</span> FLAG <span class="operator">|</span> N_COLS <span class="operator">|</span> SPACE <span class="operator">|</span> FILE_FORMAT <span class="operator">|</span> ROW_FORMAT <span class="operator">|</span> ZIP_PAGE_SIZE <span class="operator">|</span> SPACE_TYPE <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----------+-------------------------+------+--------+-------+-------------+------------+---------------+------------+</span></span><br><span class="line"><span class="operator">|</span>    <span class="number">14552</span> <span class="operator">|</span> hzero_platform<span class="operator">/</span>iam_role <span class="operator">|</span>   <span class="number">33</span> <span class="operator">|</span>     <span class="number">30</span> <span class="operator">|</span> <span class="number">14261</span> <span class="operator">|</span> Barracuda   <span class="operator">|</span> <span class="keyword">Dynamic</span>    <span class="operator">|</span>             <span class="number">0</span> <span class="operator">|</span> Single     <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----------+-------------------------+------+--------+-------+-------------+------------+---------------+------------+</span></span><br></pre></td></tr></table></figure>
+
+<h1 id="Buffer-Pool-配置调优"><a href="#Buffer-Pool-配置调优" class="headerlink" title="Buffer Pool 配置调优"></a>Buffer Pool 配置调优</h1><hr>
+<h2 id="配置多个Buffer-Pool来提升数据库的并发性能"><a href="#配置多个Buffer-Pool来提升数据库的并发性能" class="headerlink" title="配置多个Buffer Pool来提升数据库的并发性能"></a>配置多个Buffer Pool来提升数据库的并发性能</h2><p>多线程访问 Buffer Pool 的时候，会涉及到对同一个 Free、LRU、Flush 等链表的操作，例如节点的移动、缓存页的刷新等，那必然是会涉及到加锁的。</p>
+<p>首先要知道，就算只有一个 Buffer Pool，多线程访问要加锁、释放锁，由于基本都是内存操作，所以性能也是很高的。但在一些高并发的生产环境中，配置多个 Buffer Pool，还是能极大地提高数据库并发性能的。</p>
+<p>可以通过参数 <code>innodb_buffer_pool_instances 来</code>配置 Buffer Pool 实例数，通过参数 <code>innodb_buffer_pool_size</code> 设置所有 Buffer Pool 的总大小（单位字节）。每个 Buffer Pool 的大小就是 <code>innodb_buffer_pool_size</code> &#x2F; <code>innodb_buffer_pool_instances</code>。</p>
+<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">[server]</span><br><span class="line">innodb_buffer_pool_size=2147483648</span><br><span class="line">innodb_buffer_pool_instances=2</span><br></pre></td></tr></table></figure>
+
+<p>InnoDB 规定，当 <code>innodb_buffer_pool_size</code> 小于1GB的时候，设置多个实例是无效的，会默认把<code>innodb_buffer_pool_instances</code> 的值修改为1。</p>
+<h2 id="动态调整Buffer-Pool大小"><a href="#动态调整Buffer-Pool大小" class="headerlink" title="动态调整Buffer Pool大小"></a>动态调整Buffer Pool大小</h2><p>我们可以在运行时动态调整 <code>innodb_buffer_pool_size</code> 这个参数，但 InnoDB 并不是一次性申请 <code>pool_size</code> 大小的内存空间，而是以 chunk 为单位申请。一个 chunk 默认就是 128M，代表一片连续的空间，申请到这片内存空间后，就会被分为若干缓存页与其对应的描述信息块。</p>
+<p>也就是说一个Buffer Pool实例其实是由若干个chunk组成的，每个chunk里划分了描述信息块和缓存页，然后共用一套 Free链表、LRU链表、Flush链表。</p>
+<p><img src="/blog/assets/migrated/ca1c17e25d575b2011b6.png" alt="Xnip2024-02-29\_09-41-41.png" title="Xnip2024-02-29_09-41-41.png"></p>
+<p>每个<code>chunk</code> 的大小由参数 <code>innodb_buffer_pool_chunk_size</code> 控制，这个参数只能在服务器启动时指定，不能在运行时动态修改。</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">mysql<span class="operator">&gt;</span> <span class="keyword">SHOW</span> VARIABLES <span class="keyword">LIKE</span> <span class="string">&#x27;innodb_buffer_pool_chunk_size&#x27;</span>;</span><br><span class="line"><span class="operator">+</span><span class="comment">-------------------------------+-----------+</span></span><br><span class="line"><span class="operator">|</span> Variable_name                 <span class="operator">|</span> <span class="keyword">Value</span>     <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">-------------------------------+-----------+</span></span><br><span class="line"><span class="operator">|</span> innodb_buffer_pool_chunk_size <span class="operator">|</span> <span class="number">134217728</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">-------------------------------+-----------+</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="合理设置-Buffer-Pool-大小"><a href="#合理设置-Buffer-Pool-大小" class="headerlink" title="合理设置 Buffer Pool 大小"></a>合理设置 Buffer Pool 大小</h2><p>在生产环境中安装MySQL数据库，首先我们一般要选择大内存的机器，那我们如何合理的设置 Buffer Pool 的大小呢？</p>
+<p>比如有一台 32GB 的机器，不可能说直接给个30G，要考虑几个方面。首先前面说过，innodb_buffer_pool_size 并不包含描述块的大小，实际 Buffer Pool 的大小会超出 innodb_buffer_pool_size 5% 左右。另外机器本身运行、MySQL运行也会占用一定的内存，所以一般 Buffer Pool 可以设置为机器的 50%~60% 左右就可以了，比如32GB的机器，就设置 innodb_buffer_pool_size 为 20GB。</p>
+<p>另外，<code>innodb_buffer_pool_size</code> 必须是 <code>innodb_buffer_pool_chunk_size × innodb_buffer_pool_instances</code> 的倍数，主要是保证每一个Buffer Pool实例中包含的chunk数量相同。</p>
+<p>比如默认 chunk_size&#x3D;128MB，<code>pool_size</code> 设置 20GB，<code>pool_instances</code> 设置 16 个，那么 20GB &#x2F; (128MB <em>16) &#x3D; 10 倍，这样每个 Buffer Pool 的大小就是 128MB</em> 10 &#x3D; 1280MB。如果将 pool_instances 设置为 32 个，那么 20GB &#x2F; (128MB <em>32) &#x3D; 5 倍，这样每个 Buffer Pool 的代销就是 128MB</em> 5 &#x3D; 640MB</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/511.html">https://leon-book.github.io/blog/index.php/archives/511.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/mysql/">mysql</a></div><div class="post-share"><div class="social-share" data-image="/blog/assets/migrated/e5f040af4100a031c435.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/512.html" title="Swoole 使用 Xhprof 调试 HTTP服务"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Swoole 使用 Xhprof 调试 HTTP服务</div></div><div class="info-2"><div class="info-item-1">  昨天服务出了问题，生产环境代码需要优化 一般我们会通过几种方式分析：日志法：通过各种日志，查看耗时，找出相应的问题，但这种方法有几个缺点：粒度太粗，不好控制侵入性太强，需要人工打点性能指标不够，只能分析出大致的耗时，但不能分区i&#x2F;o, cpu时间乖 xdebug：目前最牛逼的性能分析工具，可以无侵入式的详细的记录完整的调用链，遗憾的是与swoole不兼容xhprof: facebook出口的一款性能分析工具，简单易用，问题是：后期不维护了，对现在的php版本以及swoole支持度都不好第三方的apm工具: 不可控，也不如前面2位，对swoole支持也不好找到一个网站：https://tideways.com/，维护并持续更新xhprof，使之能支持php7 也支持在swoole下跑 安装 tideways_xhprof# 克隆扩展$ git clone https://github.com/shenzhe/php-xhprof-extension $ cd php-xhprof-extension/ # 没发现phpize $ phpize --version   ...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/510.html" title="MySQL 5.7下InnoDB对COUNT(*)的优化与MySQL 5.6性能对比"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">MySQL 5.7下InnoDB对COUNT(*)的优化与MySQL 5.6性能对比</div></div><div class="info-2"><div class="info-item-1">  在MySQL 5.7 COUNT()会选择聚集索引，进行一次内部handler函数调用，即可快速获得该表总数 执行计划显示：Extra:Select tables optimized away 5.7以前的版本中，COUNT()请求通常是：扫描普通索引来获得这个总数。 执行计划显示： Extra:Using index 如果聚集索引较大（或者说表数据量较大），没有完全加载到buffer pool中的话，MySQL 5.7的查询方式有可能反而会更慢，还不如用原先的方式（MySQL 5.6） 解决办法：强制走普通索引，不过还需要加上WHERE条件，否则还是不行 select count() from stock force index(idx_stock) where id &gt;0;extra：using where,using index </div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/index.php/archives/768.html" title="解决 MySQL 中的字符集冲突问题：Illegal mix of collations"><img class="cover" src="/blog/assets/migrated/fced450d83b71dcfac0f.png" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2024-12-25</div><div class="info-item-2">解决 MySQL 中的字符集冲突问题：Illegal mix of collations</div></div><div class="info-2"><div class="info-item-1">  在使用 MySQL 进行数据查询时，尤其是涉及到 JOIN 操作时，您可能会遇到以下错误信息： Illegal mix of collations (utf8mb4_0900_ai_ci,IMPLICIT) and (utf8mb4_unicode_ci,IMPLICIT) for operation &#x27;=&#x27;  这个错误通常表明在进行连接操作时，涉及的字段使用了不同的字符集或排序规则（collation），导致查询失败。本文将探讨这个问题的根源，并提供解决方案和示例。 问题背景在 MySQL 中，字符集（Character Set）和排序规则（Collation）用于定义如何存储和比较字符串数据。常见的字符集包括 utf8mb4，而排序规则则决定了字符串比较的规则，如 utf8mb4_unicode_ci 和 utf8mb4_0900_ai_ci。 当您在 JOIN 查询中使用不同字符集或排序规则的字段时，MySQL 将无法正确执行比较，进而导致上述错误。 示例场景假设我们有两个表 users 和 orders，它们的结构如下： CREATE TABLE ...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/434.html" title="查询 MySQL 事务隔离级别"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2019-11-14</div><div class="info-item-2">查询 MySQL 事务隔离级别</div></div><div class="info-2"><div class="info-item-1">  在 MySQL 中，事务的隔离级别控制了事务之间的可见性和并发性。了解不同的隔离级别可以帮助您选择适合您应用程序的选项。 1. 事务隔离级别简介MySQL 支持以下四种标准的事务隔离级别： 隔离级别描述READ UNCOMMITTED允许读取未提交的事务的数据，可能导致脏读。READ COMMITTED只允许读取已提交事务的数据，防止脏读，但可能导致不可重复读。REPEATABLE READ保证在同一事务中多次读取同样的数据结果，但可能导致幻读。SERIALIZABLE最严格的隔离级别，强制事务串行执行，完全避免脏读、不可重复读和幻读。  2. 查询当前数据库的事务隔离级别要查询当前 MySQL 数据库的事务隔离级别，可以使用以下 SQL 语句： SELECT @@global.tx_isolation AS &#x27;Global Isolation Level&#x27;,       @@session.tx_isolation AS &#x27;Session Isolation Level&#x27;;  2.1 示例输出运行上述查询后，您可能会看到类似以下的输出...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/827.html" title="[踩坑] Swoole 常驻进程中使用 mysqli 的那些坑与正确姿势"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-01-28</div><div class="info-item-2">[踩坑] Swoole 常驻进程中使用 mysqli 的那些坑与正确姿势</div></div><div class="info-2"><div class="info-item-1">   关键词：Swoole、mysqli、MySQL、errno&#x3D;110、send of 5 bytes failed、连接复用、死连接  在 PHP-FPM 时代，mysqli 几乎不会暴露什么“连接管理问题”。但一旦进入 Swoole &#x2F; 常驻进程 &#x2F; RPC 服务，很多团队会突然遇到类似这样的错误： send of 5 bytes failed with errno=110 Connection timed out  而且往往具备以下特征：  ❌ 不是高并发 ❌ 不是慢 SQL ❌ 不是攻击 ✅ 每天稳定、零散出现 ✅ 重试一次就恢复  本文结合真实生产案例，讲清楚 为什么会出现、为什么“你明明重连了还有报错”、以及如何正确处理。  一、错误现象解析典型错误日志： Links\Db::getMysql(): send of 5 bytes failed with errno=110 Connection timed out  关键信息拆解 errno&#x3D;110Linux 网络错误码：ETIMEDOUT，TCP 发送超时  send of...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/301.html" title="MySQL 实时查看性能的技巧"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2018-10-15</div><div class="info-item-2">MySQL 实时查看性能的技巧</div></div><div class="info-2"><div class="info-item-1">  在数据库管理中，实时监控 MySQL 的性能是确保系统高效运行的关键。通过观察性能指标，可以及时发现并解决性能瓶颈，确保数据库的稳定性和响应速度。本文将介绍一些实用的方法和工具，帮助你实时查看 MySQL 的性能。 为什么监控 MySQL 性能？ 性能优化: 通过监控性能指标，可以识别瓶颈并优化查询。 资源管理: 了解资源使用情况，合理分配服务器资源。 故障排查: 实时监控可以帮助迅速定位问题，减少停机时间。  实时查看性能的工具1. MySQL 命令行工具SHOW STATUS使用 SHOW STATUS 命令可以查看 MySQL 服务器的状态变量，包括连接数、查询数、慢查询等信息。 SHOW GLOBAL STATUS;  SHOW PROCESSLISTSHOW PROCESSLIST 命令可以查看当前正在执行的查询，包括执行时间和状态。这对于识别长时间运行的查询非常有用。 SHOW PROCESSLIST;  2. MySQL Performance SchemaPerformance Schema 是 MySQL 内置的监控工具，提供了丰富的性能数据。可以通过以下查...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/400.html" title="MySQL &#96;Too many connections&#96; 错误解决方案"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2019-09-04</div><div class="info-item-2">MySQL &#96;Too many connections&#96; 错误解决方案</div></div><div class="info-2"><div class="info-item-1">  当 MySQL 数据库达到最大连接数限制时，会出现 Too many connections 错误。这种情况通常意味着并发连接超出了 MySQL 的配置限制。以下是一些解决该问题的常见方法。 1. 增加最大连接数1.1 修改配置文件您可以通过修改 MySQL 配置文件（my.cnf 或 my.ini）中的 max_connections 参数来增加最大连接数。找到配置文件并修改或添加以下行： [mysqld]max_connections = 200  # 根据需要调整此值  1.2 动态调整如果您希望立即生效而无需重启 MySQL，可以使用以下 SQL 命令来动态调整： SET GLOBAL max_connections = 200;  # 根据需要调整此值   注意：动态设置的值在 MySQL 重启后将失效，需要在配置文件中进行持久化修改。  2. 优化应用程序2.1 连接池使用连接池技术来复用数据库连接，而不是每次都创建新连接。许多框架和库（如 PDO、MySQLi 等）都支持连接池。 2.2 关闭不必要的连接确保在完成数据库操作后关闭连接，避免长时间保持连接空闲。 ...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/38.html" title="如何在 MySQL 中实现对10亿条数据的判重"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2015-11-09</div><div class="info-item-2">如何在 MySQL 中实现对10亿条数据的判重</div></div><div class="info-2"><div class="info-item-1">  在实际的数据库应用中，我们经常需要处理大规模的数据集。当面临一个包含10亿条数据的数据库时，如何高效地进行判重操作是一个具有挑战性的问题。在本篇博客中，我们将探讨如何在 MySQL 中实现对10亿条数据的判重。 1. 使用索引索引是提高数据库查询性能的重要机制之一。在判重操作中，我们可以创建一个唯一索引来确保数据的唯一性。在 MySQL 中，可以使用 CREATE UNIQUE INDEX 命令来创建唯一索引。 CREATE UNIQUE INDEX idx_unique_column ON your_table (column_name);  通过在需要判重的列上创建唯一索引，MySQL 将在插入或更新数据时自动检查唯一性，并拒绝重复的值。这样可以有效地避免重复数据的插入。 2. 使用临时表另一种处理大规模数据的方法是使用临时表。我们可以创建一个临时表，将数据导入其中，并在临时表上执行判重操作。这种方法可以减少对原始表的影响，并提高查询性能。 首先，创建一个临时表： CREATE TEMPORARY TABLE temp_tableSELECT DISTINCT colum...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%BC%93%E5%86%B2%E6%B1%A0"><span class="toc-number">1.</span> <span class="toc-text">缓冲池</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Buffer-Pool-%E7%BB%93%E6%9E%84"><span class="toc-number">2.</span> <span class="toc-text">Buffer Pool 结构</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Free-%E9%93%BE%E8%A1%A8"><span class="toc-number">3.</span> <span class="toc-text">Free 链表</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%BC%93%E5%AD%98%E9%A1%B5%E5%93%88%E5%B8%8C%E8%A1%A8"><span class="toc-number">4.</span> <span class="toc-text">缓存页哈希表</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#LRU-%E9%93%BE%E8%A1%A8"><span class="toc-number">5.</span> <span class="toc-text">LRU 链表</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AE%80%E5%8D%95-LRU-%E9%93%BE%E8%A1%A8"><span class="toc-number">6.</span> <span class="toc-text">简单 LRU 链表</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%86%B7%E7%83%AD%E6%95%B0%E6%8D%AE%E5%88%86%E7%A6%BB%E7%9A%84-LRU-%E9%93%BE%E8%A1%A8"><span class="toc-number">7.</span> <span class="toc-text">冷热数据分离的 LRU 链表</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Flush-%E9%93%BE%E8%A1%A8"><span class="toc-number">8.</span> <span class="toc-text">Flush 链表</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%88%B7%E6%96%B0%E8%84%8F%E9%A1%B5%E5%88%B0%E7%A3%81%E7%9B%98"><span class="toc-number">9.</span> <span class="toc-text">刷新脏页到磁盘</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B-Buffer-Pool-%E7%8A%B6%E6%80%81"><span class="toc-number">10.</span> <span class="toc-text">查看 Buffer Pool 状态</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Buffer-Pool%E5%92%8C%E5%86%85%E5%AD%98%E7%8A%B6%E6%80%81"><span class="toc-number">10.1.</span> <span class="toc-text">Buffer Pool和内存状态</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8BLRU%E9%93%BE%E8%A1%A8%E4%BF%A1%E6%81%AF"><span class="toc-number">10.2.</span> <span class="toc-text">查看LRU链表信息</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Buffer-Pool-%E9%85%8D%E7%BD%AE%E8%B0%83%E4%BC%98"><span class="toc-number">11.</span> <span class="toc-text">Buffer Pool 配置调优</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%85%8D%E7%BD%AE%E5%A4%9A%E4%B8%AABuffer-Pool%E6%9D%A5%E6%8F%90%E5%8D%87%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84%E5%B9%B6%E5%8F%91%E6%80%A7%E8%83%BD"><span class="toc-number">11.1.</span> <span class="toc-text">配置多个Buffer Pool来提升数据库的并发性能</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8A%A8%E6%80%81%E8%B0%83%E6%95%B4Buffer-Pool%E5%A4%A7%E5%B0%8F"><span class="toc-number">11.2.</span> <span class="toc-text">动态调整Buffer Pool大小</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%90%88%E7%90%86%E8%AE%BE%E7%BD%AE-Buffer-Pool-%E5%A4%A7%E5%B0%8F"><span class="toc-number">11.3.</span> <span class="toc-text">合理设置 Buffer Pool 大小</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

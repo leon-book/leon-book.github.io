@@ -1,0 +1,706 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Redis 慢查询日志详解：如何定位和优化性能瓶颈 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Redis 是一个高性能的键值存储系统，但在实际使用中，某些命令可能会因为数据量大或复杂度高而导致执行时间过长，进而影响整体性能。Redis 提供了慢查询日志功能，帮助我们定位这些性能瓶颈。本文将详细介绍 Redis 慢查询日志的使用方法，并分享一些优化建议。  1. 什么是 Redis 慢查询日志？Redis 慢查询日志用于记录执行时间超过指定阈值的命令。这些命令可能是 Redis 性能瓶颈">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis 慢查询日志详解：如何定位和优化性能瓶颈">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/785.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="Redis 是一个高性能的键值存储系统，但在实际使用中，某些命令可能会因为数据量大或复杂度高而导致执行时间过长，进而影响整体性能。Redis 提供了慢查询日志功能，帮助我们定位这些性能瓶颈。本文将详细介绍 Redis 慢查询日志的使用方法，并分享一些优化建议。  1. 什么是 Redis 慢查询日志？Redis 慢查询日志用于记录执行时间超过指定阈值的命令。这些命令可能是 Redis 性能瓶颈">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2025-03-03T01:16:00.000Z">
+<meta property="article:modified_time" content="2025-03-03T01:16:00.000Z">
+<meta property="article:author" content="leon">
+<meta property="article:tag" content="redis">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Redis 慢查询日志详解：如何定位和优化性能瓶颈",
+  "url": "https://leon-book.github.io/blog/index.php/archives/785.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2025-03-03T01:16:00.000Z",
+  "dateModified": "2025-03-03T01:16:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/785.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Redis 慢查询日志详解：如何定位和优化性能瓶颈',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">Redis 慢查询日志详解：如何定位和优化性能瓶颈</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Redis 慢查询日志详解：如何定位和优化性能瓶颈</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2025-03-03T01:16:00.000Z" title="发表于 2025-03-03 10:16:00">2025-03-03</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2025-03-03T01:16:00.000Z" title="更新于 2025-03-03 10:16:00">2025-03-03</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/785.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<p>Redis 是一个高性能的键值存储系统，但在实际使用中，某些命令可能会因为数据量大或复杂度高而导致执行时间过长，进而影响整体性能。Redis 提供了慢查询日志功能，帮助我们定位这些性能瓶颈。本文将详细介绍 Redis 慢查询日志的使用方法，并分享一些优化建议。</p>
+<hr>
+<h2 id="1-什么是-Redis-慢查询日志？"><a href="#1-什么是-Redis-慢查询日志？" class="headerlink" title="1. 什么是 Redis 慢查询日志？"></a>1. 什么是 Redis 慢查询日志？</h2><p>Redis 慢查询日志用于记录执行时间超过指定阈值的命令。这些命令可能是 Redis 性能瓶颈的根源，通过分析慢查询日志，可以优化 Redis 的使用方式。</p>
+<hr>
+<h2 id="2-慢查询日志的配置参数"><a href="#2-慢查询日志的配置参数" class="headerlink" title="2. 慢查询日志的配置参数"></a>2. 慢查询日志的配置参数</h2><p>Redis 提供了两个配置参数来控制慢查询日志的行为：</p>
+<ul>
+<li><strong><code>slowlog-log-slower-than</code></strong>：指定执行时间的阈值（单位：微秒）。默认值为 10000 微秒（10 毫秒）。</li>
+<li><strong><code>slowlog-max-len</code></strong>：指定慢查询日志的最大长度（即最多记录多少条慢查询）。默认值为 128 条。</li>
+</ul>
+<p>可以通过 Redis 配置文件（<code>redis.conf</code>）或运行时命令来修改这些参数。</p>
+<hr>
+<h2 id="3-查看和修改慢查询日志配置"><a href="#3-查看和修改慢查询日志配置" class="headerlink" title="3. 查看和修改慢查询日志配置"></a>3. 查看和修改慢查询日志配置</h2><h3 id="查看当前配置"><a href="#查看当前配置" class="headerlink" title="查看当前配置"></a>查看当前配置</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">redis-cli config get slowlog-log-slower-than</span><br><span class="line">redis-cli config get slowlog-max-len</span><br></pre></td></tr></table></figure>
+
+<h3 id="修改配置"><a href="#修改配置" class="headerlink" title="修改配置"></a>修改配置</h3><ul>
+<li><p>修改慢查询日志的阈值（例如设置为 5 毫秒）：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">redis-cli config <span class="built_in">set</span> slowlog-log-slower-than 5000</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>修改慢查询日志的最大长度（例如设置为 1000 条）：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">redis-cli config <span class="built_in">set</span> slowlog-max-len 1000</span><br></pre></td></tr></table></figure></li>
+</ul>
+<hr>
+<h2 id="4-查看慢查询日志"><a href="#4-查看慢查询日志" class="headerlink" title="4. 查看慢查询日志"></a>4. 查看慢查询日志</h2><p>使用 <code>SLOWLOG GET</code> 命令可以查看慢查询日志。默认情况下，Redis 会记录最近的 128 条慢查询。</p>
+<h3 id="查看所有慢查询"><a href="#查看所有慢查询" class="headerlink" title="查看所有慢查询"></a>查看所有慢查询</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">redis-cli slowlog get</span><br></pre></td></tr></table></figure>
+
+<h3 id="查看指定数量的慢查询（例如查看前-10-条）"><a href="#查看指定数量的慢查询（例如查看前-10-条）" class="headerlink" title="查看指定数量的慢查询（例如查看前 10 条）"></a>查看指定数量的慢查询（例如查看前 10 条）</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">redis-cli slowlog get 10</span><br></pre></td></tr></table></figure>
+
+<h3 id="查看慢查询日志的长度"><a href="#查看慢查询日志的长度" class="headerlink" title="查看慢查询日志的长度"></a>查看慢查询日志的长度</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">redis-cli slowlog len</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="5-慢查询日志的输出格式"><a href="#5-慢查询日志的输出格式" class="headerlink" title="5. 慢查询日志的输出格式"></a>5. 慢查询日志的输出格式</h2><p>每条慢查询日志包含以下字段：</p>
+<ul>
+<li><strong>id</strong>：慢查询的唯一标识符。</li>
+<li><strong>timestamp</strong>：命令执行的时间戳（Unix 时间戳）。</li>
+<li><strong>execution_time</strong>：命令的执行时间（单位：微秒）。</li>
+<li><strong>command</strong>：执行的命令及其参数。</li>
+</ul>
+<p>示例输出：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">1) 1) (integer) 1              # ID</span><br><span class="line">   2) (integer) 1633024800     # 时间戳</span><br><span class="line">   3) (integer) 15000         # 执行时间（微秒）</span><br><span class="line">   4) 1) &quot;GET&quot;                # 命令</span><br><span class="line">      2) &quot;mykey&quot;              # 参数</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="6-分析慢查询日志"><a href="#6-分析慢查询日志" class="headerlink" title="6. 分析慢查询日志"></a>6. 分析慢查询日志</h2><p>通过分析慢查询日志，可以找出 Redis 实例中的性能瓶颈。以下是一些常见的优化建议：</p>
+<ul>
+<li><strong>优化复杂命令</strong>：如果某些命令（如 <code>KEYS</code>、<code>SORT</code>、<code>LUA 脚本</code>）频繁出现在慢查询日志中，考虑优化这些命令或使用替代方案。</li>
+<li><strong>拆分大键</strong>：如果某个键的数据量过大，可能导致操作耗时较长。考虑将大键拆分为多个小键。</li>
+<li><strong>使用 Pipeline</strong>：如果频繁执行多个命令，可以使用 Pipeline 减少网络开销。</li>
+<li><strong>升级硬件</strong>：如果 Redis 实例的 CPU 或内存资源不足，考虑升级硬件配置。</li>
+</ul>
+<hr>
+<h2 id="7-清空慢查询日志"><a href="#7-清空慢查询日志" class="headerlink" title="7. 清空慢查询日志"></a>7. 清空慢查询日志</h2><p>如果需要清空慢查询日志，可以使用以下命令：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">redis-cli slowlog reset</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="8-将慢查询日志持久化"><a href="#8-将慢查询日志持久化" class="headerlink" title="8. 将慢查询日志持久化"></a>8. 将慢查询日志持久化</h2><p>Redis 的慢查询日志是存储在内存中的，重启 Redis 后会丢失。如果需要持久化慢查询日志，可以定期将日志导出到文件：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">redis-cli slowlog get &gt; slowlog.txt</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="9-示例：优化慢查询日志的完整流程"><a href="#9-示例：优化慢查询日志的完整流程" class="headerlink" title="9. 示例：优化慢查询日志的完整流程"></a>9. 示例：优化慢查询日志的完整流程</h2><ol>
+<li><p>设置慢查询日志的阈值为 5 毫秒：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">redis-cli config <span class="built_in">set</span> slowlog-log-slower-than 5000</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>设置慢查询日志的最大长度为 1000 条：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">redis-cli config <span class="built_in">set</span> slowlog-max-len 1000</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>查看慢查询日志：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">redis-cli slowlog get 10</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>分析日志并优化性能瓶颈。</p>
+</li>
+<li><p>定期导出慢查询日志：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">redis-cli slowlog get &gt; slowlog.txt</span><br></pre></td></tr></table></figure></li>
+</ol>
+<hr>
+<h2 id="10-总结"><a href="#10-总结" class="headerlink" title="10. 总结"></a>10. 总结</h2><p>Redis 慢查询日志是排查和优化 Redis 性能问题的利器。通过合理配置慢查询日志，定期分析日志内容，可以有效提升 Redis 实例的性能和稳定性。建议将慢查询日志的监控和分析纳入 Redis 的日常运维工作中。</p>
+<hr>
+<p><strong>参考资料：</strong></p>
+<ul>
+<li><a href="https://redis.io/commands/slowlog">Redis 官方文档</a></li>
+<li><a href="https://cloud.google.com/memorystore/docs/redis">GCP Memorystore 文档</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/785.html">https://leon-book.github.io/blog/index.php/archives/785.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/redis/">redis</a></div><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/786.html" title="AB 预请求与其他压测工具"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">AB 预请求与其他压测工具</div></div><div class="info-2"><div class="info-item-1">  在进行性能测试时，预请求（Pre-request）是一个非常重要的步骤。它可以帮助我们在正式压测之前，确保系统处于正确的状态。本文将介绍如何使用 ab（Apache Benchmark）工具进行预请求，并介绍其他常用的压测工具。 1. AB 预请求ab 是 Apache 提供的一个简单的压测工具，常用于 HTTP 服务的性能测试。在进行正式压测之前，通常需要进行一些预请求，以确保系统已经预热，或者确保某些资源已经加载。 1.1 什么是预请求？预请求是指在正式压测之前，发送一些请求到目标服务器，以确保系统处于稳定状态。这些请求可以帮助我们：  预热服务器，避免冷启动带来的性能影响。 确保数据库连接池已经初始化。 确保缓存已经加载。  1.2 使用 AB 进行预请求假设我们要对一个 API 进行压测，首先可以使用 ab 发送一些预请求： ab -n 100 -c 10 http://example.com/api/   -n 100：表示发送 100 个请求。 -c 10：表示并发数为 10。  这个命令会发送 100 个请求到 http://example.com/api/，并...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/784.html" title="加密通信的流行工具"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">加密通信的流行工具</div></div><div class="info-2"><div class="info-item-1">  工具特点适用场景Stunnel简单易用，支持 SSL/TLS 加密快速实现加密通信OpenVPN功能强大，支持完整 VPN 解决方案企业级 VPN 部署SSH 隧道无需额外工具，支持动态端口转发临时加密通信WireGuard高性能，轻量级，适合现代 VPN 需求高性能 VPN，移动设备IPSec网络层加密，适合大规模部署企业级网络加密HAProxy支持负载均衡和 SSL/TLS 终止高并发 Web 服务Nginx高性能反向代理，支持 HTTPSWeb 服务加密Socat多功能网络工具，支持多种协议临时测试或调试Tailscale基于 WireGuard，简单易用团队协作，远程办公Let's Encrypt (Certbot)免费 SSL/TLS 证书，自动化管理低成本 HTTPS 部署Cloudflare Argo Tunnel无需开放端口，集成 Cloudflare 功能安全暴露本地服务 </div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/index.php/archives/226.html" title="Nginx Redis Lua 模块试用体验"><img class="cover" src="/blog/assets/migrated/786a3443f2ba773f880c.png" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2017-10-26</div><div class="info-item-2">Nginx Redis Lua 模块试用体验</div></div><div class="info-2"><div class="info-item-1">  在现代 web 开发中，Nginx 作为高性能的反向代理服务器广泛应用，而 Lua 语言因其轻量和灵活性备受青睐。将 Nginx、Lua 和 Redis 结合在一起，可以构建高效的动态 web 应用。本文将分享我在使用 Nginx Redis Lua 模块过程中的体验与实践。 1. 背景介绍 1.1 NginxNginx 是一个高性能的 HTTP 和反向代理服务器，因其处理静态文件和并发请求的能力而广受欢迎。 1.2 LuaLua 是一种轻量级的脚本语言，适用于嵌入式开发，因其灵活性和性能而被广泛使用。 1.3 RedisRedis 是一个开源的高性能键值数据库，常用于缓存和会话存储，能够提供快速的数据访问。 2. 环境搭建2.1 安装 Nginx 和 Lua首先，我们需要安装 Nginx 和 Lua 模块。可以使用 OpenResty，它是一个基于 Nginx 的分发版本，内置了 Lua 支持。 # 安装 OpenRestysudo apt updatesudo apt install openresty  2.2 安装 Redis接下来，安装 Redis 数据库： sud...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/144.html" title="Redis 数据结构 - Hash 哈希"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2016-12-24</div><div class="info-item-2">Redis 数据结构 - Hash 哈希</div></div><div class="info-2"><div class="info-item-1">  Hash 是 Redis 中一种非常灵活且高效的数据结构，用于存储键值对的集合。每个 Hash 可以看作一个对象，其中包含多个字段（field）和对应的值（value）。Hash 特别适合存储对象类型的数据，如用户信息、商品属性等。 1. Hash 的基本特性 键值对：Hash 是由多个字段和对应值组成的集合，每个字段都是唯一的。 高效存储：适合存储小型对象，Redis 对 Hash 的存储进行了优化，节省内存。 支持多种操作：提供了丰富的命令来操作 Hash，包括添加、获取、删除等。  2. Hash 的基本命令2.1 设置字段值使用 HSET 命令可以设置 Hash 中指定字段的值。如果字段已存在，则更新其值。 HSET myhash field1 value1  2.2 获取字段值使用 HGET 命令可以获取 Hash 中指定字段的值。 HGET myhash field1  2.3 获取所有字段和值使用 HGETALL 命令可以获取 Hash 中所有字段及其对应的值。 HGETALL myhash  2.4 删除字段使用 HDEL 命令可以删除 Hash 中指定的字段...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/241.html" title="测算 Redis 处理实际生产请求的 QPS&#x2F;TPS"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2017-11-10</div><div class="info-item-2">测算 Redis 处理实际生产请求的 QPS&#x2F;TPS</div></div><div class="info-2"><div class="info-item-1">  在现代应用中，Redis 作为一个高性能的键值存储系统，广泛应用于缓存、消息队列和实时数据处理等场景。了解 Redis 的 QPS（每秒查询数）和 TPS（每秒事务数）对于优化系统性能和资源配置至关重要。本文将介绍如何测算 Redis 的 QPS&#x2F;TPS，并提供一些实际的最佳实践。 1. 什么是 QPS 和 TPS？ QPS（Queries Per Second）：表示每秒处理的查询请求数量，通常用于衡量数据库或缓存系统的查询性能。 TPS（Transactions Per Second）：表示每秒处理的事务数量，常用于衡量系统的事务处理能力。  在 Redis 中，QPS 和 TPS 通常是相同的，因为 Redis 的每个命令都是原子操作。 2. 测算 Redis QPS&#x2F;TPS 的方法2.1 使用 redis-benchmark 工具Redis 自带的 redis-benchmark 工具可以用于测试 Redis 的性能。可以通过以下命令运行基准测试： redis-benchmark -h &lt;host&gt; -p &lt;port&gt; -n...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/575.html" title="Redis持久化相关问题 ISCONF Redis is configured to save RDB snapshots"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2023-04-10</div><div class="info-item-2">Redis持久化相关问题 ISCONF Redis is configured to save RDB snapshots</div></div><div class="info-2"><div class="info-item-1">  服务器抛错, redis 持久化出了问题. 抛错如下: Fatal error: Uncaught RedisException: MISCONF Redis is configured to save RDB snapshots, but it is currently not able to persist on disk. Commands that may modify the data set are disabled, because this instance is configured to report errors during writes if RDB snapshotting fails (stop-writes-on-bgsave-error option). Please check the Redis logs for details about the RDB error  翻译: （错误）MISCONF Redis 已配置为保存 RDB 快照，但目前无法在磁盘上持久化。 可以修改数据集的命令被禁用，因为如果 RDB 快照失败（stop-wr...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/836.html" title="[踩坑] Redis 内存碎片问题深度解析与解决方案"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-09</div><div class="info-item-2">[踩坑] Redis 内存碎片问题深度解析与解决方案</div></div><div class="info-2"><div class="info-item-1">  在 Redis 运维过程中，你是否遇到过这样的困惑：明明已经删除了大量数据，used_memory 也确实下降了，但服务器的实际内存占用却几乎没有变化？ 这就是 Redis 内存碎片问题，也是生产环境中最常见、最容易被忽视的性能隐患之一。本文将从原理到实战，全面解析 Redis 内存碎片的成因、诊断方法和解决方案。  一、什么是内存碎片？1.1 内存分配原理Redis 并不直接使用操作系统的 malloc，而是使用专门的内存分配器（默认为 jemalloc）。内存分配器为了提高效率，会按固定大小的块来分配内存，例如： 申请 10 bytes → 实际分配 16 bytes申请 20 bytes → 实际分配 32 bytes申请 65 bytes → 实际分配 96 bytes  多出来的部分就是内部碎片。 1.2 碎片是如何产生的初始状态：[Key A: 100bytes] [Key B: 200bytes] [Key C: 150bytes] [Key D: 300bytes]删除 Key B 和 Key C 后：[Key A: 100bytes] [   空闲 350b...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/852.html" title="Redis 二级缓存在撮合引擎中的落地方案"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-05-14</div><div class="info-item-2">Redis 二级缓存在撮合引擎中的落地方案</div></div><div class="info-2"><div class="info-item-1">   场景：撮合引擎多 Pod 部署，每个 Pod 维护本地 L1 内存深度数据，如何通过 Redis L2 实现跨 Pod 无损同步？   一、背景与问题定义撮合引擎（Matching Engine）是交易系统的核心，订单簿（Order Book）的买卖深度数据有以下特点：  写频率极高：每秒数千次挂单、撤单、成交 读频率更高：行情推送、风控查询、前端展示 强一致性要求：深度数据不能乱序、不能丢失 延迟敏感：毫秒级响应，不能每次都走 Redis  因此，撮合引擎不会把深度数据持续维护在 Redis，而是： L1（JVM 堆内存）= 单一真相来源（Source of Truth）L2（Redis）     = 跨 Pod 同步介质 + 故障恢复快照  核心问题就变成：如何让 L1 的变更，通过 L2，无差别地同步到其他 Pod 的 L1？  二、整体架构┌─────────────────────────┐      ┌─────────────────────────┐│       Pod A             │      │       Pod B         ...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E4%BB%80%E4%B9%88%E6%98%AF-Redis-%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97%EF%BC%9F"><span class="toc-number">1.</span> <span class="toc-text">1. 什么是 Redis 慢查询日志？</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97%E7%9A%84%E9%85%8D%E7%BD%AE%E5%8F%82%E6%95%B0"><span class="toc-number">2.</span> <span class="toc-text">2. 慢查询日志的配置参数</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E6%9F%A5%E7%9C%8B%E5%92%8C%E4%BF%AE%E6%94%B9%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97%E9%85%8D%E7%BD%AE"><span class="toc-number">3.</span> <span class="toc-text">3. 查看和修改慢查询日志配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B%E5%BD%93%E5%89%8D%E9%85%8D%E7%BD%AE"><span class="toc-number">3.1.</span> <span class="toc-text">查看当前配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BF%AE%E6%94%B9%E9%85%8D%E7%BD%AE"><span class="toc-number">3.2.</span> <span class="toc-text">修改配置</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E6%9F%A5%E7%9C%8B%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97"><span class="toc-number">4.</span> <span class="toc-text">4. 查看慢查询日志</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B%E6%89%80%E6%9C%89%E6%85%A2%E6%9F%A5%E8%AF%A2"><span class="toc-number">4.1.</span> <span class="toc-text">查看所有慢查询</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B%E6%8C%87%E5%AE%9A%E6%95%B0%E9%87%8F%E7%9A%84%E6%85%A2%E6%9F%A5%E8%AF%A2%EF%BC%88%E4%BE%8B%E5%A6%82%E6%9F%A5%E7%9C%8B%E5%89%8D-10-%E6%9D%A1%EF%BC%89"><span class="toc-number">4.2.</span> <span class="toc-text">查看指定数量的慢查询（例如查看前 10 条）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97%E7%9A%84%E9%95%BF%E5%BA%A6"><span class="toc-number">4.3.</span> <span class="toc-text">查看慢查询日志的长度</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97%E7%9A%84%E8%BE%93%E5%87%BA%E6%A0%BC%E5%BC%8F"><span class="toc-number">5.</span> <span class="toc-text">5. 慢查询日志的输出格式</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E5%88%86%E6%9E%90%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97"><span class="toc-number">6.</span> <span class="toc-text">6. 分析慢查询日志</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E6%B8%85%E7%A9%BA%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97"><span class="toc-number">7.</span> <span class="toc-text">7. 清空慢查询日志</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E5%B0%86%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97%E6%8C%81%E4%B9%85%E5%8C%96"><span class="toc-number">8.</span> <span class="toc-text">8. 将慢查询日志持久化</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#9-%E7%A4%BA%E4%BE%8B%EF%BC%9A%E4%BC%98%E5%8C%96%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B"><span class="toc-number">9.</span> <span class="toc-text">9. 示例：优化慢查询日志的完整流程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10-%E6%80%BB%E7%BB%93"><span class="toc-number">10.</span> <span class="toc-text">10. 总结</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

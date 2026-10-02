@@ -1,0 +1,680 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>MySQL 8.4 升级踩坑：列级权限与表级权限混用，导致新增表级权限对长连接不生效 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="在将 MySQL 从旧版本升级到 8.4 后，我们遇到了一次由权限管理引发的线上事故：账号同时存在列级权限和表级权限时，新增的表级 INSERT 权限对已经建立的长连接（TCP 长连接）不生效，直到重启使用该连接的服务、重建连接后才恢复正常。短连接（如 Cron 定时任务）则不受影响，因为每次执行都会重新建立连接。 本文记录事故的发现过程、排查思路、根因分析，以及最终采用的治标和治本方案，供同">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MySQL 8.4 升级踩坑：列级权限与表级权限混用，导致新增表级权限对长连接不生效">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/878.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="在将 MySQL 从旧版本升级到 8.4 后，我们遇到了一次由权限管理引发的线上事故：账号同时存在列级权限和表级权限时，新增的表级 INSERT 权限对已经建立的长连接（TCP 长连接）不生效，直到重启使用该连接的服务、重建连接后才恢复正常。短连接（如 Cron 定时任务）则不受影响，因为每次执行都会重新建立连接。 本文记录事故的发现过程、排查思路、根因分析，以及最终采用的治标和治本方案，供同">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2026-08-20T07:46:00.000Z">
+<meta property="article:modified_time" content="2026-08-20T07:46:00.000Z">
+<meta property="article:author" content="leon">
+<meta property="article:tag" content="mysql">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "MySQL 8.4 升级踩坑：列级权限与表级权限混用，导致新增表级权限对长连接不生效",
+  "url": "https://leon-book.github.io/blog/index.php/archives/878.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2026-08-20T07:46:00.000Z",
+  "dateModified": "2026-08-20T07:46:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/878.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'MySQL 8.4 升级踩坑：列级权限与表级权限混用，导致新增表级权限对长连接不生效',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">MySQL 8.4 升级踩坑：列级权限与表级权限混用，导致新增表级权限对长连接不生效</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">MySQL 8.4 升级踩坑：列级权限与表级权限混用，导致新增表级权限对长连接不生效</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-08-20T07:46:00.000Z" title="发表于 2026-08-20 16:46:00">2026-08-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-08-20T07:46:00.000Z" title="更新于 2026-08-20 16:46:00">2026-08-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E8%B8%A9%E5%9D%91%E6%95%99%E8%AE%AD/">踩坑教训</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/878.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<p>在将 MySQL 从旧版本升级到 8.4 后，我们遇到了一次由权限管理引发的线上事故：<strong>账号同时存在列级权限和表级权限时，新增的表级 INSERT 权限对已经建立的长连接（TCP 长连接）不生效</strong>，直到重启使用该连接的服务、重建连接后才恢复正常。短连接（如 Cron 定时任务）则不受影响，因为每次执行都会重新建立连接。</p>
+<p>本文记录事故的发现过程、排查思路、根因分析，以及最终采用的治标和治本方案，供同样在做 8.4 升级评估的团队参考。</p>
+<blockquote>
+<p>说明：截至本文撰写时，我们没有在 Oracle 官方 bugs.mysql.com 和 8.4 Release Notes 中找到与本文现象完全吻合、且被官方明确确认的 bug 记录。下文”根因分析”部分是基于 MySQL 权限校验机制做出的技术推断，并非官方定论。我们已按复现步骤向官方提交 bug 报告，等待确认。</p>
+</blockquote>
+<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><ul>
+<li>数据库版本：从 MySQL 8.0.x 升级到 8.4.x（LTS）</li>
+<li>升级前，业务账号的权限历史上是<strong>列级权限和表级权限混用</strong>的：部分表只授予了列级权限（如 <code>GRANT INSERT (col1, col2) ON db.table_a TO user</code>），部分表授予的是表级权限（如 <code>GRANT INSERT ON db.table_b TO user</code>）</li>
+<li>升级后新增业务功能，需要给同一个账号新增一张表的 INSERT 权限</li>
+</ul>
+<h2 id="事故时间线"><a href="#事故时间线" class="headerlink" title="事故时间线"></a>事故时间线</h2><table><thead><tr><th>时间</th><th>事件</th></tr></thead><tbody><tr><td>2026-08-17 16:30</td><td>开启"提额资格推送"新任务，发现新增表 <code>tp_card_temp_spend_limit_record</code> 没有 INSERT 权限，反馈给 DBA(Turbo)</td></tr><tr><td>2026-08-18 15:31</td><td>Turbo 反馈权限已授予；重启 Cron 服务后，<code>tp_card_temp_spend_limit_record</code> 写入成功</td></tr><tr><td>2026-08-19 12:00</td><td>业务方反馈订单消费失败，排查发现 Http 服务中另一张一直存在的表 <code>tp_vendor_transaction</code> 也因为权限问题 INSERT 失败；重启 Http 服务后立即恢复</td></tr></tbody></table>
+
+<p><strong>两个关键细节：</strong></p>
+<ol>
+<li><code>tp_card_temp_spend_limit_record</code> 只在 Cron 服务里写入，Cron 是短连接（每次执行都新建连接），所以授权后<strong>没有重启也表现正常</strong>——这一度让人误以为”权限已经生效了，没必要重启 Http”。</li>
+<li><code>tp_vendor_transaction</code> 是一张早就存在的表，一直被 Http 服务使用，Http 服务用的是<strong>长连接（TCP 长连接池）</strong>。这张表的权限其实在同一批操作里也被误动过（列级权限迁移到表级权限的过程中受到影响），但因为长连接不会主动刷新权限缓存，问题被隐藏到第二天才在 Http 侧暴露出来。</li>
+</ol>
+<p>也就是说，真正的根因不是”哪张表没权限”，而是<strong>长连接没有感知到新的 GRANT</strong>，这个问题被 Cron 短连接”意外掩盖”了一天，才在 Http 长连接上集中爆发。</p>
+<h2 id="直接原因"><a href="#直接原因" class="headerlink" title="直接原因"></a>直接原因</h2><p>排查结论：<strong>MySQL 8.4 版本下，账号列级权限存在 Bug，可能导致同一账号新增的表级权限对已建立的长连接不生效。</strong></p>
+<p>处理方式：</p>
+<ol>
+<li>把该账号之前所有的列级权限全部回收（<code>REVOKE ... (col1, col2) ON ... FROM user</code>）</li>
+<li>按表级重新统一授权（<code>GRANT ... ON db.table TO user</code>），做到同一账号下权限口径统一，不再混用列级和表级</li>
+<li>由于部分业务使用 MySQL 的 TCP 长连接，仅执行 REVOKE&#x2F;GRANT 不会让已有连接感知变化，<strong>必须重启相关服务、重建连接后权限才真正生效</strong></li>
+</ol>
+<h2 id="根因分析（技术推断，非官方结论）"><a href="#根因分析（技术推断，非官方结论）" class="headerlink" title="根因分析（技术推断，非官方结论）"></a>根因分析（技术推断，非官方结论）</h2><p>MySQL 官方文档《8.2.13 When Privilege Changes Take Effect》中写明：</p>
+<blockquote>
+<p>Table and column privilege changes take effect with the client’s next request.</p>
+</blockquote>
+<p>也就是说，理论上表级和列级权限变更<strong>不需要重启连接</strong>，客户端下一次请求就应该生效。但我们的实际现象与文档承诺不符——这正是问题的核心矛盾点。</p>
+<p>MySQL 8.0 引入了 <code>Acl_map</code> 权限缓存结构，用来加速每次请求的权限校验：<strong>每个账号在会话建立&#x2F;权限变更时,会构建一份该账号的权限快照（表级、列级、库级的位图信息）放在内存中</strong>，后续请求直接查这份快照，避免每次都扫描 <code>mysql.tables_priv</code>、<code>mysql.columns_priv</code> 等授权表。</p>
+<p>我们推测（尚待官方确认）：当一个账号<strong>同时存在列级权限记录和表级权限记录</strong>时，围绕这份权限快照的合并&#x2F;重建逻辑存在边界条件问题——具体表现为：</p>
+<ul>
+<li>对于<strong>全新的表</strong>（此前该账号在这张表上从未有过任何权限记录，无论列级还是表级），新增的表级 GRANT 在<strong>已经建立的长连接</strong>上没有触发权限快照的正确刷新；</li>
+<li>而<strong>短连接</strong>因为每次都重新握手、重新构建权限快照，所以能立即拿到最新权限，表现”正常”；</li>
+<li>这就解释了为什么 Cron（短连接）授权后马上生效，而 Http（长连接池）授权后要等到重启服务、连接池重建后才生效。</li>
+</ul>
+<p>换句话说：<strong>这不是权限表数据错了，而是账号的权限快照在长连接场景下没有被正确地标记为”过期并重建”</strong>。而列级权限和表级权限混用，很可能是触发这个边界条件的必要条件之一——这也是我们后续把所有列级权限统一收编为表级权限之后，同类问题没有再复现的原因（目前是经验观察，未做穷举验证）。</p>
+<h2 id="治标方案"><a href="#治标方案" class="headerlink" title="治标方案"></a>治标方案</h2><ol>
+<li><strong>紧急止血</strong>：重启 Http 服务，重建长连接，恢复业务</li>
+<li><strong>权限收敛</strong>：将受影响账号的列级权限全部 REVOKE，统一改为表级授权，避免同一账号下列级&#x2F;表级权限混用</li>
+<li><strong>流程补充</strong>：后续任何新增表授权，DBA 授权完成后，<strong>必须同步通知所有使用该账号的服务方重启（或提供刷新连接池的手段）</strong>，不能默认”授权即生效，业务无感”</li>
+</ol>
+<h2 id="治本建议"><a href="#治本建议" class="headerlink" title="治本建议"></a>治本建议</h2><ol>
+<li><strong>权限模型规范化</strong>：新架构下，同一账号尽量只用表级权限，避免列级权限和表级权限混用。确需列级权限做敏感字段隔离的场景，单独建专用账号，不与普通表级权限账号共用</li>
+<li><strong>授权流程加检查项</strong>：DBA 在新表授权前，先检查目标账号是否存在列级权限记录；如有，先与业务方确认是否可以统一收编为表级权限</li>
+<li><strong>连接池侧增加保护</strong>：评估给核心长连接服务增加”连接最大存活时间”（如 max connection lifetime），定期强制重建连接，即使权限变更通知有遗漏，也能在有限时间窗口内自愈，而不是无限期卡住</li>
+<li><strong>向 Oracle 提交 Bug</strong>：整理最小复现步骤（账号先有列级权限 → 新增表授予表级权限 → 已有长连接不刷新），提交至 bugs.mysql.com，推动官方确认并给出修复版本</li>
+<li><strong>升级前的权限体检</strong>：后续团队做大版本升级（如后续 8.4 → 9.x）前，先跑一遍权限审计，识别并清理历史遗留的列级&#x2F;表级混用账号，降低升级后触发同类问题的概率</li>
+</ol>
+<h2 id="复现步骤（用于提交官方-Bug-内部验证）"><a href="#复现步骤（用于提交官方-Bug-内部验证）" class="headerlink" title="复现步骤（用于提交官方 Bug &#x2F; 内部验证）"></a>复现步骤（用于提交官方 Bug &#x2F; 内部验证）</h2><figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="comment">-- 1. 账号已有列级权限（历史遗留）</span></span><br><span class="line"><span class="keyword">GRANT</span> <span class="keyword">SELECT</span> (col1, col2) <span class="keyword">ON</span> db.table_a <span class="keyword">TO</span> <span class="string">&#x27;user1&#x27;</span>@<span class="string">&#x27;%&#x27;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 2. 用该账号建立一个长连接并保持存活（如放入连接池）</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- 3. 新建一张表，并给同一账号授予表级权限</span></span><br><span class="line"><span class="keyword">CREATE TABLE</span> db.table_b (...);</span><br><span class="line"><span class="keyword">GRANT</span> <span class="keyword">INSERT</span> <span class="keyword">ON</span> db.table_b <span class="keyword">TO</span> <span class="string">&#x27;user1&#x27;</span>@<span class="string">&#x27;%&#x27;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 4. 在步骤 2 中已建立的长连接上执行</span></span><br><span class="line"><span class="keyword">INSERT INTO</span> db.table_b (...) <span class="keyword">VALUES</span> (...);</span><br><span class="line"><span class="comment">-- 现象：ERROR 1142 (42000): INSERT command denied to user &#x27;user1&#x27;@&#x27;%&#x27; for table &#x27;table_b&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- 5. 用该账号新开一个连接，执行同样的 INSERT</span></span><br><span class="line"><span class="comment">-- 现象：立即成功</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- 6. 重启步骤 2 中的服务/连接池，强制重建连接后重试步骤 4</span></span><br><span class="line"><span class="comment">-- 现象：恢复成功</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>这次事故本质上是一次<strong>权限变更的生效边界被现有连接机制放大</strong>的问题：短连接掩盖了问题的存在，长连接暴露了问题的影响面。表面上看是”MySQL 8.4 的 bug”，但更深层的教训是：<strong>任何依赖账号级权限缓存的系统，在做权限变更时都不能假设所有客户端都能立即感知变化</strong>，尤其是在有大量长连接、连接池的架构里，权限变更后是否需要重启&#x2F;刷新连接，应该成为授权 SOP 的标准步骤之一，而不是等出了事故才去验证。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/878.html">https://leon-book.github.io/blog/index.php/archives/878.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/mysql/">mysql</a></div><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/879.html" title="我在 24GB 的 Mac mini 上折腾本地大模型，最后放弃了——一场关于「理想与内存」的和解"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">我在 24GB 的 Mac mini 上折腾本地大模型，最后放弃了——一场关于「理想与内存」的和解</div></div><div class="info-2"><div class="info-item-1">   一句话总结：我想让本地大模型接进 Hermes 这个 AI agent，折腾了大半天，撞了三堵墙，最后没成。但这趟没白走——磁盘从 22GB 清到了 73GB，脑子里那团关于「大模型到底怎么跑」的浆糊，也终于清干净了。   起点：一个朴素的念头我有一台 Mac mini（M4 芯片 &#x2F; 24GB 统一内存），平时还算够用。某天冒出个念头：  能不能让本地大模型跑在自己电脑上，还接进我常用的 Hermes（一个 AI agent 客户端）？这样不用联网、数据不出门、还免费。  听起来很美好。于是我打开了 Claude Code，说：「帮我检查下这个大模型是否匹配我的电脑配置。」 故事就这么开始了。  第一站：清磁盘（意外的最大赢家）准备装 Ollama 之前，先看了眼磁盘——只剩 22GB。这点空间连模型都塞不下几个。 于是顺手做了次大扫除，结果发现电脑里全是「僵尸缓存」： 清理项释放~/.gemini/tmp 暂存14 GBnpm 缓存~6 GBVSCode 过期扩展（85 个残留版本！）20 GBGo module 缓存3 GBCursor 对话历史 DB、剪映...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/877.html" title="行情风控阈值分析：做市滑点保护机制"><img class="cover" src="/blog/assets/migrated/9382a9462a5d752b8c81.png" onerror="onerror=null;src='/blog/img/404.jpg'" alt="cover of next post"><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">行情风控阈值分析：做市滑点保护机制</div></div><div class="info-2"><div class="info-item-1">    视角：做市商（Market Maker）风控。分析范围限定在已获得真实数据的 7 类指标（index_type 1&#x2F;2&#x2F;3&#x2F;4&#x2F;5&#x2F;6&#x2F;7）。前置文档：market_wind_tables.md（4 张表的字段结构与基础调用链）。本文聚焦阈值本身的设计逻辑与做市保护效果，不重复表结构细节。数据来源：market_wind_config 全局默认配置（symbol_id=0）截图数据 + 代码静态分析，未跑线上 SQL 核对，如有出入以线上为准。   1. 问题背景：为什么做市商需要”动态滑点”做市商在撮合引擎里挂单&#x2F;对手价成交时，面对的核心风险是信息不对称下的逆向选择（adverse selection）：当行情发生剧烈单边波动或盘口流动性骤降时，做市商的报价会滞后于真实市场价，被套利者&#x2F;高频交易者用滞后报价薄利甚至倒贴成交，也就是常说的”被扫单””被撸滑点”。 固定滑点表（仅按保证金规模分档，见 contract_symbol_step_slippage）无法应对这种风险——平静行情下滑点太...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/index.php/archives/486.html" title="MYSQL 更新字段，向字段追加字符串"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2020-06-26</div><div class="info-item-2">MYSQL 更新字段，向字段追加字符串</div></div><div class="info-2"><div class="info-item-1">  在 MySQL 中更新字段并向字段追加字符串简介在使用 MySQL 进行数据库操作时，经常会遇到需要更新字段并向字段追加字符串的情况。本篇博客将介绍在 MySQL 中更新字段并向字段追加字符串的基本语法和使用示例。 更新字段并向字段追加字符串的语法使用 UPDATE 语句可以更新 MySQL 表中的字段，并通过字符串连接函数将字符串追加到字段的末尾。以下是更新字段并向字段追加字符串的基本语法： UPDATE table_nameSET column_name = CONCAT(column_name, &#x27;appended_string&#x27;)WHERE condition;  在上述语法中，table_name 是要更新的表名，column_name 是要更新的字段名，appended_string 是要追加的字符串，condition 是更新的条件。 示例假设有一个名为 users 的表，其中包含 name 和 email 两个字段。现在我们想要向 email 字段追加字符串 @example.com。 以下是在 MySQL 中更新字段并向字段追加字符串的示...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/605.html" title="使用MySQL计算回撤率的简单方法"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2023-10-05</div><div class="info-item-2">使用MySQL计算回撤率的简单方法</div></div><div class="info-2"><div class="info-item-1">  介绍：回撤率是衡量投资组合或交易策略风险的重要指标。在本篇博客中，我们将演示如何使用MySQL来计算交易回撤率。我们将建立一个交易记录表，并使用MySQL查询来计算资金曲线和回撤率。 步骤：创建交易记录表：我们首先需要创建一个包含交易记录的表。使用MySQL的CREATE TABLE语句创建一个名为”trades”的表。该表将包含交易日期、交易金额和盈亏标志等字段。 CREATE TABLE trades (  trade_date DATE,  amount DECIMAL(10, 2),  is_profit BOOLEAN);  插入交易记录：在”trades”表中插入实际的交易记录。每条记录应包含交易日期、交易金额和盈亏标志。这些记录将用于计算资金曲线和回撤率。 INSERT INTO trades (trade_date, amount, is_profit)VALUES  (&#x27;2021-01-01&#x27;, 100.00, TRUE),  (&#x27;2021-01-02&#x27;, -50.00, FALSE),  (&#x27;2021-01...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/183.html" title="MySQL中的FROM_UNIXTIME()和UNIX_TIMESTAMP()函数详解"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2017-05-23</div><div class="info-item-2">MySQL中的FROM_UNIXTIME()和UNIX_TIMESTAMP()函数详解</div></div><div class="info-2"><div class="info-item-1">  在MySQL数据库中，FROM_UNIXTIME()和UNIX_TIMESTAMP()是两个常用的日期时间函数，用于在Unix时间戳和日期时间之间进行转换。本文将深入探讨这两个函数的用法和区别。 FROM_UNIXTIME()FROM_UNIXTIME()函数用于将Unix时间戳转换为日期时间格式。Unix时间戳表示从1970年1月1日00:00:00 UTC到特定时间的秒数。 语法FROM_UNIXTIME(unix_timestamp, [format])   unix_timestamp：要转换的Unix时间戳。 format：可选参数，用于指定输出的日期时间格式。  示例SELECT FROM_UNIXTIME(1629744967);  这将返回Unix时间戳1629744967对应的日期时间格式。 UNIX_TIMESTAMP()UNIX_TIMESTAMP()函数用于将日期时间转换为Unix时间戳格式。 语法UNIX_TIMESTAMP([date], [format])   date：要转换的日期时间。 format：可选参数，用于指定输入的日期时间格式。  ...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/689.html" title="MySQL 中 FORCE INDEX 和 USE INDEX 的区别"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2024-07-04</div><div class="info-item-2">MySQL 中 FORCE INDEX 和 USE INDEX 的区别</div></div><div class="info-2"><div class="info-item-1">  MySQL 中 FORCE INDEX 和 USE INDEX 的区别在 MySQL 数据库中,当我们编写复杂的查询语句时,索引的选择对查询性能有着重要的影响。MySQL 提供了 FORCE INDEX 和 USE INDEX 两种方式来控制索引的使用,但它们之间存在一些差异。本文将详细解释这两种方式的区别。 FORCE INDEXFORCE INDEX 是一个强制性的索引提示,它告诉 MySQL 使用指定的索引,而不是让 MySQL 自行选择最优的索引。这意味着 MySQL 将不会考虑其他可能更优的索引,而是直接使用您指定的索引。 当我们确信一个特定的索引比 MySQL 自动选择的索引更优时,可以使用 FORCE INDEX。这在某些情况下可以显著提高查询性能,但也有可能导致性能降低,因为 MySQL 无法根据实际情况选择最佳索引。 使用 FORCE INDEX 的查询语句示例: SELECT * FROM users FORCE INDEX (idx_username) WHERE username = &#x27;john_doe&#x27;;  USE INDEXUS...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/551.html" title="在MySQL中阻止UPDATE, DELETE 语句的执行，在没有添加WHERE条件"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2022-07-17</div><div class="info-item-2">在MySQL中阻止UPDATE, DELETE 语句的执行，在没有添加WHERE条件</div></div><div class="info-2"><div class="info-item-1">  如果在生产环境中使用UPDATE，DELETE语句操作数据，此时如果忘记携带本应该添加的WHERE条件，后果可能不堪设想。在正常的业务情况，也不会更新或者删除所有的记录 1. 阻止update设置（sql_safe_updates）sql_safe_updates这个MySQL自带的参数就可以完美的解决我们的问题，并且该参数是可以在线变更的哦~当该参数开启的情况下，你必须要在UPDATE语句后携带WHERE条件，否则就会报出ERROR。。  sql_safe_updates=0,即未开启  $ set sql_safe_updates=0;Query OK, 0 rows affected (0.00 sec) $ show variables like &#x27;sql_safe_updates&#x27;Variable_name            Valuesql_safe_updates    OFF  如上属的例子所示，当参数sql_safe_updates开启的时候，UPDATE语句不携带WHERE条件将会爆出一个错误。 2. 阻止delete设置直接限制m...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/608.html" title="Mysql 查询主键未指定排序时的默认排序问题"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2023-10-17</div><div class="info-item-2">Mysql 查询主键未指定排序时的默认排序问题</div></div><div class="info-2"><div class="info-item-1">  跑批量任务需要分批按顺序把主键取出来，语句如下： SELECT id FROM foo.bar LIMIT 10 OFFSET 0+-----+| id  |+-----+| 109 || 13  || 14  || 15  || 128 || 129 || 130 || 190 || 226 || 227 |+-----+  发现虽然用主键去查，但结果没有按照主键排序。 查询*试试 SELECT * FROM foo.bar LIMIT 10 OFFSET 0+----+-------+---+| id | a     | b |+----+-------+---+| 1  | 24274 | 0 || 2  | 24274 | 0 || 3  | 24274 | 0 || 4  | 24274 | 0 || 5  | 24274 | 0 || 6  | 24274 | 0 || 7  | 24274 | 0 || 8  | 24274 | 0 || 9  | 24274 | 0 || 10 | 24274 | 0 |+----+-------+---+  排序按照主键。查...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%83%8C%E6%99%AF"><span class="toc-number">1.</span> <span class="toc-text">背景</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8B%E6%95%85%E6%97%B6%E9%97%B4%E7%BA%BF"><span class="toc-number">2.</span> <span class="toc-text">事故时间线</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%B4%E6%8E%A5%E5%8E%9F%E5%9B%A0"><span class="toc-number">3.</span> <span class="toc-text">直接原因</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A0%B9%E5%9B%A0%E5%88%86%E6%9E%90%EF%BC%88%E6%8A%80%E6%9C%AF%E6%8E%A8%E6%96%AD%EF%BC%8C%E9%9D%9E%E5%AE%98%E6%96%B9%E7%BB%93%E8%AE%BA%EF%BC%89"><span class="toc-number">4.</span> <span class="toc-text">根因分析（技术推断，非官方结论）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B2%BB%E6%A0%87%E6%96%B9%E6%A1%88"><span class="toc-number">5.</span> <span class="toc-text">治标方案</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B2%BB%E6%9C%AC%E5%BB%BA%E8%AE%AE"><span class="toc-number">6.</span> <span class="toc-text">治本建议</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%A4%8D%E7%8E%B0%E6%AD%A5%E9%AA%A4%EF%BC%88%E7%94%A8%E4%BA%8E%E6%8F%90%E4%BA%A4%E5%AE%98%E6%96%B9-Bug-%E5%86%85%E9%83%A8%E9%AA%8C%E8%AF%81%EF%BC%89"><span class="toc-number">7.</span> <span class="toc-text">复现步骤（用于提交官方 Bug &#x2F; 内部验证）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B0%8F%E7%BB%93"><span class="toc-number">8.</span> <span class="toc-text">小结</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

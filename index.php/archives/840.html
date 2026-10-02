@@ -1,0 +1,727 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Apache Doris 深度解析：与 MySQL、TiDB 的全面对比 | leon</title><meta name="author" content="leon"><meta name="copyright" content="leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="一、Apache Doris 是什么？Apache Doris（原名 Palo，由百度开源）是一款现代化的 MPP（大规模并行处理）分析型数据库，专为实时数据分析场景设计。它基于 Google Mesa 论文的思想演进而来，是目前国内使用最广泛的 OLAP（联机分析处理）数据库之一。 核心特性 高性能 OLAP：基于列式存储 + 向量化执行引擎，聚合查询极速 实时数据写入：支持秒级数据摄入，写">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Apache Doris 深度解析：与 MySQL、TiDB 的全面对比">
+<meta property="og:url" content="https://leon-book.github.io/blog/index.php/archives/840.html">
+<meta property="og:site_name" content="leon">
+<meta property="og:description" content="一、Apache Doris 是什么？Apache Doris（原名 Palo，由百度开源）是一款现代化的 MPP（大规模并行处理）分析型数据库，专为实时数据分析场景设计。它基于 Google Mesa 论文的思想演进而来，是目前国内使用最广泛的 OLAP（联机分析处理）数据库之一。 核心特性 高性能 OLAP：基于列式存储 + 向量化执行引擎，聚合查询极速 实时数据写入：支持秒级数据摄入，写">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2026-04-03T15:34:26.000Z">
+<meta property="article:modified_time" content="2026-04-03T15:34:26.000Z">
+<meta property="article:author" content="leon">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/blog/assets/profile/leon-avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Apache Doris 深度解析：与 MySQL、TiDB 的全面对比",
+  "url": "https://leon-book.github.io/blog/index.php/archives/840.html",
+  "image": "https://leon-book.github.io/blog/assets/profile/leon-avatar.png",
+  "datePublished": "2026-04-03T15:34:26.000Z",
+  "dateModified": "2026-04-03T15:34:26.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "leon",
+      "url": "https://leon-book.github.io/blog"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/blog/index.php/archives/840.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/blog/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: {"path":"/blog/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Apache Doris 深度解析：与 MySQL、TiDB 的全面对比',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/blog/assets/theme/butterfly-teal-smoke.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"><span class="site-name">leon</span></a><a class="nav-page-title" href="/blog/"><span class="site-name">Apache Doris 深度解析：与 MySQL、TiDB 的全面对比</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/blog/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/blog/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/blog/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/blog/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/blog/ai/"><i class="fa-fw fas fa-robot"></i><span> AI 落地介绍</span></a></div><div class="menus_item"><a class="site-page" href="/blog/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Apache Doris 深度解析：与 MySQL、TiDB 的全面对比</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-04-03T15:34:26.000Z" title="发表于 2026-04-04 00:34:26">2026-04-04</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-04-03T15:34:26.000Z" title="更新于 2026-04-04 00:34:26">2026-04-04</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/blog/index.php/archives/840.html#post-comment"><span id="twikoo-count"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><!-- [skill: go-team-standards · 迁移] 公开正文迁移，保留原文与来源标识。 -->
+
+<h2 id="一、Apache-Doris-是什么？"><a href="#一、Apache-Doris-是什么？" class="headerlink" title="一、Apache Doris 是什么？"></a>一、Apache Doris 是什么？</h2><p>Apache Doris（原名 Palo，由百度开源）是一款<strong>现代化的 MPP（大规模并行处理）分析型数据库</strong>，专为实时数据分析场景设计。它基于 Google Mesa 论文的思想演进而来，是目前国内使用最广泛的 OLAP（联机分析处理）数据库之一。</p>
+<h3 id="核心特性"><a href="#核心特性" class="headerlink" title="核心特性"></a>核心特性</h3><ul>
+<li><strong>高性能 OLAP</strong>：基于列式存储 + 向量化执行引擎，聚合查询极速</li>
+<li><strong>实时数据写入</strong>：支持秒级数据摄入，写入即可见</li>
+<li><strong>标准 SQL</strong>：兼容 MySQL 协议，降低迁移成本</li>
+<li><strong>弹性架构</strong>：FE（前端）+ BE（后端）分离，水平扩展能力强</li>
+<li><strong>丰富的数据模型</strong>：Aggregate、Unique、Duplicate 三种模型覆盖多种场景</li>
+<li><strong>多表物化视图</strong>：自动命中，加速复杂查询</li>
+<li><strong>湖仓一体</strong>：通过 Catalog 直接查询 Hive、Iceberg、Hudi 等数据湖</li>
+</ul>
+<h3 id="典型应用场景"><a href="#典型应用场景" class="headerlink" title="典型应用场景"></a>典型应用场景</h3><table><thead><tr><th>场景</th><th>说明</th></tr></thead><tbody><tr><td>实时报表</td><td>业务大盘、用户行为分析</td></tr><tr><td>广告数据分析</td><td>点击率、转化漏斗等多维分析</td></tr><tr><td>日志分析</td><td>海量日志检索与统计</td></tr><tr><td>数据中台</td><td>统一数据分析服务层</td></tr><tr><td>湖仓联邦查询</td><td>不移动数据，直接分析数据湖</td></tr></tbody></table>
+
+<hr>
+<h2 id="二、三者的本质定位"><a href="#二、三者的本质定位" class="headerlink" title="二、三者的本质定位"></a>二、三者的本质定位</h2><p>在对比之前，首先明确三者的<strong>设计定位</strong>，这是理解一切差异的根源：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">MySQL       →  OLTP 事务型数据库（联机事务处理）</span><br><span class="line">TiDB        →  HTAP 混合负载数据库（事务 + 分析兼顾）</span><br><span class="line">Apache Doris →  OLAP 分析型数据库（联机分析处理）</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>一句话总结：MySQL 管事务，Doris 管分析，TiDB 想两者兼顾。</p>
+</blockquote>
+<hr>
+<h2 id="三、架构对比"><a href="#三、架构对比" class="headerlink" title="三、架构对比"></a>三、架构对比</h2><h3 id="MySQL-架构"><a href="#MySQL-架构" class="headerlink" title="MySQL 架构"></a>MySQL 架构</h3><p>MySQL 采用单机主从架构（或集群），以行式存储为核心，围绕 InnoDB 引擎构建 ACID 事务能力。</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Client → MySQL Server</span><br><span class="line">           ├── 查询解析器</span><br><span class="line">           ├── 查询优化器</span><br><span class="line">           └── InnoDB 存储引擎（行式存储 + B+Tree 索引）</span><br><span class="line">                └── 主从复制（异步/半同步）</span><br></pre></td></tr></table></figure>
+
+<p><strong>水平扩展</strong>：依赖 ShardingSphere、Vitess 等中间件，原生能力弱。</p>
+<hr>
+<h3 id="TiDB-架构"><a href="#TiDB-架构" class="headerlink" title="TiDB 架构"></a>TiDB 架构</h3><p>TiDB 是受 Google Spanner&#x2F;F1 启发的分布式 HTAP 数据库，由三个核心组件构成：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Client</span><br><span class="line">  ↓</span><br><span class="line">TiDB Server（无状态计算层，兼容 MySQL 协议）</span><br><span class="line">  ↓</span><br><span class="line">PD（Placement Driver，元数据管理 + 调度中心）</span><br><span class="line">  ↓</span><br><span class="line">┌──────────────────────────────────┐</span><br><span class="line">│  TiKV（行式存储，OLTP 事务）     │</span><br><span class="line">│  TiFlash（列式副本，OLAP 加速）  │</span><br><span class="line">└──────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p>TiKV 使用 Raft 协议保证多副本一致性，TiFlash 是 TiKV 的列式存储副本，实现 HTAP。</p>
+<hr>
+<h3 id="Apache-Doris-架构"><a href="#Apache-Doris-架构" class="headerlink" title="Apache Doris 架构"></a>Apache Doris 架构</h3><p>Doris 采用 FE + BE 两层架构，无 ZooKeeper 依赖，运维简单：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Client（MySQL 协议）</span><br><span class="line">  ↓</span><br><span class="line">FE（Frontend 前端节点）</span><br><span class="line">  ├── SQL 解析 &amp; 查询规划</span><br><span class="line">  ├── 元数据管理（Catalog）</span><br><span class="line">  └── Leader / Follower 高可用</span><br><span class="line"></span><br><span class="line">  ↓（查询计划下发）</span><br><span class="line"></span><br><span class="line">BE（Backend 后端节点）× N</span><br><span class="line">  ├── 列式存储（Segment 文件）</span><br><span class="line">  ├── 向量化执行引擎</span><br><span class="line">  └── 本地 Compaction</span><br></pre></td></tr></table></figure>
+
+<p>MPP 并行执行：查询被切分成多个 Fragment，分布在所有 BE 节点并行执行，充分利用多机算力。</p>
+<hr>
+<h2 id="四、核心维度对比"><a href="#四、核心维度对比" class="headerlink" title="四、核心维度对比"></a>四、核心维度对比</h2><h3 id="4-1-存储引擎"><a href="#4-1-存储引擎" class="headerlink" title="4.1 存储引擎"></a>4.1 存储引擎</h3><table><thead><tr><th>维度</th><th>MySQL</th><th>TiDB</th><th>Apache Doris</th></tr></thead><tbody><tr><td>存储格式</td><td>行式（InnoDB）</td><td>行式（TiKV）+ 列式（TiFlash）</td><td>纯列式（Segment）</td></tr><tr><td>索引结构</td><td>B+ Tree</td><td>LSM-Tree</td><td>前缀索引 + ZoneMap + Bloom Filter</td></tr><tr><td>压缩比</td><td>一般</td><td>较好（LZ4/Zstd）</td><td>极高（列式压缩 3-10x）</td></tr><tr><td>数据模型</td><td>通用</td><td>通用</td><td>Aggregate / Unique / Duplicate</td></tr></tbody></table>
+
+<h3 id="4-2-事务能力"><a href="#4-2-事务能力" class="headerlink" title="4.2 事务能力"></a>4.2 事务能力</h3><table><thead><tr><th>维度</th><th>MySQL</th><th>TiDB</th><th>Apache Doris</th></tr></thead><tbody><tr><td>ACID 事务</td><td>完整支持</td><td>完整支持（分布式 2PC）</td><td>单表事务，有限支持</td></tr><tr><td>隔离级别</td><td>RC / RR / Serializable</td><td>SI（快照隔离）/ RC</td><td>无严格事务隔离</td></tr><tr><td>适合场景</td><td>高并发小事务</td><td>高并发事务 + 分析</td><td>批量写入 + 大规模查询</td></tr></tbody></table>
+
+<blockquote>
+<p>⚠️ <strong>注意</strong>：Doris 不适合作为在线事务系统的主库，事务能力是其短板。</p>
+</blockquote>
+<h3 id="4-3-查询性能"><a href="#4-3-查询性能" class="headerlink" title="4.3 查询性能"></a>4.3 查询性能</h3><table><thead><tr><th>场景</th><th>MySQL</th><th>TiDB</th><th>Apache Doris</th></tr></thead><tbody><tr><td>点查（PK lookup）</td><td>⭐⭐⭐⭐⭐</td><td>⭐⭐⭐⭐</td><td>⭐⭐⭐</td></tr><tr><td>小范围查询</td><td>⭐⭐⭐⭐</td><td>⭐⭐⭐⭐</td><td>⭐⭐⭐</td></tr><tr><td>聚合统计（COUNT/SUM/AVG）</td><td>⭐⭐</td><td>⭐⭐⭐</td><td>⭐⭐⭐⭐⭐</td></tr><tr><td>多表 JOIN 分析</td><td>⭐⭐</td><td>⭐⭐⭐</td><td>⭐⭐⭐⭐⭐</td></tr><tr><td>亿级数据全表扫描</td><td>❌</td><td>⭐⭐</td><td>⭐⭐⭐⭐⭐</td></tr><tr><td>实时写入并发</td><td>⭐⭐⭐⭐⭐</td><td>⭐⭐⭐⭐</td><td>⭐⭐⭐</td></tr></tbody></table>
+
+<h3 id="4-4-扩展能力"><a href="#4-4-扩展能力" class="headerlink" title="4.4 扩展能力"></a>4.4 扩展能力</h3><table><thead><tr><th>维度</th><th>MySQL</th><th>TiDB</th><th>Apache Doris</th></tr></thead><tbody><tr><td>水平扩展</td><td>弱（需中间件）</td><td>原生（自动分片）</td><td>原生（扩 BE 节点）</td></tr><tr><td>存算分离</td><td>不支持</td><td>部分支持</td><td>支持（新版本）</td></tr><tr><td>最大数据量</td><td>TB 级（单机）</td><td>PB 级</td><td>PB 级</td></tr><tr><td>节点故障恢复</td><td>主从切换（秒-分钟）</td><td>自动 Raft 切换（秒级）</td><td>FE/BE 自动恢复</td></tr></tbody></table>
+
+<h3 id="4-5-生态与兼容性"><a href="#4-5-生态与兼容性" class="headerlink" title="4.5 生态与兼容性"></a>4.5 生态与兼容性</h3><table><thead><tr><th>维度</th><th>MySQL</th><th>TiDB</th><th>Apache Doris</th></tr></thead><tbody><tr><td>SQL 兼容</td><td>MySQL 标准</td><td>MySQL 8.0 兼容</td><td>MySQL 协议兼容</td></tr><tr><td>数据接入</td><td>标准 SQL</td><td>Binlog / Kafka / Flink</td><td>Broker Load / Flink / Kafka</td></tr><tr><td>数据湖集成</td><td>弱</td><td>弱</td><td>强（Hive/Iceberg/Hudi/Delta）</td></tr><tr><td>BI 工具</td><td>广泛支持</td><td>广泛支持</td><td>广泛支持</td></tr><tr><td>国产化适配</td><td>一般</td><td>良好</td><td>优秀（SelectDB 商业版）</td></tr></tbody></table>
+
+<hr>
+<h2 id="五、Doris-的三种数据模型"><a href="#五、Doris-的三种数据模型" class="headerlink" title="五、Doris 的三种数据模型"></a>五、Doris 的三种数据模型</h2><p>这是 Doris 区别于传统数据库的重要特性，按需选择模型可大幅提升性能：</p>
+<h3 id="Aggregate-模型（聚合模型）"><a href="#Aggregate-模型（聚合模型）" class="headerlink" title="Aggregate 模型（聚合模型）"></a>Aggregate 模型（聚合模型）</h3><ul>
+<li><strong>适用</strong>：数据本身就是聚合结果，如 PV&#x2F;UV 统计表</li>
+<li><strong>原理</strong>：写入时自动对相同 Key 的数据进行预聚合（SUM&#x2F;MAX&#x2F;MIN&#x2F;REPLACE）</li>
+<li><strong>优势</strong>：查询无需实时计算，速度极快</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">CREATE TABLE</span> user_stats (</span><br><span class="line">    user_id     <span class="type">BIGINT</span>,</span><br><span class="line">    <span class="type">date</span>        <span class="type">DATE</span>,</span><br><span class="line">    pv          <span class="type">BIGINT</span> SUM <span class="keyword">DEFAULT</span> &quot;0&quot;,    <span class="comment">-- 自动累加</span></span><br><span class="line">    uv          <span class="type">BIGINT</span> REPLACE <span class="keyword">DEFAULT</span> &quot;0&quot; <span class="comment">-- 取最新值</span></span><br><span class="line">) AGGREGATE KEY(user_id, <span class="type">date</span>)</span><br><span class="line">DISTRIBUTED <span class="keyword">BY</span> HASH(user_id) BUCKETS <span class="number">10</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Unique-模型（主键模型）"><a href="#Unique-模型（主键模型）" class="headerlink" title="Unique 模型（主键模型）"></a>Unique 模型（主键模型）</h3><ul>
+<li><strong>适用</strong>：有主键更新需求，如订单状态更新</li>
+<li><strong>原理</strong>：相同 Key 的新数据替换旧数据（Upsert 语义）</li>
+<li><strong>优势</strong>：保证主键唯一性，适合 CDC 场景</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">CREATE TABLE</span> orders (</span><br><span class="line">    order_id    <span class="type">BIGINT</span>,</span><br><span class="line">    status      <span class="type">VARCHAR</span>(<span class="number">20</span>),</span><br><span class="line">    amount      <span class="type">DECIMAL</span>(<span class="number">10</span>,<span class="number">2</span>),</span><br><span class="line">    update_time DATETIME</span><br><span class="line">) <span class="keyword">UNIQUE</span> KEY(order_id)</span><br><span class="line">DISTRIBUTED <span class="keyword">BY</span> HASH(order_id) BUCKETS <span class="number">16</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Duplicate-模型（明细模型）"><a href="#Duplicate-模型（明细模型）" class="headerlink" title="Duplicate 模型（明细模型）"></a>Duplicate 模型（明细模型）</h3><ul>
+<li><strong>适用</strong>：原始日志存储，保留所有明细数据</li>
+<li><strong>原理</strong>：不做任何预处理，完整保留每条记录</li>
+<li><strong>优势</strong>：灵活，适合 Ad-hoc 查询</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">CREATE TABLE</span> access_log (</span><br><span class="line">    ts          DATETIME,</span><br><span class="line">    user_id     <span class="type">BIGINT</span>,</span><br><span class="line">    page        <span class="type">VARCHAR</span>(<span class="number">255</span>),</span><br><span class="line">    duration_ms <span class="type">INT</span></span><br><span class="line">) DUPLICATE KEY(ts, user_id)</span><br><span class="line">DISTRIBUTED <span class="keyword">BY</span> HASH(user_id) BUCKETS <span class="number">32</span>;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="六、典型选型指南"><a href="#六、典型选型指南" class="headerlink" title="六、典型选型指南"></a>六、典型选型指南</h2><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">问题：我该用哪个？</span><br><span class="line"></span><br><span class="line">是否需要强事务（转账、下单）？</span><br><span class="line">  ├── 是 → MySQL（小数据量）或 TiDB（大数据量/高并发）</span><br><span class="line">  └── 否 → 下一步</span><br><span class="line"></span><br><span class="line">数据量是否超过单机 MySQL 瓶颈（TB 级以上）且以分析查询为主？</span><br><span class="line">  ├── 是 → Apache Doris</span><br><span class="line">  └── 数据量不大但需要复杂分析 → Doris 或 ClickHouse</span><br><span class="line"></span><br><span class="line">是否需要事务 + 分析混合负载，且不想维护两套系统？</span><br><span class="line">  └── TiDB（HTAP，但分析性能略弱于 Doris）</span><br></pre></td></tr></table></figure>
+
+<h3 id="常见架构组合"><a href="#常见架构组合" class="headerlink" title="常见架构组合"></a>常见架构组合</h3><p><strong>方案一：MySQL + Doris（最常见）</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">业务系统 → MySQL（事务写入）</span><br><span class="line">              ↓ Flink CDC / DataX 同步</span><br><span class="line">           Doris（分析查询）← BI 报表 / 数据大屏</span><br></pre></td></tr></table></figure>
+
+<p><strong>方案二：Kafka + Doris（实时分析）</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">埋点/日志 → Kafka → Flink → Doris Routine Load</span><br><span class="line">                                    ↓</span><br><span class="line">                              实时数据大盘</span><br></pre></td></tr></table></figure>
+
+<p><strong>方案三：TiDB 独立承担 HTAP</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">业务系统 → TiDB（TiKV 处理事务）</span><br><span class="line">               ↓ 自动同步到 TiFlash</span><br><span class="line">          TiFlash（分析查询）← BI 报表</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="七、性能基准参考"><a href="#七、性能基准参考" class="headerlink" title="七、性能基准参考"></a>七、性能基准参考</h2><p>以 TPC-H 100GB 测试集为参考（不同环境结果有差异）：</p>
+<table><thead><tr><th>查询类型</th><th>MySQL 8.0</th><th>TiDB + TiFlash</th><th>Apache Doris</th></tr></thead><tbody><tr><td>Q1（聚合）</td><td>&gt; 300s</td><td>~15s</td><td>~2s</td></tr><tr><td>Q6（过滤聚合）</td><td>&gt; 200s</td><td>~10s</td><td>~1s</td></tr><tr><td>Q18（多表 JOIN）</td><td>超时</td><td>~45s</td><td>~8s</td></tr><tr><td>并发写入（万行/秒）</td><td>50+</td><td>30+</td><td>10-20</td></tr></tbody></table>
+
+<blockquote>
+<p>数据仅供参考，实际性能受硬件、数据分布、SQL 复杂度等多种因素影响。</p>
+</blockquote>
+<hr>
+<h2 id="八、总结"><a href="#八、总结" class="headerlink" title="八、总结"></a>八、总结</h2><table><thead><tr><th>选型维度</th><th>推荐</th></tr></thead><tbody><tr><td>在线事务，小数据量</td><td><strong>MySQL</strong></td></tr><tr><td>在线事务，大数据量/高并发</td><td><strong>TiDB</strong></td></tr><tr><td>实时数据分析，大规模报表</td><td><strong>Apache Doris</strong></td></tr><tr><td>事务+分析都要，接受一定妥协</td><td><strong>TiDB（HTAP 模式）</strong></td></tr><tr><td>极致分析性能，纯 OLAP</td><td><strong>Apache Doris</strong></td></tr></tbody></table>
+
+<p>Apache Doris 并不是要替代 MySQL 或 TiDB，而是在数据分析领域提供了 MySQL 无法企及的能力。三者在现代数据架构中往往是<strong>互补关系</strong>，组合使用才能发挥最大价值。</p>
+<hr>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul>
+<li><a href="https://doris.apache.org/zh-CN/docs/get-starting/">Apache Doris 官方文档</a></li>
+<li><a href="https://docs.pingcap.com/zh/tidb/stable">TiDB 官方文档</a></li>
+<li><a href="https://dev.mysql.com/doc/refman/8.0/en/">MySQL 8.0 Reference Manual</a></li>
+<li><a href="https://www.selectdb.com/">SelectDB 云数仓（Doris 商业版）</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog">leon</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://leon-book.github.io/blog/index.php/archives/840.html">https://leon-book.github.io/blog/index.php/archives/840.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://leon-book.github.io/blog" target="_blank">leon</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/blog/assets/profile/leon-avatar.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/index.php/archives/841.html" title="Go 微服务从零到生产：完整学习路径"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Go 微服务从零到生产：完整学习路径</div></div><div class="info-2"><div class="info-item-1">  全局视角第一阶段  Go 基础          → 能写业务逻辑第二阶段  单体服务          → 能跑一个完整的 HTTP 服务第三阶段  拆分微服务        → 多个服务互相通信第四阶段  服务治理          → 服务发现、配置中心、链路追踪第五阶段  容器化            → Docker 打包，跑在任何地方第六阶段  编排部署          → Kubernetes 管理成百上千个容器第七阶段  流量治理          → Istio 控制服务间流量   第一阶段：Go 基础目标：能用 Go 写业务逻辑，看懂别人的代码。 核心概念// 1. 零值可用的结构体var a phparray.Arraya.Set(&quot;name&quot;, &quot;Tom&quot;)      // 直接用，无需 New()// 2. 错误处理（Go 没有 try-catch）data, err := json.Marshal(obj)if err != nil &#123;    return fmt.Errorf(&quot;mar...</div></div></div></a><a class="pagination-related" href="/blog/index.php/archives/839.html" title="MySQL 8.0 升级 8.4：PHP 7.3 + Swoole 4.3 兼容性问题与修复方案"><img class="cover" src="/blog/assets/migrated/d764a650f2a6e4a2c2d0.png" onerror="onerror=null;src='/blog/img/404.jpg'" alt="cover of next post"><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">MySQL 8.0 升级 8.4：PHP 7.3 + Swoole 4.3 兼容性问题与修复方案</div></div><div class="info-2"><div class="info-item-1">  MySQL 8.0 升级至 8.4，属于小版本跨越，但 8.4 是一个 LTS 版本，做了若干破坏性变更。结合 PHP 7.3 + Swoole 4.3 的实际情况，整理出以下兼容性问题和对应处理方案。   影响概览问题严重程度影响范围mysql_native_password 插件被移除🔴 高连接直接失败Swoole 连接池持久连接行为异常🔴 高协程环境下连接错乱ONLY_FULL_GROUP_BY 更严格🟡 中部分查询报错新增保留关键字🟡 中SQL 语法错误废弃配置项导致启动失败🟡 中MySQL 无法启动默认排序规则变更🟢 低JOIN 排序规则冲突   问题一：mysql_native_password 插件被正式移除问题描述MySQL 8.0 已将默认认证插件改为 caching_sha2_password，但 mysql_native_password 仍作为内置插件保留。8.4 将其彻底移除，不再默认加载，需显式启用。 如果 8.0 时期的用户账号是用 mysql_native_password 创建的，升级 8.4 后连接会直接报错： mysqli::...</div></div></div></a></nav><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="twikoo-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">leon</div><div class="author-info-description">技术、实践与记录</div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">866</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">64</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">记录技术实践，分享学习与思考。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81Apache-Doris-%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="toc-number">1.</span> <span class="toc-text">一、Apache Doris 是什么？</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%B8%E5%BF%83%E7%89%B9%E6%80%A7"><span class="toc-number">1.1.</span> <span class="toc-text">核心特性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B8%E5%9E%8B%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">1.2.</span> <span class="toc-text">典型应用场景</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E4%B8%89%E8%80%85%E7%9A%84%E6%9C%AC%E8%B4%A8%E5%AE%9A%E4%BD%8D"><span class="toc-number">2.</span> <span class="toc-text">二、三者的本质定位</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%9E%B6%E6%9E%84%E5%AF%B9%E6%AF%94"><span class="toc-number">3.</span> <span class="toc-text">三、架构对比</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#MySQL-%E6%9E%B6%E6%9E%84"><span class="toc-number">3.1.</span> <span class="toc-text">MySQL 架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#TiDB-%E6%9E%B6%E6%9E%84"><span class="toc-number">3.2.</span> <span class="toc-text">TiDB 架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Apache-Doris-%E6%9E%B6%E6%9E%84"><span class="toc-number">3.3.</span> <span class="toc-text">Apache Doris 架构</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E6%A0%B8%E5%BF%83%E7%BB%B4%E5%BA%A6%E5%AF%B9%E6%AF%94"><span class="toc-number">4.</span> <span class="toc-text">四、核心维度对比</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%AD%98%E5%82%A8%E5%BC%95%E6%93%8E"><span class="toc-number">4.1.</span> <span class="toc-text">4.1 存储引擎</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E4%BA%8B%E5%8A%A1%E8%83%BD%E5%8A%9B"><span class="toc-number">4.2.</span> <span class="toc-text">4.2 事务能力</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E6%9F%A5%E8%AF%A2%E6%80%A7%E8%83%BD"><span class="toc-number">4.3.</span> <span class="toc-text">4.3 查询性能</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-%E6%89%A9%E5%B1%95%E8%83%BD%E5%8A%9B"><span class="toc-number">4.4.</span> <span class="toc-text">4.4 扩展能力</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-5-%E7%94%9F%E6%80%81%E4%B8%8E%E5%85%BC%E5%AE%B9%E6%80%A7"><span class="toc-number">4.5.</span> <span class="toc-text">4.5 生态与兼容性</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81Doris-%E7%9A%84%E4%B8%89%E7%A7%8D%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B"><span class="toc-number">5.</span> <span class="toc-text">五、Doris 的三种数据模型</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Aggregate-%E6%A8%A1%E5%9E%8B%EF%BC%88%E8%81%9A%E5%90%88%E6%A8%A1%E5%9E%8B%EF%BC%89"><span class="toc-number">5.1.</span> <span class="toc-text">Aggregate 模型（聚合模型）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Unique-%E6%A8%A1%E5%9E%8B%EF%BC%88%E4%B8%BB%E9%94%AE%E6%A8%A1%E5%9E%8B%EF%BC%89"><span class="toc-number">5.2.</span> <span class="toc-text">Unique 模型（主键模型）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Duplicate-%E6%A8%A1%E5%9E%8B%EF%BC%88%E6%98%8E%E7%BB%86%E6%A8%A1%E5%9E%8B%EF%BC%89"><span class="toc-number">5.3.</span> <span class="toc-text">Duplicate 模型（明细模型）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E5%85%B8%E5%9E%8B%E9%80%89%E5%9E%8B%E6%8C%87%E5%8D%97"><span class="toc-number">6.</span> <span class="toc-text">六、典型选型指南</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E6%9E%B6%E6%9E%84%E7%BB%84%E5%90%88"><span class="toc-number">6.1.</span> <span class="toc-text">常见架构组合</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E6%80%A7%E8%83%BD%E5%9F%BA%E5%87%86%E5%8F%82%E8%80%83"><span class="toc-number">7.</span> <span class="toc-text">七、性能基准参考</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">8.</span> <span class="toc-text">八、总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">9.</span> <span class="toc-text">参考资料</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/884.html" title="币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的">币安 NVDA 四种玩法拆解：现货、永续、期权的价格到底是怎么来的</a><time datetime="2026-09-30T13:37:00.000Z" title="发表于 2026-09-30 22:37:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"><img src="/blog/assets/migrated/166d1bec3ab944d9627a.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环"/></a><div class="content"><a class="title" href="/blog/index.php/archives/883.html" title="我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环">我把 Hermes 做成了每小时技术情报员：检索、深挖、信息卡片与飞书资料库闭环</a><time datetime="2026-09-16T17:18:00.000Z" title="发表于 2026-09-17 02:18:00">2026-09-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/882.html" title="问题推着我往前走：一次面试带来的启发">问题推着我往前走：一次面试带来的启发</a><time datetime="2026-09-10T13:46:00.000Z" title="发表于 2026-09-10 22:46:00">2026-09-10</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"><img src="/blog/assets/migrated/5f3743e18c836306883d.png" onerror="this.onerror=null;this.src='/blog/img/404.jpg'" alt="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流"/></a><div class="content"><a class="title" href="/blog/index.php/archives/881.html" title="用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流">用本机 Coding Agent 当设计引擎:Open Design 怎么把 Hermes 和 Claude Code 接进产品工作流</a><time datetime="2026-09-01T02:11:00.000Z" title="发表于 2026-09-01 11:11:00">2026-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/blog/index.php/archives/880.html" title="链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？">链上流动性的秘密：去中心化交易所（DEX）是如何维持深度与招揽做市商的？</a><time datetime="2026-08-31T06:12:00.000Z" title="发表于 2026-08-31 15:12:00">2026-08-31</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js?v=5.7.0"></script><script src="/blog/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = {"lang":"zh-CN"}
+
+  const getCount = () => {
+    const countELement = document.getElementById('twikoo-count')
+    if(!countELement) return
+    twikoo.getCommentsCount({
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      urls: [window.location.pathname],
+      includeReply: false
+    }).then(res => {
+      countELement.textContent = res[0].count
+    }).catch(err => {
+      console.error(err)
+    })
+  }
+
+  const init = (el = document, path = location.pathname) => {
+    twikoo.init({
+      el: el.querySelector('#twikoo-wrap'),
+      envId: 'http://127.0.0.1:8089/',
+      region: '',
+      onCommentLoaded: () => {
+        btf.loadLightbox(document.querySelectorAll('#twikoo .tk-content img:not(.tk-owo-emotion)'))
+      },
+      ...option,
+      path: isShuoshuo ? path : (option && option.path) || path
+    })
+
+    GLOBAL_CONFIG_SITE.pageType === 'post' && getCount()
+
+    isShuoshuo && (window.shuoshuoComment.destroyTwikoo = () => {
+      if (el.children.length) {
+        el.innerHTML = ''
+        el.classList.add('no-comment')
+      }
+    })
+  }
+
+  const loadTwikoo = (el, path) => {
+    if (typeof twikoo === 'object') setTimeout(() => init(el, path), 0)
+    else btf.getScript('/blog/assets/vendor/twikoo-1.7.24.all.min.js').then(() => init(el, path))
+  }
+
+  if (isShuoshuo) {
+    'Twikoo' === 'Twikoo'
+      ? window.shuoshuoComment = { loadComment: loadTwikoo }
+      : window.loadOtherComment = loadTwikoo
+    return
+  }
+
+  if ('Twikoo' === 'Twikoo' || !false) {
+    if (false) btf.loadComment(document.getElementById('twikoo-wrap'), loadTwikoo)
+    else loadTwikoo()
+  } else {
+    window.loadOtherComment = loadTwikoo
+  }
+})()</script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/blog/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>
