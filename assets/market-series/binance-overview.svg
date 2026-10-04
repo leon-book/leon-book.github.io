@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">币安衍生品与 TradFi 业务全景</title>
+  <desc id="desc">深蓝色背景上的衍生品、传统金融与市场数据主题封面</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#102f45"/>
+      <stop offset="1" stop-color="#1f5d73"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#d8a52d"/>
+      <stop offset="1" stop-color="#f1cf78"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <g fill="none" stroke="#ffffff" stroke-opacity=".08">
+    <path d="M0 180h1600M0 360h1600M0 540h1600M0 720h1600"/>
+    <path d="M260 0v900M520 0v900M780 0v900M1040 0v900M1300 0v900"/>
+  </g>
+  <g transform="translate(1120 115)" fill="none" stroke="url(#gold)" stroke-width="18">
+    <path d="M160 0 320 92v184l-160 92L0 276V92z" opacity=".9"/>
+    <path d="m93 115 67-39 67 39v78l-67 39-67-39z"/>
+    <path d="M160 76v156M93 115l134 78M227 115 93 193" opacity=".65"/>
+  </g>
+  <g transform="translate(145 150)">
+    <rect width="630" height="290" rx="34" fill="#0b2638" fill-opacity=".8" stroke="#ffffff" stroke-opacity=".16" stroke-width="3"/>
+    <g fill="none" stroke="#f1cf78" stroke-width="14" stroke-linecap="round">
+      <path d="M72 215 180 122l92 52 116-112 164 80"/>
+      <path d="m508 106 44 36-30 45"/>
+    </g>
+    <g fill="#ffffff" fill-opacity=".18">
+      <rect x="72" y="58" width="170" height="18" rx="9"/>
+      <rect x="72" y="92" width="92" height="12" rx="6"/>
+      <circle cx="180" cy="122" r="13" fill="#f1cf78" fill-opacity=".95"/>
+      <circle cx="388" cy="62" r="13" fill="#f1cf78" fill-opacity=".95"/>
+    </g>
+  </g>
+  <g transform="translate(1060 570)" fill="none" stroke="#f1cf78" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m0 160 90-92 76 55 118-150 122 75"/>
+    <path d="m363 29 43 19-16 43"/>
+  </g>
+</svg>
