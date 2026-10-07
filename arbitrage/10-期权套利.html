@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>期权套利 · 原理与计算器</title>
+<link rel="stylesheet" href="assets/common.css">
+<script src="assets/theme-shell.js" defer></script>
+</head>
+<body>
+<div class="wrap">
+<a class="backlink" href="index.html" target="_top">← 返回总览</a>
+
+<div class="hero">
+  <div class="kicker">结构性 · 恒等式锁死</div>
+  <h1>期权套利</h1>
+  <p>期权之间有数学恒等式(平价公式)。只要报价违反它,就能用多条腿组合锁定无风险利润——与币价涨跌完全无关。另有一类"波动率套利"则是带风险的相对价值。</p>
+  <div class="chips">
+    <span class="chip high">难度 高</span>
+    <span class="chip low">无风险类:数学锁定</span>
+    <span class="chip">收益来源:期权定价偏差</span>
+  </div>
+</div>
+
+<section>
+  <h2><span class="n">1</span>一句话原理</h2>
+  <div class="card">
+    <p><a class="term" href="https://academy.binance.com/en/articles/what-are-options-contracts" target="_blank" data-tip="赋予买方在到期日前以约定价(行权价)买入/卖出标的权利的合约">期权</a>分看涨(Call)和看跌(Put)。同到期、同<a class="term" href="https://www.investopedia.com/terms/s/strikeprice.asp" target="_blank" data-tip="期权约定的买入/卖出价格">行权价</a>的 C 和 P,它们的价格不是随便定的,受一条铁律约束——<a class="term" href="https://www.investopedia.com/terms/p/putcallparity.asp" target="_blank" data-tip="欧式看涨与看跌期权、行权价现值、标的之间必须满足的等式">看跌-看涨平价(Put-Call Parity)</a>。</p>
+    <div class="formula">
+C − P = (F − K) × 折现　<span class="c">// 欧式、线性结算;F=同到期期货价, K=行权价</span>
+由期权合成的远期价 = C − P + K,理论上必须等于市场期货价 F
+    </div>
+    <p>如果 <strong>C − P + K ≠ F</strong>,就出现无风险套利:<span class="hl">把贵的一侧卖掉、便宜的一侧买入,差价锁死</span>,到期自动收敛。因为组合对币价完全中性,涨跌都不影响已锁定的利润。</p>
+    <p>注意分两类:下面的<strong>平价/盒式/蝶式</strong>是真·无风险(数学保证);<strong>波动率套利</strong>(第 7 节)严格说是带风险的相对价值,别混为一谈。</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">2</span>运作原理图(合成远期 vs 期货)</h2>
+  <div class="card">
+    <svg class="diagram" viewBox="0 0 700 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="期权合成远期与期货对比">
+      <rect x="1" y="1" width="698" height="228" rx="12" class="dg-bg dg-line" stroke-width="1"/>
+      <rect x="40" y="45" width="250" height="140" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+      <text x="165" y="70" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent)">期权合成远期</text>
+      <text x="165" y="95" text-anchor="middle" font-size="12" class="dg-ink">买 Call(+C)</text>
+      <text x="165" y="115" text-anchor="middle" font-size="12" class="dg-ink">卖 Put(−P)</text>
+      <text x="165" y="135" text-anchor="middle" font-size="12" class="dg-ink">+ 行权价 K</text>
+      <text x="165" y="162" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent)">= C − P + K</text>
+      <text x="350" y="110" text-anchor="middle" font-size="22" font-weight="700" class="dg-muted">≠?</text>
+      <text x="350" y="132" text-anchor="middle" font-size="11" class="dg-muted">有偏差</text>
+      <text x="350" y="146" text-anchor="middle" font-size="11" class="dg-muted">就套利</text>
+      <rect x="410" y="45" width="250" height="140" rx="10" fill="var(--ok-soft)" stroke="var(--ok)"/>
+      <text x="535" y="70" text-anchor="middle" font-size="13" font-weight="700" class="dg-ink">市场期货价</text>
+      <text x="535" y="118" text-anchor="middle" font-size="22" font-weight="700" fill="var(--ok)">F</text>
+      <text x="535" y="150" text-anchor="middle" font-size="11" class="dg-muted">同到期的真实报价</text>
+      <text x="350" y="208" text-anchor="middle" font-size="12" class="dg-ink">合成 &gt; F → Reversal(卖Call买Put+买期货)　｜　合成 &lt; F → Conversion(反向)</text>
+    </svg>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">3</span>三类无风险套利 + 一类带风险</h2>
+  <div class="tbl-scroll">
+  <table>
+    <thead><tr><th>类型</th><th>怎么组合</th><th>锁定收益来源</th><th>无风险?</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="name"><a class="term" href="https://www.investopedia.com/terms/c/conversionarbitrage.asp" target="_blank" data-tip="利用看涨/看跌期权相对标的定价失衡的套利">平价套利<br>(转换/反转)</a></td>
+        <td>买/卖 Call + 反向 Put + 期货对冲,合成一个"假远期"去对冲真期货</td>
+        <td>合成远期与期货价的偏差</td>
+        <td>✅ 是(到期收敛)</td>
+      </tr>
+      <tr>
+        <td class="name"><a class="term" href="https://www.investopedia.com/terms/b/boxspread.asp" target="_blank" data-tip="用两组垂直价差组合,到期收益恒定=行权价差,相当于合成放贷">盒式套利<br>(Box Spread)</a></td>
+        <td>牛市看涨价差 + 熊市看跌价差(四条腿)</td>
+        <td>到期收益恒定 = K2−K1;若当前成本 &lt; 折现值即套</td>
+        <td>✅ 是(收益恒定)</td>
+      </tr>
+      <tr>
+        <td class="name"><a class="term" href="https://www.investopedia.com/terms/b/butterflyspread.asp" target="_blank" data-tip="买两端行权价、卖中间两份,利用凸性;价格必须≥0">蝶式套利</a></td>
+        <td>买 K1、卖 2 份 K2、买 K3(等间距)</td>
+        <td>凸性要求组合价 ≥ 0,若报价为负即白赚</td>
+        <td>✅ 是(无套利边界)</td>
+      </tr>
+      <tr>
+        <td class="name"><a class="term" href="https://www.investopedia.com/terms/i/iv.asp" target="_blank" data-tip="期权价格反推出的市场预期波动率">波动率</a>套利</td>
+        <td>买/卖期权 + 持续 <a class="term" href="https://www.investopedia.com/terms/d/deltahedging.asp" target="_blank" data-tip="不断调整标的头寸使组合对小幅涨跌中性">Delta 对冲</a></td>
+        <td>隐含波动率(IV)与实际波动率(RV)的差</td>
+        <td>❌ 否(带 Gamma/Vega 风险)</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="note warn" style="margin-top:12px"><b>划重点:</b>前三种是数学锁死的真套利;第四种"波动率套利"虽常被叫"套利",但要持续对冲、有模型与对冲成本风险,属于我们文档里<a class="term" href="07-统计套利.html" data-tip="押统计规律回归、非无风险">统计/相对价值套利</a>那一档,不该算进"稳健理财"。</div>
+</section>
+
+<section>
+  <h2><span class="n">4</span>本金与成本</h2>
+  <div class="card">
+    <p>期权套利的本金结构比前面复杂,涉及三块:</p>
+    <dl class="kv">
+      <dt>权利金</dt><dd>买入的期权要付权利金;卖出的期权收权利金但要交<a class="term" href="https://www.investopedia.com/terms/m/margin.asp" target="_blank" data-tip="卖出期权/开期货需锁定的抵押金">保证金</a>。</dd>
+      <dt>期货腿保证金</dt><dd>对冲用的期货腿按杠杆占保证金。统一账户里期权与期货可共享抵押。</dd>
+      <dt>多腿手续费</dt><dd>最大隐形成本。平价套利 3 条腿、盒式 4 条腿,每条都收费,偏差必须盖过总手续费才净赚。</dd>
+    </dl>
+    <div class="note warn" style="margin-top:4px"><b>币本位坑:</b>Deribit 等的 BTC/ETH 期权常以币本位结算,平价/盒式公式要按币本位调整,不能直接套用美元版。本页计算器用简化的线性(USDT 本位)近似,便于理解结构。</div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">5</span>平价套利计算器</h2>
+  <p class="lead">输入 Call、Put、行权价、同到期期货价,自动判断该做 Conversion 还是 Reversal,并算锁定利润。</p>
+  <div class="calc">
+    <div class="grid">
+      <div class="inputs">
+        <p class="calc-title">输入参数</p>
+        <div class="field"><label>看涨期权价 C <span class="u">USDT</span></label><input id="c" type="number" value="2500"></div>
+        <div class="field"><label>看跌期权价 P <span class="u">USDT</span></label><input id="p" type="number" value="1300"></div>
+        <div class="field"><label>行权价 K <span class="u">USDT</span></label><input id="k" type="number" value="60000"></div>
+        <div class="field"><label>同到期期货价 F <span class="u">USDT</span></label><input id="f" type="number" value="61000"></div>
+        <div class="field"><label>份数 q <span class="u">张(1张=1币)</span></label><input id="q" type="number" step="0.1" value="1"></div>
+        <div class="field"><label>每份来回总手续费率 <span class="u">% 占期货价</span></label><input id="fee" type="number" step="0.01" value="0.1"></div>
+        <button class="btn ghost" id="ex">填入示例数据</button>
+      </div>
+      <div class="outputs">
+        <p class="calc-title">计算结果</p>
+        <div class="metric"><div class="lbl">总净锁定利润</div><div class="val big pos" id="oNet">—</div><div class="sub" id="oNetSub"></div></div>
+        <div class="metric"><div class="lbl">建议操作</div><div class="val" id="oAct" style="font-size:19px">—</div></div>
+        <div class="rowmini"><span>合成远期 C−P+K</span><span class="v" id="oSyn">—</span></div>
+        <div class="rowmini"><span>定价偏差(合成−期货)</span><span class="v" id="oDev">—</span></div>
+        <div class="rowmini"><span>每份毛利</span><span class="v" id="oGross">—</span></div>
+        <div class="rowmini"><span>每份手续费</span><span class="v" id="oFee">—</span></div>
+        <div class="rowmini"><span>每份净利</span><span class="v" id="oPer">—</span></div>
+        <div class="note warn" style="margin-top:12px;font-size:12.5px" id="oTip"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">6</span>示例走一遍</h2>
+  <div class="card">
+    <p>BTC 30 天期权:C=<strong>2,500</strong>,P=<strong>1,300</strong>,K=<strong>60,000</strong>,同到期期货 F=<strong>61,000</strong>,手续费 <strong>0.1%</strong>,1 张:</p>
+    <div class="tbl-scroll">
+    <table>
+      <thead><tr><th>步骤</th><th class="num">数值</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>合成远期</td><td class="num">61,200</td><td>= C − P + K = 2500 − 1300 + 60000</td></tr>
+        <tr><td>期货价</td><td class="num">61,000</td><td>市场真实报价</td></tr>
+        <tr><td>定价偏差</td><td class="num">+200</td><td>合成比期货贵 → 做 Reversal</td></tr>
+        <tr><td>操作</td><td class="num">卖C+买P+买期货</td><td>卖掉偏贵的合成远期,买入便宜的期货对冲</td></tr>
+        <tr><td>每份毛利</td><td class="num">200 U</td><td>偏差到期收敛锁定</td></tr>
+        <tr><td>手续费</td><td class="num">−61 U</td><td>= 61000 × 0.1%(三腿合计近似)</td></tr>
+        <tr><td><strong>净利润</strong></td><td class="num"><strong>≈ 139 U</strong></td><td>与币价涨跌无关</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="note ok" style="margin-top:12px"><b>结论:</b>只要偏差 &gt; 手续费就有无风险利润。把偏差调小(如 F 改成 61,150),净利转负,说明<strong>手续费是生死线</strong>。现实中这种偏差被做市商机器人秒杀,主要出现在波动骤起、冷门行权价、临近到期。</div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">7</span>加密期权的现实</h2>
+  <div class="card">
+    <dl class="kv">
+      <dt>场地集中</dt><dd>BTC/ETH 期权绝大多数在 <a class="term" href="https://www.deribit.com" target="_blank" data-tip="加密期权流动性最集中的交易所,多为欧式期权">Deribit</a>,多为欧式,平价公式干净好算。</dd>
+      <dt>效率在提升</dt><dd>学术研究发现:到期 ≥ 15 天的 BTC/ETH 衍生品市场已相当有效,无风险套利利润随自动化而显著下降。</dd>
+      <dt>窗口极短</dt><dd>做市商机器人把恒等式盯得很死,纯无风险机会几秒内被吃掉;散户手动几乎吃不到。</dd>
+      <dt>现实边缘</dt><dd>散户能争取的通常是<strong>波动率套利</strong>,但那是带风险的相对价值,需要连续对冲与 Greeks 管理。</dd>
+    </dl>
+  </div>
+</section>
+
+<footer>
+  <h3>名词解释</h3>
+  <ul>
+    <li>看跌-看涨平价 Put-Call Parity — <a href="https://www.investopedia.com/terms/p/putcallparity.asp" target="_blank">Investopedia</a></li>
+    <li>转换套利 Conversion Arbitrage — <a href="https://www.investopedia.com/terms/c/conversionarbitrage.asp" target="_blank">Investopedia</a></li>
+    <li>盒式套利 Box Spread — <a href="https://www.investopedia.com/terms/b/boxspread.asp" target="_blank">Investopedia</a></li>
+    <li>蝶式价差 Butterfly Spread — <a href="https://www.investopedia.com/terms/b/butterflyspread.asp" target="_blank">Investopedia</a></li>
+    <li>隐含波动率 Implied Volatility — <a href="https://www.investopedia.com/terms/i/iv.asp" target="_blank">Investopedia</a></li>
+    <li>期权合约 Options — <a href="https://academy.binance.com/en/articles/what-are-options-contracts" target="_blank">Binance Academy</a></li>
+  </ul>
+  <h3 style="margin-top:12px">方法论来源</h3>
+  <ul>
+    <li>ScienceDirect — Arbitrage opportunities and efficiency tests in crypto derivatives: <a href="https://www.sciencedirect.com/science/article/pii/S138641812400048X" target="_blank">链接</a></li>
+    <li>Rival Systems — Conversions, Reversals, Boxes and Rolls: <a href="https://www.rivalsystems.com/news/archive/2024/08/exploring-arbitrage-strategies-conversions-reversals-boxes-and-rolls/" target="_blank">链接</a></li>
+    <li>Wikipedia — Options arbitrage: <a href="https://en.wikipedia.org/wiki/Options_arbitrage" target="_blank">链接</a></li>
+  </ul>
+</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=(n,d=2)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+function calc(){
+  const C=+$('c').value||0,P=+$('p').value||0,K=+$('k').value||0,F=+$('f').value||0,
+        q=+$('q').value||0,fee=(+$('fee').value||0)/100;
+  const syn=C-P+K, dev=syn-F, gross=Math.abs(dev), feeC=F*fee, per=gross-feeC, net=per*q;
+  $('oSyn').textContent=fmt(syn)+' U';
+  $('oDev').textContent=(dev>=0?'+':'−')+fmt(Math.abs(dev))+' U';
+  $('oGross').textContent=fmt(gross)+' U';
+  $('oFee').textContent='−'+fmt(feeC)+' U';
+  $('oPer').textContent=(per>=0?'+':'−')+fmt(Math.abs(per))+' U';
+  const netEl=$('oNet');netEl.textContent=(net>=0?'+':'−')+fmt(Math.abs(net))+' U';
+  netEl.className='val big '+(net>=0?'pos':'neg');
+  $('oNetSub').textContent=`${fmt(q,1)} 张 · 与币价无关`;
+  const act=$('oAct');
+  if(Math.abs(dev)<1e-9){act.textContent='无套利';act.className='val';}
+  else if(dev>0){act.textContent='Reversal 反转';act.className='val pos';}
+  else{act.textContent='Conversion 转换';act.className='val pos';}
+  $('oTip').innerHTML = per<=0
+    ? `⚠ 偏差 ${fmt(gross)}U 盖不过手续费 ${fmt(feeC)}U → <b>不划算</b>。期权套利里手续费是生死线。`
+    : (dev>0
+        ? `✓ 合成远期比期货贵 ${fmt(gross)}U → <b>Reversal</b>:卖Call+买Put+买期货,锁 ${fmt(per)}U/张。`
+        : `✓ 合成远期比期货便宜 ${fmt(gross)}U → <b>Conversion</b>:买Call+卖Put+卖期货,锁 ${fmt(per)}U/张。`);
+}
+['c','p','k','f','q','fee'].forEach(id=>$(id).addEventListener('input',calc));
+$('ex').addEventListener('click',()=>{$('c').value=2500;$('p').value=1300;$('k').value=60000;$('f').value=61000;$('q').value=1;$('fee').value=0.1;calc();});
+calc();
+</script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+/* Native Butterfly page enhancement for /arbitrage/. */
+.arbitrage-app{--arb-accent:#49b1f5;--arb-ink:var(--font-color);--arb-line:var(--light-grey);margin:-18px -22px -26px}
+.arbitrage-intro{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:28px 30px;border-bottom:1px solid var(--arb-line)}
+.arbitrage-intro p{margin:0;color:var(--card-meta);line-height:1.8}
+.arbitrage-lead{margin-top:8px!important;font-size:1.02em}
+.arbitrage-eyebrow{color:var(--arb-accent);font-weight:700;font-size:.78em;letter-spacing:.12em}
+.arbitrage-count{flex:none;padding:5px 13px;border-radius:20px;background:rgba(73,177,245,.12);color:var(--arb-accent);font-weight:600}
+.arbitrage-workspace{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:780px}
+.strategy-nav{padding:22px 16px;border-right:1px solid var(--arb-line);background:rgba(246,248,250,.72);overflow:auto;max-height:calc(100vh - 95px);position:sticky;top:70px}
+.strategy-label{margin:0 6px 12px;color:var(--card-meta);font-size:.78em;font-weight:700;letter-spacing:.08em}
+.strategy-label-spaced{margin-top:22px}
+.strategy-card{display:block;width:100%;margin:0 0 10px;padding:13px 14px;border:1px solid #e3e8ee;border-radius:9px;background:var(--card-bg);color:var(--arb-ink);text-align:left;cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .2s}
+.strategy-card:hover{border-color:var(--arb-accent);box-shadow:0 3px 8px 3px rgba(7,17,27,.06);transform:translateY(-1px)}
+.strategy-card.active{border-color:var(--arb-accent);box-shadow:0 0 0 1px var(--arb-accent),0 3px 8px 3px rgba(7,17,27,.07)}
+.strategy-title{display:flex;align-items:center;gap:9px;font-size:1.05em;font-weight:700}
+.strategy-number{display:inline-flex;align-items:center;justify-content:center;width:27px;height:27px;border-radius:7px;background:var(--arb-accent);color:#fff;font-size:.85em;font-style:normal}
+.strategy-number.overview{background:#00c4b6}
+.strategy-description{display:block;margin-top:7px;color:var(--card-meta);font-size:.84em;line-height:1.6}
+.risk{display:inline-block;margin-top:8px;padding:1px 8px;border-radius:12px;font-size:.72em}
+.risk.low{background:#e6f5ec;color:#1f7a4d}.risk.mid{background:#e8f3ff;color:#2f6bba}.risk.high{background:#fdeee2;color:#b4531a}
+.strategy-reader{min-width:0;background:transparent}
+.reader-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;height:48px;padding:0 20px;border-bottom:1px solid var(--arb-line);color:var(--card-meta);font-size:.9em}
+.reader-toolbar strong{color:var(--arb-ink)}.reader-toolbar a{color:var(--arb-accent);font-weight:600}
+.viewer-shell{height:calc(100vh - 118px);min-height:720px;padding:18px;background:transparent}
+.viewer-shell iframe{display:block;width:100%;height:100%;border:0;background:transparent}
+[data-theme='dark'] .strategy-nav{background:rgba(18,18,18,.55)}
+[data-theme='dark'] .strategy-card{border-color:#333}
+@media screen and (max-width:900px){
+  .arbitrage-app{margin:-18px -14px -22px}.arbitrage-intro{padding:22px 18px;align-items:flex-start;flex-direction:column}.arbitrage-count{display:none}
+  .arbitrage-workspace{grid-template-columns:1fr}.strategy-nav{position:static;max-height:40vh;border-right:0;border-bottom:1px solid var(--arb-line)}
+  .viewer-shell{height:78vh;min-height:600px;padding:10px}.reader-toolbar{padding:0 12px}
+}

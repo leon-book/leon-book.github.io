@@ -1,149 +1,618 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>量化套利专题 · Leon Blog</title>
-<style>
-  :root{
-    --bg:#f6f8fb; --card:#ffffff; --ink:#1a1d24; --muted:#5b6472;
-    --line:#e3e7ee; --accent:#2f6bff; --accent-soft:#eaf0ff; --chip:#eef1f6;
-    --ok:#1f7a4d; --ok-soft:#e6f5ec; --warn:#b4531a; --warn-soft:#fdeee2;
-  }
-  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-    --bg:#0f1218; --card:#171b23; --ink:#e8ebf0; --muted:#9aa4b2;
-    --line:#262c37; --accent:#6f9bff; --accent-soft:#1a2540; --chip:#212734;
-    --ok:#6fce9c; --ok-soft:#12261b; --warn:#e59b6a; --warn-soft:#2c2016;
-  }}
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{margin:0;background:var(--bg);color:var(--ink);
-    font-family:-apple-system,"PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
-    display:flex;flex-direction:column;height:100vh;overflow:hidden}
-  header{background:var(--card);border-bottom:1px solid var(--line);padding:14px 22px;flex:none}
-  header .t{font-size:18px;font-weight:700}
-  header .s{font-size:12.5px;color:var(--muted);margin-top:2px}
-  header .brand{display:inline-block;color:var(--accent);text-decoration:none;font-size:12px;font-weight:700;margin-bottom:4px}
-  .layout{flex:1;display:flex;min-height:0}
-  aside{width:270px;flex:none;background:var(--card);border-right:1px solid var(--line);
-    overflow-y:auto;padding:14px}
-  .navcard{display:block;text-align:left;width:100%;background:var(--bg);border:1px solid var(--line);
-    border-radius:11px;padding:12px 13px;margin-bottom:9px;cursor:pointer;transition:.15s;color:inherit;font:inherit}
-  .navcard:hover{border-color:var(--accent)}
-  .navcard.active{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent) inset}
-  .navcard .h{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:600}
-  .navcard .num{display:inline-flex;width:22px;height:22px;align-items:center;justify-content:center;
-    background:var(--accent);color:#fff;border-radius:6px;font-size:12px;flex:none}
-  .navcard .d{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5}
-  .navcard .mini{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:12px;background:var(--chip);color:var(--muted);margin-top:7px}
-  .navcard .mini.low{background:var(--ok-soft);color:var(--ok)}
-  .navcard .mini.mid{background:var(--accent-soft);color:var(--accent)}
-  .navcard .mini.high{background:var(--warn-soft);color:var(--warn)}
-  .seclabel{font-size:11px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;margin:6px 4px 10px;font-weight:700}
-  main{flex:1;min-width:0;display:flex;flex-direction:column}
-  .frametop{padding:8px 16px;border-bottom:1px solid var(--line);background:var(--card);
-    display:flex;align-items:center;justify-content:space-between;flex:none;font-size:12.5px}
-  .frametop .cur{color:var(--muted)} .frametop .cur b{color:var(--ink)}
-  .frametop a{color:var(--accent);text-decoration:none;font-weight:600}
-  .frametop a:hover{text-decoration:underline}
-  iframe{flex:1;width:100%;border:none;background:var(--bg)}
-  .menubtn{display:none}
-  @media(max-width:760px){
-    body{overflow:auto;height:auto}
-    .layout{flex-direction:column}
-    aside{width:100%;border-right:none;border-bottom:1px solid var(--line);max-height:40vh;overflow-y:auto}
-    iframe{height:78vh}
-    .menubtn{display:inline-block;background:none;border:1px solid var(--line);border-radius:8px;
-      padding:4px 10px;color:var(--ink);font-size:12.5px;cursor:pointer}
-  }
-</style>
-</head>
-<body>
-<header>
-  <a class="brand" href="../">← Leon Blog</a>
-  <div class="t">数字货币量化套利 · 图解 + 计算器</div>
-  <div class="s">选择策略查看原理图、公式与交互计算器 · 整理于 2026-09 · 模型为简化情景估算，非投资建议</div>
-</header>
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>数字货币量化套利 | Leon</title><meta name="author" content="Leon"><meta name="copyright" content="Leon"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="十种量化套利策略的原理图、公式与交互计算器。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="数字货币量化套利">
+<meta property="og:url" content="https://leon-book.github.io/arbitrage/index.html">
+<meta property="og:site_name" content="Leon">
+<meta property="og:description" content="十种量化套利策略的原理图、公式与交互计算器。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leon-book.github.io/assets/profile/leon-avatar.png">
+<meta property="article:published_time" content="2026-10-06T13:18:56.884Z">
+<meta property="article:modified_time" content="2026-10-06T13:18:56.884Z">
+<meta property="article:author" content="Leon">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leon-book.github.io/assets/profile/leon-avatar.png"><script type="application/ld+json"></script><link rel="shortcut icon" href="/assets/profile/leon-avatar.png"><link rel="canonical" href="https://leon-book.github.io/arbitrage/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
 
-<div class="layout">
-  <aside id="nav">
-    <div class="seclabel">总览</div>
-    <button class="navcard" data-src="数字货币量化理财-基础分析清单.html" data-name="基础分析清单">
-      <div class="h"><span class="num">◎</span>基础分析清单</div>
-      <div class="d">10 种策略 + 平台网站全景表,先看这个建立框架。</div>
-    </button>
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
 
-    <div class="seclabel" style="margin-top:14px">九种套利(含计算器)</div>
-    <button class="navcard active" data-src="01-资金费率套利.html" data-name="资金费率套利">
-      <div class="h"><span class="num">1</span>资金费率套利</div>
-      <div class="d">现货+永续对冲,收永续多空互付的资金费。</div>
-      <span class="mini low">难度 低</span>
-    </button>
-    <button class="navcard" data-src="02-期现套利.html" data-name="期现套利">
-      <div class="h"><span class="num">2</span>期现套利</div>
-      <div class="d">买现货+空交割合约,吃到期收敛的基差。</div>
-      <span class="mini low">难度 低</span>
-    </button>
-    <button class="navcard" data-src="03-日历价差套利.html" data-name="日历价差套利">
-      <div class="h"><span class="num">3</span>日历价差(跨期)</div>
-      <div class="d">近/远月两腿对冲,赌价差收窄。</div>
-      <span class="mini mid">难度 中</span>
-    </button>
-    <button class="navcard" data-src="04-跨交易所套利.html" data-name="跨交易所套利">
-      <div class="h"><span class="num">4</span>跨交易所搬砖</div>
-      <div class="d">A 所买、B 所卖,赚瞬时价差,拼速度。</div>
-      <span class="mini mid">难度 中</span>
-    </button>
-    <button class="navcard" data-src="05-三角套利.html" data-name="三角套利">
-      <div class="h"><span class="num">5</span>三角套利</div>
-      <div class="d">同所内三币绕圈,吃汇率定价偏差。</div>
-      <span class="mini high">难度 高</span>
-    </button>
-    <button class="navcard" data-src="06-跨所资金费率套利.html" data-name="跨所资金费率套利">
-      <div class="h"><span class="num">6</span>跨所资金费率套利</div>
-      <div class="d">高费率所做空、低费率所做多,吃费率差。</div>
-      <span class="mini low">难度 低–中</span>
-    </button>
-    <button class="navcard" data-src="07-统计套利.html" data-name="统计套利 / 配对交易">
-      <div class="h"><span class="num">7</span>统计套利 / 配对交易</div>
-      <div class="d">相关币价差异常时押均值回归。</div>
-      <span class="mini high">难度 高</span>
-    </button>
-    <button class="navcard" data-src="08-闪电贷套利.html" data-name="闪电贷套利">
-      <div class="h"><span class="num">8</span>闪电贷套利</div>
-      <div class="d">链上无抵押借款,原子完成 DEX 价差套利。</div>
-      <span class="mini high">难度 高</span>
-    </button>
-    <button class="navcard" data-src="09-稳定币脱锚套利.html" data-name="稳定币脱锚套利">
-      <div class="h"><span class="num">9</span>稳定币脱锚套利</div>
-      <div class="d">稳定币跌破锚定时低买,赌回锚。高风险。</div>
-      <span class="mini high">难度 中 · 风险高</span>
-    </button>
-  </aside>
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
 
-  <main>
-    <div class="frametop">
-      <span class="cur">目前查看:<b id="curName">资金费率套利</b></span>
-      <a id="openNew" href="01-资金费率套利.html" target="_blank">在新分页开启 ↗</a>
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":true,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '数字货币量化套利',
+  isHighlightShrink: false,
+  isToc: false,
+  pageType: 'page'
+}</script><link rel="stylesheet" href="/css/arbitrage.css"><link rel="stylesheet" href="/css/leon.css?v=2"><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/assets/profile/leon-avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">871</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">73</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">13</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/ai/"><i class="fa-fw fas fa-robot"></i><span> AI实践</span></a></div><div class="menus_item"><a class="site-page" href="/arbitrage/"><i class="fa-fw fas fa-chart-line"></i><span> 量化套利</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="page type-arbitrage" id="body-wrap"><header class="not-top-img" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Leon</span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/ai/"><i class="fa-fw fas fa-robot"></i><span> AI实践</span></a></div><div class="menus_item"><a class="site-page" href="/arbitrage/"><i class="fa-fw fas fa-chart-line"></i><span> 量化套利</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><h1 class="title-seo">数字货币量化套利</h1></header><main class="layout hide-aside" id="content-inner"><div id="page"><div class="page-title">数字货币量化套利</div><div class="container" id="article-container"><div class="arbitrage-app">
+  <div class="arbitrage-intro">
+    <div>
+      <span class="arbitrage-eyebrow">QUANT ARBITRAGE PLAYBOOK</span>
+      <p class="arbitrage-lead">十种策略的图解、公式与交互计算器。选择左侧策略进入正文；模型为简化情景估算，不构成投资建议。</p>
     </div>
-    <iframe id="viewer" src="01-资金费率套利.html" title="策略内容"></iframe>
-  </main>
+    <span class="arbitrage-count">10 种策略</span>
+  </div>
+  <div class="arbitrage-workspace">
+    <aside class="strategy-nav" id="strategyNav" aria-label="套利策略导航">
+      <div class="strategy-label">总览</div>
+      <button class="strategy-card" data-src="数字货币量化理财-基础分析清单.html" data-name="基础分析清单">
+        <span class="strategy-title"><b class="strategy-number overview">◎</b>基础分析清单</span>
+        <span class="strategy-description">十种策略与平台网站全景表，先建立整体框架。</span>
+      </button>
+      <div class="strategy-label strategy-label-spaced">十种套利（含计算器）</div>
+      <button class="strategy-card active" data-src="01-资金费率套利.html" data-name="资金费率套利">
+        <span class="strategy-title"><b class="strategy-number">1</b>资金费率套利</span>
+        <span class="strategy-description">现货与永续对冲，收取多空互付的资金费。</span><span class="risk low">难度低</span>
+      </button>
+      <button class="strategy-card" data-src="02-期现套利.html" data-name="期现套利">
+        <span class="strategy-title"><b class="strategy-number">2</b>期现套利</span>
+        <span class="strategy-description">买现货、空交割合约，等待基差到期收敛。</span><span class="risk low">难度低</span>
+      </button>
+      <button class="strategy-card" data-src="03-日历价差套利.html" data-name="日历价差套利">
+        <span class="strategy-title"><b class="strategy-number">3</b>日历价差（跨期）</span>
+        <span class="strategy-description">近远月两腿对冲，捕捉期限价差变化。</span><span class="risk mid">难度中</span>
+      </button>
+      <button class="strategy-card" data-src="04-跨交易所套利.html" data-name="跨交易所套利">
+        <span class="strategy-title"><b class="strategy-number">4</b>跨交易所搬砖</span>
+        <span class="strategy-description">不同交易所同步买卖，捕捉瞬时价差。</span><span class="risk mid">难度中</span>
+      </button>
+      <button class="strategy-card" data-src="05-三角套利.html" data-name="三角套利">
+        <span class="strategy-title"><b class="strategy-number">5</b>三角套利</span>
+        <span class="strategy-description">同一交易所内三币循环，捕捉汇率偏差。</span><span class="risk high">难度高</span>
+      </button>
+      <button class="strategy-card" data-src="06-跨所资金费率套利.html" data-name="跨所资金费率套利">
+        <span class="strategy-title"><b class="strategy-number">6</b>跨所资金费率套利</span>
+        <span class="strategy-description">高费率所做空、低费率所做多，赚取费率差。</span><span class="risk mid">难度中</span>
+      </button>
+      <button class="strategy-card" data-src="07-统计套利.html" data-name="统计套利 / 配对交易">
+        <span class="strategy-title"><b class="strategy-number">7</b>统计套利 / 配对交易</span>
+        <span class="strategy-description">相关资产价差异常时，押注均值回归。</span><span class="risk high">难度高</span>
+      </button>
+      <button class="strategy-card" data-src="08-闪电贷套利.html" data-name="闪电贷套利">
+        <span class="strategy-title"><b class="strategy-number">8</b>闪电贷套利</span>
+        <span class="strategy-description">用原子交易完成借款、套利与归还。</span><span class="risk high">难度高</span>
+      </button>
+      <button class="strategy-card" data-src="09-稳定币脱锚套利.html" data-name="稳定币脱锚套利">
+        <span class="strategy-title"><b class="strategy-number">9</b>稳定币脱锚套利</span>
+        <span class="strategy-description">脱锚时低买并等待回锚，风险较高。</span><span class="risk high">风险高</span>
+      </button>
+      <button class="strategy-card" data-src="10-期权套利.html" data-name="期权套利">
+        <span class="strategy-title"><b class="strategy-number">10</b>期权套利</span>
+        <span class="strategy-description">利用平价、盒式与蝶式结构捕捉定价偏差。</span><span class="risk high">难度高</span>
+      </button>
+    </aside>
+    <section class="strategy-reader" aria-label="策略正文">
+      <div class="reader-toolbar">
+        <span>正在阅读：<strong id="strategyName">资金费率套利</strong></span>
+        <a id="openStrategy" href="01-资金费率套利.html" target="_blank" rel="noopener">独立打开 <i class="fas fa-arrow-up-right-from-square"></i></a>
+      </div>
+      <div class="viewer-shell">
+        <iframe id="strategyViewer" src="01-资金费率套利.html" title="资金费率套利策略内容"></iframe>
+      </div>
+    </section>
+  </div>
 </div>
+</div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2015 - 2026 By Leon</span><span class="framework-info"><span>框架 </span><a href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div><div class="footer_custom_text">本地预览 · 访问量统计未接入</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.7.0"></script><script src="/js/main.js?v=5.7.0"></script><div class="js-pjax"><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
 
-<script>
-  const nav=document.getElementById('nav');
-  const viewer=document.getElementById('viewer');
-  const curName=document.getElementById('curName');
-  const openNew=document.getElementById('openNew');
-  nav.addEventListener('click',e=>{
-    const card=e.target.closest('.navcard'); if(!card)return;
-    document.querySelectorAll('.navcard').forEach(c=>c.classList.remove('active'));
-    card.classList.add('active');
-    const src=card.dataset.src;
-    viewer.src=src; openNew.href=src;
-    curName.textContent=card.dataset.name;
-    if(window.innerWidth<=760){viewer.scrollIntoView({behavior:'smooth'});}
-  });
-</script>
-</body>
-</html>
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.innerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    // Clean up previous event listeners and pending frames
+    if (wrap.__mermaidAbortController) {
+      wrap.__mermaidAbortController.abort()
+      if (wrap.__mermaidRafId) cancelAnimationFrame(wrap.__mermaidRafId)
+    }
+    const ac = new AbortController()
+    wrap.__mermaidAbortController = ac
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+    // Disable default gestures to prevent scroll chaining and pinch-zoom penetration in Chrome
+    svg.style.touchAction = 'none'
+
+    // Cache BoundingClientRect, throttled on scroll to reduce reflow
+    let cachedRect = svg.getBoundingClientRect()
+    let rectDirty = false
+    const markRectDirty = () => { rectDirty = true }
+    window.addEventListener('resize', markRectDirty, { signal: ac.signal })
+    window.addEventListener('scroll', markRectDirty, { signal: ac.signal, capture: true })
+    const getRect = () => {
+      if (rectDirty) {
+        cachedRect = svg.getBoundingClientRect()
+        rectDirty = false
+      }
+      return cachedRect
+    }
+
+    // Precompute clamp bounds from initial viewBox
+    const minW = initVb[2] * 0.1
+    const maxW = initVb[2] * 10
+    const minH = initVb[3] * 0.1
+    const maxH = initVb[3] * 10
+    const clampVb = vb => {
+      const out = vb.slice()
+      out[2] = clamp(out[2], minW, maxW)
+      out[3] = clamp(out[3], minH, maxH)
+      return out
+    }
+
+    // Throttle DOM updates using requestAnimationFrame
+    let pendingVb = null
+    let rafId = null
+    const applyVb = () => {
+      if (pendingVb) {
+        wrap.__mermaidCurViewBox = pendingVb
+        setSvgViewBox(svg, pendingVb)
+        pendingVb = null
+      }
+      rafId = null
+      wrap.__mermaidRafId = null
+    }
+    const setCurVb = vb => {
+      pendingVb = clampVb(vb)
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyVb)
+        wrap.__mermaidRafId = rafId
+      }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      lastPointerX: 0,
+      lastPointerY: 0
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      const curVb = wrap.__mermaidCurViewBox
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (state.pointers.size === 1) {
+        state.startVb = curVb.slice()
+        state.lastPointerX = e.clientX
+        state.lastPointerY = e.clientY
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = curVb.slice()
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = state.pointers.values().next().value
+        const dxClient = p.x - state.lastPointerX
+        const dyClient = p.y - state.lastPointerY
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+        const dx = dxClient * (curVb[2] / rect.width)
+        const dy = dyClient * (curVb[3] / rect.height)
+        setCurVb([curVb[0] - dx, curVb[1] - dy, curVb[2], curVb[3]])
+        return
+      }
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const px = curVb[0] + (cx - rect.left) * (curVb[2] / rect.width)
+        const py = curVb[1] + (cy - rect.top) * (curVb[3] / rect.height)
+        setCurVb(zoomAtPoint(state.startVb, factor, px, py))
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      // Release PointerCapture to avoid event capture anomalies
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) {
+        svg.releasePointerCapture(e.pointerId)
+      }
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+      } else if (state.pointers.size === 1) {
+        const p = state.pointers.values().next().value
+        state.lastPointerX = p.x
+        state.lastPointerY = p.y
+      }
+    }
+
+    const onWheel = e => {
+      // Prevent event bubbling from triggering external scroll
+      e.preventDefault()
+      e.stopPropagation()
+      // Normalize deltaY across deltaMode (Chrome uses pixels, Safari uses lines)
+      let delta = e.deltaY
+      if (e.deltaMode === 1) delta *= 16
+      else if (e.deltaMode === 2) delta *= 400
+
+      // Continuous zoom factor: smoother than fixed 1.1/0.9 steps
+      const zoomFactor = Math.pow(1.001, delta)
+
+      const curVb = wrap.__mermaidCurViewBox
+      const rect = getRect()
+      const px = curVb[0] + (e.clientX - rect.left) * (curVb[2] / rect.width)
+      const py = curVb[1] + (e.clientY - rect.top) * (curVb[3] / rect.height)
+      setCurVb(zoomAtPoint(curVb, zoomFactor, px, py))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (init) setCurVb(init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown, { signal: ac.signal })
+    svg.addEventListener('pointermove', onPointerMove, { signal: ac.signal })
+    svg.addEventListener('pointerup', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('pointercancel', onPointerUpOrCancel, { signal: ac.signal })
+    svg.addEventListener('wheel', onWheel, { passive: false, signal: ac.signal })
+    svg.addEventListener('dblclick', onDblClick, { signal: ac.signal })
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      // Clean up event listeners before removing old SVG
+      if (item.__mermaidAbortController) {
+        item.__mermaidAbortController.abort()
+      }
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      let config = {}
+      try {
+        config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      } catch (e) {
+        console.warn('[mermaid] failed to parse dataset.config:', e)
+      }
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (false) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (false) attachMermaidViewerButton(item)
+      }
+
+      const handleError = err => {
+        console.error(`[mermaid] render failed for block #${index}:`, err)
+        const errorEl = document.createElement('div')
+        errorEl.className = 'mermaid-error'
+        errorEl.textContent = `Mermaid render error: ${err.message || err}`
+        mermaidSrc.insertAdjacentElement('afterend', errorEl)
+      }
+
+      try {
+        const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+        // mermaid v9 and v10 compatibility
+        if (typeof renderFn === 'string') {
+          renderMermaid(renderFn)
+        } else {
+          renderFn.then(({ svg }) => renderMermaid(svg)).catch(handleError)
+        }
+      } catch (err) {
+        handleError(err)
+      }
+    })
+  }
+
+  const codeToMermaid = $article => {
+    const codeMermaidEle = $article.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    const $article = document.getElementById('article-container')
+    if (!$article) return
+
+    if (true) codeToMermaid($article)
+    const $mermaid = $article.querySelectorAll('.mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script></div><script defer src="/js/arbitrage.js"></script><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.7.0"></script></div></div></body></html>

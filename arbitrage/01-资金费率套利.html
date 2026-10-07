@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>资金费率套利 · 原理与计算器</title>
 <link rel="stylesheet" href="assets/common.css">
+<script src="assets/theme-shell.js" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -16,7 +17,7 @@
   <p>买入现货、同时做空等额永续合约,锁死涨跌方向,只赚永续合约多空之间互付的“资金费率”。</p>
   <div class="chips">
     <span class="chip low">难度 低</span>
-    <span class="chip mid">收益随费率变化</span>
+    <span class="chip mid">典型年化 5%–20%</span>
     <span class="chip">收益来源:资金费率</span>
   </div>
 </div>
@@ -27,7 +28,7 @@
   <div class="card">
     <p><a class="term" href="https://academy.binance.com/en/articles/what-are-perpetual-futures-contracts" target="_blank" data-tip="没有到期日的期货,可长期持有;靠资金费率把价格拉回现货附近">永续合约</a>没有到期日,为了让它的价格贴近现货,交易所设计了<a class="term" href="https://academy.binance.com/en/glossary/funding-rate" target="_blank" data-tip="永续合约多空双方每隔数小时(通常8h)互付的一笔费用">资金费率</a>:每 8 小时,多空双方互相付一笔钱。</p>
     <p>市场情绪偏多时,资金费率为<strong>正</strong> → 做多的人要付钱给做空的人。于是我们:<span class="hl">现货买 1 个币(不会被强平)</span> + <span class="hl">永续空 1 个币(收资金费)</span>。</p>
-    <p>两腿金额相等、方向相反,构成<a class="term" href="https://www.investopedia.com/terms/d/deltaneutral.asp" target="_blank" data-tip="组合对涨跌方向不敏感,涨跌盈亏互相抵消,只留下结构性收益">Delta 中性</a>:币价涨,现货赚、空单亏,两者理论上可部分抵消;币价跌,反之抵消。<strong>资金费率可能变化或转负，结算间隔因交易所和合约而异；收益并不固定。</strong></p>
+    <p>两腿金额相等、方向相反,构成<a class="term" href="https://www.investopedia.com/terms/d/deltaneutral.asp" target="_blank" data-tip="组合对涨跌方向不敏感,涨跌盈亏互相抵消,只留下结构性收益">Delta 中性</a>:币价涨,现货赚、空单亏,两者抵消;币价跌,反之抵消。<strong>不管涨跌,我们每 8 小时稳定收一次资金费。</strong></p>
   </div>
 </section>
 
@@ -166,7 +167,7 @@
       </tbody>
     </table>
     </div>
-    <div class="note ok" style="margin-top:12px"><b>模型说明:</b>示例将输入费率视为持有期间恒定，因此年化只是情景估算。实际费率、结算间隔、手续费和保证金风险都可能变化，需要持续监控。</div>
+    <div class="note ok" style="margin-top:12px"><b>结论:</b>费率越高、持有越久、手续费越省,收益越好。牛市费率常达 0.05%~0.1%/8h,年化可冲到 15%+;但费率会波动,需持续监控,转负时应及时平仓。</div>
   </div>
 </section>
 
@@ -210,7 +211,7 @@ function calc(){
   const liq=L>1?(100/L):null;
   $('oLiq').innerHTML=L>1
     ?`⚠ 杠杆 ${L}×:币价反向约 <b>${fmt(100/L,1)}%</b> 即逼近合约腿强平线。现货盈利虽能对冲,但仍需及时补保证金。`
-    :`⚠ L=1 时合约腿仍有保证金与强平风险；需持续检查仓位和交易所规则。`;
+    :`✓ L=1 无杠杆:合约腿几乎不会被强平,最稳健的配置。`;
 }
 ['cap','rate','settle','lev','fee','days'].forEach(id=>$(id).addEventListener('input',calc));
 $('ex').addEventListener('click',()=>{$('cap').value=10000;$('rate').value=0.01;$('settle').value=8;$('lev').value=1;$('fee').value=0.2;$('days').value=30;calc();});

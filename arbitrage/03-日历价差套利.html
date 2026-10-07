@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>日历价差(跨期套利) · 原理与计算器</title>
 <link rel="stylesheet" href="assets/common.css">
+<script src="assets/theme-shell.js" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -122,12 +123,26 @@
   </div>
 </section>
 
+<section>
+  <h2><span class="n">6</span>尾部风险:ADL(自动减仓)</h2>
+  <p class="lead">两腿都是交割合约,任一腿被 ADL,对冲立刻变单边敞口。</p>
+  <div class="card">
+    <p><a class="term" href="https://www.binance.com/en/support/faq/what-is-auto-deleveraging-adl-and-how-does-it-work-360033525471" target="_blank" data-tip="强平单无法成交、保险基金又不足时,交易所强制平掉对手方盈利仓位来补亏空">ADL(自动减仓)</a>是强平的最后兜底:有仓位穿仓、<a class="term" href="https://www.binance.com/en/support/faq/what-is-auto-deleveraging-adl-and-how-does-it-work-360033525471" target="_blank" data-tip="吸收穿仓亏损的资金池,不足时启动 ADL">保险基金</a>填不平时,交易所按盈利×杠杆排序,<strong>强制平掉对手方盈利仓位</strong>。交割合约一样适用。</p>
+    <div class="note warn" style="margin-top:4px"><b>对本策略的威胁:</b>日历价差有一多一空两条交割腿。行情剧烈时,<strong>盈利的那条腿</strong>可能被 ADL 强制平掉,<span class="hl">留下另一条腿裸奔</span>,瞬间从“价差中性”变成单边敞口,亏损可能远超原本预期的价差收益。</div>
+    <dl class="kv" style="margin-top:12px">
+      <dt>更须警惕</dt><dd><strong>币本位</strong>交割合约共享更小的保险基金,比 U 本位<strong>更易触发 ADL</strong>;临近到期流动性枯竭会进一步放大。</dd>
+      <dt>怎么降低</dt><dd>①低杠杆(ADL 排名靠后);②盯 ADL 指示灯;③别扛到临近到期;④留足保证金,一腿被减仓后立即补建。</dd>
+    </dl>
+  </div>
+</section>
+
 <footer>
   <h3>名词解释</h3>
   <ul>
     <li>日历价差 Calendar Spread — <a href="https://www.investopedia.com/terms/c/calendarspread.asp" target="_blank">Investopedia</a></li>
     <li>正向市场 Contango — <a href="https://www.investopedia.com/terms/c/contango.asp" target="_blank">Investopedia</a></li>
     <li>保证金 Margin — <a href="https://www.investopedia.com/terms/m/margin.asp" target="_blank">Investopedia</a></li>
+    <li>ADL 自动减仓 — <a href="https://www.binance.com/en/support/faq/what-is-auto-deleveraging-adl-and-how-does-it-work-360033525471" target="_blank">Binance 官方 FAQ</a></li>
   </ul>
   <h3 style="margin-top:12px">方法论来源</h3>
   <ul>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>闪电贷套利 · 原理与计算器</title>
 <link rel="stylesheet" href="assets/common.css">
+<script src="assets/theme-shell.js" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -26,7 +27,7 @@
   <div class="card">
     <p><a class="term" href="https://academy.binance.com/en/articles/what-are-flash-loans-in-defi" target="_blank" data-tip="DeFi 中无需抵押的贷款,必须在同一笔交易(同一区块)内借款并还清">闪电贷(Flash Loan)</a>是 DeFi 独有的魔法:你可以<strong>无抵押借出几百万美元</strong>,唯一条件是<span class="hl">必须在同一笔交易里还清</span>。如果还不上,整笔交易自动<a class="term" href="https://www.investopedia.com/terms/a/atomic-swaps.asp" target="_blank" data-tip="要么全部成功、要么全部回滚的原子性操作,不会出现半成品状态">回滚</a>,像什么都没发生。</p>
     <p>套利做法:借一大笔 USDC → 在 <a class="term" href="https://academy.binance.com/en/articles/what-is-an-automated-market-maker-amm" target="_blank" data-tip="用资金池和算法自动定价的去中心化交易所,如 Uniswap/Curve">AMM/DEX</a> A 便宜买入某币 → 在 DEX B 贵卖出 → 还掉借款和手续费 → 差价归你。因为整个过程在一个区块内原子完成,<strong>不需要自有本金</strong>,只需支付链上 <a class="term" href="https://academy.binance.com/en/glossary/gas" target="_blank" data-tip="以太坊等链上执行交易需支付的手续费">Gas 费</a>。</p>
-    <p><strong>最大特点:</strong>借款额可放大价差的绝对金额，但 Gas、滑点和竞争也会影响结果。借款无法在同笔交易归还时会回滚；若希望净利不足时也回滚，合约必须另设最低收益检查。失败交易仍可能消耗 Gas，智能合约也有实现风险。</p>
+    <p><strong>最大特点:</strong>盈利不取决于你有多少钱,而取决于价差的<strong>绝对金额</strong>;而且如果算下来会亏,交易直接回滚,你<strong>只损失 Gas</strong>,不会真的欠债——这是它与其他套利根本不同之处。门槛在于:要会写并部署智能合约。</p>
   </div>
 </section>
 
@@ -70,19 +71,19 @@
     <div class="formula">
 毛利 = 借款额 × DEX 价差%
 成本 = 闪电贷费(借款额 × 费率) + 两次 DEX 手续费 + 滑点 + Gas
-净利 = 毛利 − 成本　<span class="c">// 负值表示该情景不值得执行；是否回滚取决于合约检查</span>
+净利 = 毛利 − 成本　<span class="c">// 净利 &lt; 0 时交易回滚,只亏 Gas</span>
     </div>
     <dl class="kv">
       <dt>借款额越大越好</dt><dd>利润 = 价差% × 借款额。同样价差,借得越多赚得越多(受资金池深度与滑点限制)。</dd>
       <dt>本金 ≈ Gas</dt><dd>无需自有资金抵押。以太坊主网 Gas 可能几美元到几十美元,拥堵时更高。</dd>
-      <dt>风险边界</dt><dd>借款归还失败会回滚；净利不足则需要合约设置最低收益检查才能回滚。失败尝试仍会消耗 Gas，还需防范<a class="term" href="https://academy.binance.com/en/glossary/maximal-extractable-value-mev" target="_blank" data-tip="矿工/验证者通过排序交易攫取的价值,如抢跑你的套利">MEV 抢跑</a>和合约漏洞。</dd>
+      <dt>零下行风险*</dt><dd>*指不会亏借款:算下来不赚就<strong>回滚</strong>。但每次失败的尝试仍要付 Gas,且要防<a class="term" href="https://academy.binance.com/en/glossary/maximal-extractable-value-mev" target="_blank" data-tip="矿工/验证者通过排序交易攫取的价值,如抢跑你的套利">MEV 抢跑</a>。</dd>
     </dl>
   </div>
 </section>
 
 <section>
   <h2><span class="n">4</span>收益计算器</h2>
-  <p class="lead">看看借款额与价差扣掉各项成本后是否为正。负值代表模型提示不应执行，不保证链上自动回滚。</p>
+  <p class="lead">看看借款额与价差扣掉各项成本后是否为正。为负则交易回滚(实际只亏 Gas)。</p>
   <div class="calc">
     <div class="grid">
       <div class="inputs">
@@ -127,7 +128,7 @@
       </tbody>
     </table>
     </div>
-    <div class="note warn" style="margin-top:12px"><b>关键洞察:</b>把价差改成 <strong>0.5%</strong>,模型净利会变负。只有合约设置最低收益检查时，净利不足才会触发回滚；失败交易仍可能消耗 Gas。DEX 手续费、滑点、流动性和 MEV 竞争都可能改变实际结果。</div>
+    <div class="note warn" style="margin-top:12px"><b>关键洞察:</b>把价差改成 <strong>0.5%</strong>,净利立刻变负——此时智能合约会让交易<strong>回滚</strong>,你只亏 15 U 的 Gas,不会真赔借款。DEX 手续费是最大成本,所以实盘要挑<strong>低费率资金池</strong>,且价差窗口极短、竞争激烈(MEV 机器人抢跑)。</div>
   </div>
 </section>
 
@@ -162,12 +163,12 @@ function calc(){
   $('oGas').textContent='−'+fmt(gas)+' U';
   const netEl=$('oNet');netEl.textContent=(net>=0?'+':'−')+fmt(Math.abs(net))+' U';
   netEl.className='val big '+(net>=0?'pos':'neg');
-  $('oNetSub').textContent=net>=0?'仍需考虑 Gas 与执行风险':'模型提示不应执行';
+  $('oNetSub').textContent=net>=0?'本金仅 Gas':'交易将回滚';
   const roi=gas>0?net/gas:0;
-  $('oRoi').textContent=(net>=0?fmt(roi,1)+' ×':'净利为负');
+  $('oRoi').textContent=(net>=0?fmt(roi,1)+' ×':'回滚(不执行)');
   $('oRoi').className='val '+(net>=0?'pos':'neg');
   $('oTip').innerHTML=net<=0
-    ?`⚠ 净利为负 → 模型提示不要执行。若仍提交交易，须由合约明确检查最低收益；即便回滚，也可能损失 Gas ${fmt(gas)}U。`
+    ?`⚠ 净利为负 → 智能合约<b>回滚</b>,不会赔借款,只损失 Gas ${fmt(gas)}U。价差不够大是常态。`
     :`✓ 净赚 ${fmt(net)}U,几乎零本金。但窗口极短且被 MEV 机器人竞争,DEX 手续费是最大成本。`;
 }
 ['loan','gap','ff','dex','slip','gas'].forEach(id=>$(id).addEventListener('input',calc));

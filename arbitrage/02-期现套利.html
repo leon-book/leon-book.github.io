@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>期现套利(Cash &amp; Carry) · 原理与计算器</title>
 <link rel="stylesheet" href="assets/common.css">
+<script src="assets/theme-shell.js" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -128,18 +129,33 @@
   </div>
 </section>
 
+<section>
+  <h2><span class="n">6</span>尾部风险:ADL(自动减仓)</h2>
+  <p class="lead">交割合约不只会爆仓,还有一个更隐蔽的机制会让你的对冲在最糟时刻失效。</p>
+  <div class="card">
+    <p><a class="term" href="https://www.binance.com/en/support/faq/what-is-auto-deleveraging-adl-and-how-does-it-work-360033525471" target="_blank" data-tip="强平单无法在市场成交、保险基金又不足时,交易所强制平掉对手方盈利仓位来补亏空">ADL(自动减仓)</a>是强平流程的最后一道兜底:当某仓位穿仓、<a class="term" href="https://www.binance.com/en/support/faq/what-is-auto-deleveraging-adl-and-how-does-it-work-360033525471" target="_blank" data-tip="交易所用来吸收穿仓亏损的资金池">保险基金</a>也填不平时,交易所会<strong>强制平掉“对手方中盈利且高杠杆”的仓位</strong>,按盈利×杠杆排序。交割合约一样有这套机制——它不是永续专属。</p>
+    <div class="note warn" style="margin-top:4px"><b>对本策略的威胁:</b>币价大跌时,你的<strong>空头交割合约正在盈利</strong>,恰好是 ADL 的首选目标。空单一旦被强制平掉,<span class="hl">对冲腿凭空消失</span>,你只剩现货多单,在下跌行情里被动裸奔——明明是中性对冲、明明在赚钱,却被别人的穿仓连累。这让"Delta 中性"在最糟时刻失效。</div>
+    <dl class="kv" style="margin-top:12px">
+      <dt>更须警惕</dt><dd>交割合约若用<strong>币本位结算</strong>,因共享更小的保险基金,比 U 本位<strong>更容易触发 ADL</strong>;临近到期流动性枯竭、结算价跳空也会加剧。</dd>
+      <dt>怎么降低</dt><dd>①用<strong>低杠杆</strong>(ADL 排名靠后);②盯交易所的 ADL 指示灯;③临近到期提前换月/平仓;④留足保证金、分散交易所,被减仓后能快速补建对冲。</dd>
+    </dl>
+  </div>
+</section>
+
 <footer>
   <h3>名词解释</h3>
   <ul>
     <li>基差 Basis — <a href="https://www.investopedia.com/terms/b/basis.asp" target="_blank">Investopedia</a></li>
     <li>Cash &amp; Carry 套利 — <a href="https://www.investopedia.com/terms/c/cashandcarry.asp" target="_blank">Investopedia</a></li>
     <li>交割/期货合约 Futures — <a href="https://academy.binance.com/en/articles/what-are-futures-contracts" target="_blank">Binance Academy</a></li>
+    <li>ADL 自动减仓 — <a href="https://www.binance.com/en/support/faq/what-is-auto-deleveraging-adl-and-how-does-it-work-360033525471" target="_blank">Binance 官方 FAQ</a></li>
   </ul>
   <h3 style="margin-top:12px">方法论来源</h3>
   <ul>
     <li>Mudrex — Basis Trading / Cash-and-Carry: <a href="https://mudrex.com/learn/basis-trading-crypto-cash-and-carry/" target="_blank">链接</a></li>
     <li>KuCoin — What is Cash-and-Carry: <a href="https://www.kucoin.com/blog/en-what-is-cash-and-carry-and-how-to-use-it-for-arbitrage" target="_blank">链接</a></li>
     <li>BitMEX — Arbitrage in Crypto: <a href="https://www.bitmex.com/blog/arbitrage-in-crypto" target="_blank">链接</a></li>
+    <li>Binance — ADL 与保险基金(币本位更易触发): <a href="https://www.binance.com/en/support/faq/what-is-auto-deleveraging-adl-and-how-does-it-work-360033525471" target="_blank">链接</a></li>
   </ul>
 </footer>
 </div>
