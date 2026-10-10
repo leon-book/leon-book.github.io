@@ -40,6 +40,45 @@
     host.dataset.initialized = 'true';
     const grid = host.querySelector('#works-grid');
     const status = host.querySelector('#works-status');
+    let catalog = {};
+    try {
+      const response = await root.fetch('/assets/works-projects.json');
+      if (!response.ok) throw new Error('Project details unavailable');
+      catalog = await response.json();
+    } catch (_) { status.textContent = '项目详情暂不可用，仍将加载 GitHub 数据。'; }
+    function enrich(card, repo) {
+      const detail = catalog[repo.name];
+      if (!detail) return;
+      if (detail.description) {
+        const description = card.querySelector('.work-description');
+        description.textContent = detail.description;
+        description.title = detail.description;
+      }
+      if (detail.images.length) {
+        const gallery = node('div', '', 'work-gallery');
+        detail.images.forEach(item => {
+          const anchor = link('', item.src);
+          const img = node('img'); img.src = item.src; img.alt = item.alt; img.loading = 'lazy';
+          img.addEventListener('error', () => { anchor.replaceChildren(node('span', '原截图暂不可用')); }, {once:true});
+          anchor.append(img); gallery.append(anchor);
+        });
+        card.insertBefore(gallery, card.firstChild);
+      }
+      const links = node('div', '', 'work-links');
+      detail.links.forEach(item => links.append(link(item.label + ' ↗', item.url)));
+      card.insertBefore(links, card.querySelector('.work-footer'));
+    }
+    const more = host.querySelector('#works-more');
+    for (const [name, detail] of Object.entries(catalog)) {
+      if (selected.includes(name)) continue;
+      const card = node('article', '', 'work-card');
+      const heading = node('h2'); heading.append(link(name, `https://github.com/kary2999/${encodeURIComponent(name)}`));
+      card.append(heading, node('p', detail.description, 'work-description'), node('div', '', 'work-footer'));
+      enrich(card, {name}); more.append(card);
+    }
+    host.querySelectorAll('[data-scroll]').forEach(button => button.addEventListener('click', () => {
+      grid.scrollBy({left: Number(button.dataset.scroll) * grid.clientWidth * .85, behavior: 'smooth'});
+    }));
     let repos = [], notice = '', timestamp = 0;
     function render() {
       grid.replaceChildren();
@@ -66,6 +105,7 @@
         }
         footer.append(github, stats);
         card.append(footer);
+        enrich(card, repo);
         grid.append(card);
       }
       status.textContent = `${notice} · 精选项目 ${visible.length} / ${selected.length} · 按 Star 收藏数排序${timestamp ? ` · 数据更新：${new Date(timestamp).toLocaleString('zh-CN')}` : ''}${visible.length < selected.length ? ' · 部分项目暂未从公开接口获取' : ''}`;

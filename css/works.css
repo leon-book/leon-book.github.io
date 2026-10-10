@@ -2,7 +2,20 @@
 [data-theme="dark"] #leon-works { --work-bg: #12121b; --work-border: #34343f; --work-text: #f0f0f4; --work-muted: #c1c1cb; --work-accent: #00d899; --work-line: #292932; --work-shadow: none; }
 #leon-works .works-intro { margin-top: 0; }
 #works-status { font-size: .82em; color: var(--work-muted); }
-#works-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 24px 0; }
+#leon-works .works-rail { display: flex; overflow-x: auto; gap: 18px; padding: 8px 3px 20px; margin: 20px 0; scroll-snap-type: x proximity; scrollbar-color: var(--work-accent) var(--work-bg); }
+#leon-works .works-rail > .work-card { flex: 0 0 min(360px, 85vw); scroll-snap-align: start; }
+#leon-works .works-rail { align-items: flex-start; }
+#leon-works .works-rail > .work-card { min-height: 260px; }
+#leon-works .works-controls { display: flex; align-items: center; gap: 12px; }
+#leon-works .works-controls span { margin-right: auto; }
+#leon-works button { border: 1px solid var(--work-border); background: var(--work-bg); color: var(--work-text); border-radius: 8px; padding: 8px 18px; cursor: pointer; }
+#leon-works .work-gallery { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+#leon-works .work-gallery a { flex: 1 1 42%; min-width: 0; }
+#leon-works .work-gallery a:first-child { flex-basis: 100%; }
+#leon-works .work-gallery img { display: block; width: 100%; height: 100px; object-fit: contain; background: var(--work-line); border-radius: 6px; margin: 0; }
+#leon-works .work-gallery a:first-child img { height: 180px; }
+#leon-works .work-links { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; margin: 12px 0; }
+#leon-works .works-rail .work-description { display: block; overflow: visible; }
 #leon-works .work-card { position: relative; overflow: hidden; display: flex; flex-direction: column; min-width: 0; padding: 18px 16px 14px; border: 1px solid var(--work-border); border-radius: 14px; background: var(--work-bg); color: var(--work-text); box-shadow: var(--work-shadow); transition: border-color .2s, box-shadow .2s; }
 #leon-works .work-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 2px; background: var(--work-accent); }
 [data-theme="dark"] #leon-works .work-card::before { background: linear-gradient(90deg, #00d899, #9348d7, #00b7d4); }
@@ -20,6 +33,4 @@
 #leon-works .work-github { border: 1px solid var(--work-border); border-radius: 4px; padding: 3px 10px; color: var(--work-text); text-decoration: none; }
 #leon-works .work-stats { display: flex; gap: 10px; white-space: nowrap; }
 #leon-works a:focus-visible { outline: 2px solid var(--work-accent); outline-offset: 3px; }
-@media(min-width: 1400px) { #works-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-@media(max-width: 1000px) { #works-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media(max-width: 600px) { #works-grid { grid-template-columns: 1fr; } }
+@media(max-width: 600px) { #leon-works .works-rail > .work-card { flex-basis: 88%; } }
